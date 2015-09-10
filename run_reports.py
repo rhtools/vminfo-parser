@@ -3,7 +3,7 @@
 # Apr 2013
 # Updated June 7, 2015
 # This script expects to be run with a single parameter: a list of hosts
-# USAGE: run_reports.py -f test_list -e user@domain.com -u remoteactions -o /tmp
+# USAGE: run_reports.py -f test_list -e steve.ovens@autodata.net -u remoteactions -o /tmp
 import os
 import sys
 import datetime
@@ -23,7 +23,7 @@ parser.add_option('--component-only-check', dest='component_only_check', help='F
                                                                               '(i.e. jar/warfiles)')
 (options, args) = parser.parse_args()
 
-servers_with_no_components = ["my", "mongo", "xmg", "arb"]
+servers_with_no_autodata_components = ["my", "mongo", "xmg", "arb"]
 mail_subject = ""
 
 if options.host_list is None:
@@ -70,7 +70,7 @@ def which_hosts_are_missing():
             pass
         else:
             if options.component_only_check is not None:
-                if not any(postfix in host.strip() for postfix in servers_with_no_components):
+                if not any(postfix in host.strip() for postfix in servers_with_no_autodata_components):
                     host_list.append(host.rstrip())
             else:
                 host_list.append(host.rstrip())
@@ -125,7 +125,7 @@ def run_reports(Hlist):
         if host.startswith("#"):
             pass
         else:
-            if not any(postfix in host.strip() for postfix in servers_with_no_components):
+            if not any(postfix in host.strip() for postfix in servers_with_no_autodata_components):
                 if host.strip():
                     return_host_report = [""]
                     if options.component_only_check is not None:
@@ -147,9 +147,9 @@ host_fqdn = []
 for host in open(reports_against_these_hosts).readlines():
     if host.strip():
         if options.component_only_check:
-            # The component only check does not need to query the database servers as no components
+            # The component only check does not need to query the database servers as no autodata components
             # should exist on those boxes
-            if not any(postfix in host.strip().lower() for postfix in servers_with_no_components):
+            if not any(postfix in host.strip().lower() for postfix in servers_with_no_autodata_components):
                 host_fqdn.append(host)
         else:
             host_fqdn.append(host)
@@ -192,7 +192,12 @@ for line in fileinput.input(output_filename, inplace=1):
 # This has to be done right before emailing out
 file_to_send = open(output_filename).readlines()
 lines = [line.split() for line in file_to_send if line.strip()]
-lines.sort(key=itemgetter(1))
+try:
+    lines.sort(key=itemgetter(1))
+except IndexError:
+    print("I was unable to sort based on component")
+    print("This is most likely due to an error parsing out the component version")
+
 sys.stdout = open(output_filename, 'w')
 for line in lines:
     print(" ".join(line))
@@ -205,3 +210,4 @@ else:
 
 os.system("echo 'report generation complete' | mutt -a '%s' -s '%s' -- %s" % (output_filename, mail_subject,
                                                                               report_to_this_email))
+

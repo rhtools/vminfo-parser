@@ -48,22 +48,20 @@ class GenericServerType(object):
         self.java_version_list = JavaVersion()
 
     def get_version_from_manifest(self, component_list):
-        for component in component_list:
-            if "backups" not in component and "purged" not in component.lower():
-                check_manifest_command = "unzip -p %s META-INF/MANIFEST.MF" % component
+        for autodata_component in component_list:
+            if "backups" not in autodata_component and "purged" not in autodata_component.lower():
+                check_manifest_command = "unzip -p %s META-INF/MANIFEST.MF" % autodata_component
                 check_warfile = ErrorHelper.identify_problem(check_manifest_command,
-                                                             component)
+                                                             autodata_component)
                 for line in check_warfile.split("\n"):
                     # The manifest file should have a line that starts with the word "version"
                     # so look for case-insensitive
                     if line.lower().startswith("version") or line.startswith("Implementation-Version"):
-                        component_with_path_removed = component.split("/")[-1] + ": \t" + line.split()[1]
+                        component_with_path_removed = autodata_component.split("/")[-1] + ": \t" + line.split()[1]
                         if component_with_path_removed in self.found_manifest_version:
                             pass
                         else:
                             self.found_manifest_version.append(component_with_path_removed)
-        if not self.found_manifest_version:
-            self.found_manifest_version = ["N/A"]
 
 
 class ETLServer(GenericServerType):

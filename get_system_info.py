@@ -79,7 +79,7 @@ class LinuxInformation:
         self.get_installed_rpms()
         self.yum_repository = "Not available"
         try:
-            yum_file = '/etc/yum.repos.d/CentOS-Base.repo'
+            yum_file = '/etc/yum.repos.d/AutodataSolutions-CentOS-Base.repo'
             if os.path.isfile(yum_file):
                 self.find_yum_repository(yum_file)
         except IOError:
@@ -129,7 +129,7 @@ class LinuxInformation:
             # Every repo file will have a base, so scrape the repo from its baseurl
             if line.strip() == "[base]":
                 start = True
-            # By convention each repo file has a gpgcheck section, so stop reading the file there
+            # By convention each autodata repo file has a gpgcheck section, so stop reading the file there
             if line.strip().startswith("gpgcheck"):
                 start = False
             if start:

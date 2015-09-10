@@ -5,6 +5,7 @@
 
 import datetime
 import os
+import subprocess
 import shutil
 import socket
 import fnmatch
@@ -28,7 +29,11 @@ class ErrorHelper:
                       (component, socket.gethostname()))
                 command_results = " "
         else:
-            command_results = os.popen(command).read()
+            command_to_execute = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            command_results = command_to_execute.communicate()[0]
+            exit_status = command_to_execute.returncode
+            if exit_status > 0:
+                command_results = " "
         return command_results
 
 
