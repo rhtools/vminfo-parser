@@ -208,7 +208,7 @@ def os_by_version(dataFrame, os_name):
     plt.close()
 
 
-def calculate_disk_space_ranges(dataFrame, greater_than_2000=False):
+def calculate_disk_space_ranges(dataFrame, greater_than_2000=False, frameHeading="VM Provisioned (GB)"):
     """
     Calculates disk space ranges based on the provisioned disk space of virtual machines in the DataFrame.
 
@@ -221,8 +221,8 @@ def calculate_disk_space_ranges(dataFrame, greater_than_2000=False):
     """
 
     # Determine the minimum and maximum disk space provisioned across all VMs
-    min_disk_space = int(dataFrame['VM Provisioned (GB)'].min())
-    max_disk_space = int(dataFrame['VM Provisioned (GB)'].max())
+    min_disk_space = int(dataFrame[frameHeading].min())
+    max_disk_space = int(dataFrame[frameHeading].max())
     
     # Define the final range based on the maximum disk space provisioned
     if max_disk_space > 9000:
@@ -254,14 +254,14 @@ def calculate_disk_space_ranges(dataFrame, greater_than_2000=False):
     # Identify which VMs fall within each defined range
     disk_space_ranges_with_vms = []
     for range_start, range_end in disk_space_ranges:
-        vms_in_range = dataFrame[(dataFrame['VM Provisioned (GB)'] >= range_start) & (dataFrame['VM Provisioned (GB)'] <= range_end)]
+        vms_in_range = dataFrame[(dataFrame[frameHeading] >= range_start) & (dataFrame[frameHeading] <= range_end)]
         if not vms_in_range.empty:
             disk_space_ranges_with_vms.append((range_start, range_end))
     
     return disk_space_ranges_with_vms
 
 
-def plot_disk_space_distribution(dataFrame, os_name=None, os_version=None, greater_than_2000=False):
+def plot_disk_space_distribution(dataFrame, os_name=None, os_version=None, greater_than_2000=False, frameHeading="VM Provisioned (GB)"):
     """
     Plots the distribution of disk space for virtual machines based on specified criteria.
 
@@ -279,7 +279,7 @@ def plot_disk_space_distribution(dataFrame, os_name=None, os_version=None, great
     fig, ax = plt.subplots()
     
     # Calculate disk space ranges and update the DataFrame with the corresponding disk space range for each VM
-    disk_space_ranges = calculate_disk_space_ranges(dataFrame, greater_than_2000=greater_than_2000)
+    disk_space_ranges = calculate_disk_space_ranges(dataFrame, greater_than_2000=greater_than_2000, frameHeading=frameHeading)
     
     # Filter machines based on disk space condition
     
@@ -324,7 +324,7 @@ def plot_disk_space_distribution(dataFrame, os_name=None, os_version=None, great
     plt.close()
 
 
-def disk_use_by_os(dataFrame, os_name, os_version=None):
+def disk_use_by_attribute(dataFrame, os_name, os_version=None, frameHeading="VM Provisioned (GB)"):
     """
     Filters the DataFrame by the specified OS name and version (if provided) and plots disk space distribution for the filtered data.
 
@@ -343,23 +343,26 @@ def disk_use_by_os(dataFrame, os_name, os_version=None):
         filtered_df = filtered_df[filtered_df['OS Version'] == os_version]
     
     # Call the function to plot disk space distribution for the filtered DataFrame
-    plot_disk_space_distribution(filtered_df, os_name, os_version)
+    plot_disk_space_distribution(filtered_df, os_name, os_version, frameHeading=frameHeading)
 
 
-def disk_use_for_environment(dataFrame, filter_diskspace=False):
+def disk_use_for_environment(dataFrame, filter_diskspace=False, frameHeading="VM Provisioned (GB)"):
     """
     Calculates and plots disk space distribution for the given DataFrame.
 
     Args:
         dataFrame: DataFrame containing disk space information.
-        filter_diskspace: Boolean flag to filter disk space greater than 1500 (default: False).
+        filter_diskspace: Boolean flag to filter disk space greater than 1500 (defgenerate_all_OS_counts(df)
+    # generate_supported_OS_counts(df)
+    # generate_unsupported_OS_counts(df)
+ault: False).
 
     Returns:
         None
     """
 
     # Call the function to plot disk space distribution for the entire DataFrame
-    plot_disk_space_distribution(dataFrame, greater_than_2000=filter_diskspace)
+    plot_disk_space_distribution(dataFrame, greater_than_2000=filter_diskspace, frameHeading=frameHeading)
 
 def categorize_environment(x, *args):
     """
@@ -378,53 +381,117 @@ def categorize_environment(x, *args):
             return 'prod'
     return 'non-prod'
 
-def sort_os_by_environment(dataFrame, *env_keywords):
+def sort_attribute_by_environment(dataFrame, *env_keywords, attribute="operatingSystem", os_filter=None, environment_filter=None):
     """
     Sorts the operating systems in the DataFrame by environment type and generates a bar plot of OS counts by environment type.
 
     Args:
         dataFrame: DataFrame containing OS information.
         *env_keywords: Variable number of keywords defining a production environment.
+        attribute: Attribute to sort by (e.g., "operatingSystem" or "diskSpace").
+        os_filter: Filter for specific operating system (e.g., "Microsoft Windows").
+        environment_filter: Filter for specific environment (e.g., "prod").
 
     Returns:
         None
     """
 
-    # Generate random colors for bars not in supported_os_colors
-    
     # Ensure 'Environment' column exists and categorize environments
     dataFrame['Environment'] = dataFrame['Environment'].apply(categorize_environment, args=env_keywords)
 
-    # Group by 'OS Name' and 'Environment', count occurrences, and unstack
-    os_counts = dataFrame.groupby(['OS Name', 'Environment']).size().unstack(fill_value=0)
-    
-    # Filter rows where the total count across all OS Names is greater than or equal to 100
-    # Calculate total counts per OS Name
-    total_counts = os_counts.sum(axis=1).reset_index(name='Total')
+    if os_filter:
+        print(os_filter)
+        dataFrame = dataFrame[dataFrame['OS Name'] == os_filter]
 
-    # Merge DataFrames based on OS Name (include all columns)
-    filtered_os_counts = os_counts.merge(total_counts, how='left', on='OS Name')
+    if environment_filter:
+        dataFrame = dataFrame[dataFrame['Environment'] == environment_filter]
 
-    # Filter for OS Names with total count >= 100
-    filtered_os_counts = filtered_os_counts[filtered_os_counts['Total'] >= 100]
-    print(filtered_os_counts)
-    # Plot using 'OS Name' as x-axis
-    #filtered_os_counts.plot(kind='bar', x='OS Name', figsize=(10, 6), rot=45)
-    filtered_os_counts.drop('Total', axis=1).plot(kind='barh', x='OS Name', figsize=(10, 6), rot=45)
+    if attribute == "operatingSystem":
+        # Group by 'OS Name' and 'Environment', count occurrences, and unstack
+        os_counts = dataFrame.groupby(['OS Name', 'Environment']).size().unstack(fill_value=0)
+        print(os_counts)
+        # Filter rows where the total count across all OS Names is greater than or equal to 100
+        # Calculate total counts per OS Name
+        total_counts = os_counts.sum(axis=1).reset_index(name='Total')
 
-    
-    # Add labels and title for clarity
-    plt.xlabel('Operating System')
-    plt.ylabel('Count')
-    plt.title('OS Counts by Environment Type (>= 100)')
+        # Merge DataFrames based on OS Name (include all columns)
+        filtered_os_counts = os_counts.merge(total_counts, how='left', on='OS Name')
+
+        # Filter for OS Names with total count >= 100
+        filtered_os_counts = filtered_os_counts[filtered_os_counts['Total'] >= 100]
+        filtered_os_counts = filtered_os_counts.sort_values(by='Total', ascending=False)
+        filtered_os_counts.drop('Total', axis=1).plot(kind='barh', x='OS Name', figsize=(10, 6), rot=45)
+        print(filtered_os_counts)
+        plt.xlabel('Count')
+        plt.title('OS Counts by Environment Type (>= 100)')
+
+    if attribute == "diskSpace":
+        # Calculate disk space ranges based on the provisioned disk space of virtual machines
+        disk_space_ranges = calculate_disk_space_ranges(dataFrame)
+
+        # Filter machines based on disk space condition
+        for lower, upper in disk_space_ranges:
+            mask = (dataFrame['VM Provisioned (GB)'] >= lower) & (dataFrame['VM Provisioned (GB)'] <= upper)
+            dataFrame.loc[mask, 'Disk Space Range'] = f'{lower}-{upper} GB'
+
+        # Count the number of VMs in each disk space range based on environment
+        range_counts_by_environment = dataFrame.groupby(['Disk Space Range', 'Environment']).size().unstack(fill_value=0)
+
+        # Sort the disk space ranges in ascending order
+        range_counts_by_environment = range_counts_by_environment.reindex(sorted(range_counts_by_environment.index, key=lambda x: int(x.split('-')[0])))
+        print(range_counts_by_environment)
+        # Plot the bar chart for VMs in specific disk size ranges sorted by environment
+        range_counts_by_environment.plot(kind='bar', stacked=False, figsize=(12, 8), rot=45)
+
+        # Add labels and title for clarity
+        plt.xlabel('Disk Space Range')
+        plt.ylabel('Number of VMs')
+        plt.title('VM Disk Size Ranges Sorted by Environment')
+        if os_filter:
+            plt.title('VM Disk Size Ranges for %s' % os_filter)
+
+    # Display the plot
     plt.show(block=True)
     plt.close()
+
+
+def calculate_average_ram(df, environment_type):
+    """
+    Calculates the average RAM used for each OS that matches the specified environment type and prints the results in a formatted column layout.
+
+    Args:
+        df (pandas.DataFrame): The DataFrame containing the data.
+        environment_type (str): The environment type to filter the data.
+
+    Returns:
+        None
+    """
+
+    # Get unique OS values from the DataFrame
+    os_values = df['OS Name'].unique()
+
+    # Print column headers for OS and Average RAM
+    print("{:<20} {:<10}".format("OS", "Average RAM (GB)"))
+    print("-" * 30)
+
+    # Loop through each unique OS value
+    for os in os_values:
+        # Filter hosts based on OS and environment type
+        filtered_hosts = df[(df['OS Name'] == os) & (df['Environment'].str.contains(environment_type))]
+        
+        # Calculate and print average RAM if hosts are found
+        if not filtered_hosts.empty:
+            avg_ram = filtered_hosts['VM MEM (GB)'].mean()
+            print("{:<20} {:<10.2f}".format(os, avg_ram))
+
 
 
 if __name__ == "__main__":
     # Load the CSV file
     df = pd.read_csv('/home/stratus/temp/Inventory_VMs_redhat_06_27_24_edited.csv')
     add_extra_columns(df)
+    calculate_average_ram(df, "test")
+    
     # Call the function for each unique OS name in the 'OS Name' dataframe
     unique_os_names = df['OS Name'].unique()
 
@@ -434,13 +501,13 @@ if __name__ == "__main__":
     for os_name in unique_os_names:
         os_by_version(df, os_name)
 
-    sort_os_by_environment(df, "test1", "test2")
+    sort_attribute_by_environment(df, "test", attribute="diskSpace", os_filter="Red Hat Enterprise Linux", environment_filter="prod")
 
     os_by_version(df, "Microsoft Windows")
 
-    disk_use_for_environment(df, filter_diskspace=True)
+    disk_use_for_environment(df, filter_diskspace=True, frameHeading="VM Used (GB)")
 
-    disk_use_for_environment(df, filter_diskspace=False)
+    disk_use_for_environment(df, filter_diskspace=False, frameHeading="VM Used (GB)")
 
     generate_all_OS_counts(df)
     generate_supported_OS_counts(df)
