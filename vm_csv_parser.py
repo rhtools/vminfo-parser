@@ -2,11 +2,16 @@
 
 import pandas as pd
 import matplotlib
-matplotlib.use('TkAgg')  
+# Set non-interactive mode by default
+matplotlib.use('Agg')  
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.ticker as ticker
 import numpy as np
+from fuzzywuzzy import process
+import magic
+import argparse
+
 
 # This program expects a CSV with the following headings
 # VM Power,	VM OS,	VM CPU,	VM MEM (GB), VM Provisioned (GB), VM Used (GB),	Environment	
@@ -18,6 +23,54 @@ import numpy as np
 # altered slightly to match what your requirements are
 
 # The primary purpose of this script is to aide in the assessment of migration to OpenShift Virtualization
+
+
+def format_dataframe_output(dataFrame):
+    os_version = dataFrame.reset_index()['index'].values
+    count = dataFrame.reset_index()['OS Version'].values
+
+    print("")
+    print(os_name)
+    print('--------------')
+    print("OS Version\t\t\t Count")
+    for version, count_value in zip(os_version, count):
+        print(f"{version.ljust(32)} {count_value}")
+
+
+def get_file_type(file_path):
+    """
+    Returns the MIME type of the file located at the specified file path.
+
+    Args:
+        file_path (str): The path to the file for which the MIME type should be determined.
+
+    Returns:
+        str: The MIME type of the file.
+
+    Raises:
+        FileNotFoundError: If the file at the specified file path does not exist.
+    """
+    mime_type = magic.from_file(file_path, mime=True)
+    return mime_type
+
+def find_fuzzy_match_in_dataframe(df, text):
+    """
+    Finds a fuzzy match for the given text in the column headings of a DataFrame.
+
+    Args:
+        df: pandas DataFrame. The DataFrame to search for fuzzy matches.
+        text: str. The text to find a fuzzy match for in the column headings.
+
+    Returns:
+        str or None. The name of the column that matched the text fuzzily, or None if no match was found.
+    """
+    for column in df.columns:
+        _, score = process.extractOne(text, [column])
+        
+        if score >= 80:  # Adjust the threshold as needed
+            return column
+    
+    return None
 
 def add_extra_columns(dataFrame):
     """
@@ -78,18 +131,18 @@ def generate_supported_OS_counts(dataFrame):
 
     # Plot the supported OS counts as a horizontal bar chart with specified colors
     filtered_counts.plot(kind='barh', rot=45, color=colors)
+    if args.generate_graphs:
+        # Set titles and labels for the plot
+        plt.title('Supported Operating System Distribution')
+        plt.ylabel('Operating Systems')
+        plt.xlabel('Count')
+        plt.xscale('log')
+        plt.gca().xaxis.set_major_formatter(ticker.ScalarFormatter())
+        plt.xticks([filtered_counts.iloc[0] - (filtered_counts.iloc[0] % 100), filtered_counts.iloc[len(filtered_counts)//2] - (filtered_counts.iloc[len(filtered_counts)//2] % 100), filtered_counts.iloc[-1]])
 
-    # Set titles and labels for the plot
-    plt.title('Supported Operating System Distribution')
-    plt.ylabel('Operating Systems')
-    plt.xlabel('Count')
-    plt.xscale('log')
-    plt.gca().xaxis.set_major_formatter(ticker.ScalarFormatter())
-    plt.xticks([filtered_counts.iloc[0] - (filtered_counts.iloc[0] % 100), filtered_counts.iloc[len(filtered_counts)//2] - (filtered_counts.iloc[len(filtered_counts)//2] % 100), filtered_counts.iloc[-1]])
-
-    # Save and display the plot
-    plt.show(block=True)
-    plt.close()
+        # Save and display the plot
+        plt.show(block=True)
+        plt.close()
 
 def generate_unsupported_OS_counts(dataFrame):
     """
@@ -120,12 +173,13 @@ def generate_unsupported_OS_counts(dataFrame):
     print(unsupported_counts)
     # Create a pie chart for unsupported OS distribution
     random_colors = cm.rainbow(np.linspace(0, 1, len(unsupported_counts)))
-    plt.pie(unsupported_counts, labels=unsupported_counts.index, colors=random_colors, autopct='%1.1f%%')
-    plt.title('Unsupported Operating System Distribution')
+    if args.generate_graphs:
+        plt.pie(unsupported_counts, labels=unsupported_counts.index, colors=random_colors, autopct='%1.1f%%')
+        plt.title('Unsupported Operating System Distribution')
 
-    # Save and display the plot
-    plt.show(block=True)
-    plt.close()
+        # Save and display the plot
+        plt.show(block=True)
+        plt.close()
 
 def generate_all_OS_counts(dataFrame):
     """
@@ -165,17 +219,19 @@ def generate_all_OS_counts(dataFrame):
     # Plot the filtered counts as a horizontal bar chart with specified and random colors
     filtered_counts.plot(kind='barh', rot=45, color=colors)
     print(filtered_counts)
-    # Set titles and labels for the plot
-    plt.title('Operating System Distribution')
-    plt.ylabel('Operating Systems')
-    plt.xlabel('Count')
-    plt.xscale('log')
-    plt.gca().xaxis.set_major_formatter(ticker.ScalarFormatter())
-    plt.xticks([filtered_counts.iloc[0] - (filtered_counts.iloc[0] % 100), filtered_counts.iloc[len(filtered_counts)//2] - (filtered_counts.iloc[len(filtered_counts)//2] % 100), filtered_counts.iloc[-1]])
+    if args.generate_graphs:
 
-    # Save and display the plot
-    plt.show(block=True)
-    plt.close()
+        # Set titles and labels for the plot
+        plt.title('Operating System Distribution')
+        plt.ylabel('Operating Systems')
+        plt.xlabel('Count')
+        plt.xscale('log')
+        plt.gca().xaxis.set_major_formatter(ticker.ScalarFormatter())
+        plt.xticks([filtered_counts.iloc[0] - (filtered_counts.iloc[0] % 100), filtered_counts.iloc[len(filtered_counts)//2] - (filtered_counts.iloc[len(filtered_counts)//2] % 100), filtered_counts.iloc[-1]])
+
+        # Save and display the plot
+        plt.show(block=True)
+        plt.close()
 
 def os_by_version(dataFrame, os_name):
     """
@@ -191,21 +247,22 @@ def os_by_version(dataFrame, os_name):
 
     # Filter rows where the OS name matches the input parameter
     filtered_df = dataFrame[(dataFrame['OS Name'] == os_name)]
-    print(filtered_df)
     # Calculate the frequency of each unique OS version
     #counts = filtered_df['OS Version'].value_counts()
     counts = filtered_df['OS Version'].fillna('unknown').value_counts()
-    print(counts)
+    # We want to print out a text table and not the dataframe
+
+    format_dataframe_output(counts)
     # Plot the counts as a horizontal bar chart
     counts.plot(kind='barh', rot=45)
-    
-    # Print the filtered DataFrame    
-    # Set titles and labels for the plot
-    plt.title(f'Distribution of {os_name}')
-    plt.ylabel('OS Version')
-    plt.xlabel('Count')
-    plt.show(block=True)
-    plt.close()
+    if args.generate_graphs:
+        # Print the filtered DataFrame    
+        # Set titles and labels for the plot
+        plt.title(f'Distribution of {os_name}')
+        plt.ylabel('OS Version')
+        plt.xlabel('Count')
+        plt.show(block=True)
+        plt.close()
 
 
 def calculate_disk_space_ranges(dataFrame, greater_than_2000=False, frameHeading="VM Provisioned (GB)"):
@@ -298,30 +355,37 @@ def plot_disk_space_distribution(dataFrame, os_name=None, os_version=None, great
     
     # Sort the counts and plot them as a horizontal bar chart
     sorted_dict = dict(sorted(range_counts.items(), key=lambda x: x[1]))
-    print(sorted_dict)
-    for range_, count in sorted_dict.items():
-        if os_name:
-            ax.barh(f'{range_[0]}-{range_[1]} GB', count, label=os_name)
+    print("Disk Space Range (GB)\t\tCount")
+    for disk_range in range_counts.items():
+        # The first indexed item is a tuple that represents the disk space range
+        # so we need to take the first and the second number and convert it to a str
+        # for better printing
+        disk_range_str =f"{disk_range[0][0]}-{disk_range[0][1]}"
+        print(f"{disk_range_str.ljust(32)} {disk_range[1]}")
+    if args.generate_graphs:
+        for range_, count in sorted_dict.items():
+            if os_name:
+                ax.barh(f'{range_[0]}-{range_[1]} GB', count, label=os_name)
+            else:
+                ax.barh(f'{range_[0]}-{range_[1]} GB', count)
+        
+        # Set titles and labels for the plot
+        ax.set_ylabel('Disk Space Range')
+        ax.set_xlabel('Number of Machines')
+        #ax.set_xscale('log')
+        ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+        
+        if os_name and os_version:
+            ax.set_title(f'Hard Drive Space Breakdown for {os_name} {os_version}')
+        elif os_name:
+            ax.set_title(f'Hard Drive Space Breakdown for {os_name}')
         else:
-            ax.barh(f'{range_[0]}-{range_[1]} GB', count)
-    
-    # Set titles and labels for the plot
-    ax.set_ylabel('Disk Space Range')
-    ax.set_xlabel('Number of Machines')
-    #ax.set_xscale('log')
-    ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
-    
-    if os_name and os_version:
-        ax.set_title(f'Hard Drive Space Breakdown for {os_name} {os_version}')
-    elif os_name:
-        ax.set_title(f'Hard Drive Space Breakdown for {os_name}')
-    else:
-        ax.set_title('Hard Drive Space Breakdown for Organization')
-    ax.set_xlim(right=max(range_counts.values()) + 1.5)
+            ax.set_title('Hard Drive Space Breakdown for Organization')
+        ax.set_xlim(right=max(range_counts.values()) + 1.5)
 
-    # Display the plot
-    plt.show(block=True)
-    plt.close()
+        # Display the plot
+        plt.show(block=True)
+        plt.close()
 
 
 def disk_use_by_attribute(dataFrame, os_name, os_version=None, frameHeading="VM Provisioned (GB)"):
@@ -375,7 +439,10 @@ def categorize_environment(x, *args):
     Returns:
         Categorized environment as 'prod' if any of the specified keywords are present, otherwise 'non-prod'.
     """
-
+    # if the user has not passed in any arguments denoting which things should be classified as prod
+    # assume they want a count of OS' across all environments
+    if not args:
+        return 'all envs'
     for arg in args:
         if arg in x:
             return 'prod'
@@ -401,6 +468,7 @@ def sort_attribute_by_environment(dataFrame, *env_keywords, attribute="operating
 
     if os_filter:
         print(os_filter)
+        print('---------------------------------')
         dataFrame = dataFrame[dataFrame['OS Name'] == os_filter]
 
     if environment_filter:
@@ -421,7 +489,6 @@ def sort_attribute_by_environment(dataFrame, *env_keywords, attribute="operating
         filtered_os_counts = filtered_os_counts[filtered_os_counts['Total'] >= 100]
         filtered_os_counts = filtered_os_counts.sort_values(by='Total', ascending=False)
         filtered_os_counts.drop('Total', axis=1).plot(kind='barh', x='OS Name', figsize=(10, 6), rot=45)
-        print(filtered_os_counts)
         plt.xlabel('Count')
         plt.title('OS Counts by Environment Type (>= 100)')
 
@@ -432,27 +499,61 @@ def sort_attribute_by_environment(dataFrame, *env_keywords, attribute="operating
         # Filter machines based on disk space condition
         for lower, upper in disk_space_ranges:
             mask = (dataFrame['VM Provisioned (GB)'] >= lower) & (dataFrame['VM Provisioned (GB)'] <= upper)
-            dataFrame.loc[mask, 'Disk Space Range'] = f'{lower}-{upper} GB'
+            # This copy function is used to avoid a SettingWithCopyWarning warning when using the original dataFrame
+            dataFrame_copy = dataFrame.copy()
+            dataFrame_copy.loc[mask, 'Disk Space Range'] = f'{lower}-{upper} GB'
+            dataFrame = dataFrame_copy
 
         # Count the number of VMs in each disk space range based on environment
         range_counts_by_environment = dataFrame.groupby(['Disk Space Range', 'Environment']).size().unstack(fill_value=0)
 
         # Sort the disk space ranges in ascending order
         range_counts_by_environment = range_counts_by_environment.reindex(sorted(range_counts_by_environment.index, key=lambda x: int(x.split('-')[0])))
-        print(range_counts_by_environment)
+        # Define column widths for better formatting
+        if env_keywords:
+            col_widths = {'Environment': 22, **{env: 10 for env in range_counts_by_environment.columns}}
+
+        else:           
+            col_widths = {'Environment': 22, 'all envs': 15}
+
+
+        formatted_rows = []
+        for index, row in range_counts_by_environment.iterrows():
+            formatted_row = [str(index).ljust(15)]  # Add index as the first column
+            for col_name, width in col_widths.items():
+                if col_name in row.index:
+                    value = str(row[col_name])
+                    padded_value = value.ljust(width)
+                    formatted_row.append(padded_value)
+                else:
+                    formatted_row.append(" " * width)
+            formatted_rows.append(' '.join(formatted_row))
+
+        formatted_df_str = '\n'.join(formatted_rows)
+
+        # The column headings need to be set to the appropriate width before printing
+        temp_heading = ''
+        for headings in list(col_widths.keys()):
+            if temp_heading:
+                temp_heading += headings.ljust(11)
+            else:
+                temp_heading += headings.ljust(39)
+        print(temp_heading)
+        print(formatted_df_str)
+        print('')
         # Plot the bar chart for VMs in specific disk size ranges sorted by environment
         range_counts_by_environment.plot(kind='bar', stacked=False, figsize=(12, 8), rot=45)
-
+    
         # Add labels and title for clarity
         plt.xlabel('Disk Space Range')
         plt.ylabel('Number of VMs')
         plt.title('VM Disk Size Ranges Sorted by Environment')
         if os_filter:
             plt.title('VM Disk Size Ranges for %s' % os_filter)
-
-    # Display the plot
-    plt.show(block=True)
-    plt.close()
+    if args.generate_graphs:
+        # Display the plot
+        plt.show(block=True)
+        plt.close()
 
 
 def calculate_average_ram(df, environment_type):
@@ -487,29 +588,75 @@ def calculate_average_ram(df, environment_type):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Process some arguments.')
+    parser.add_argument('--sort-disk-by-env', type=str, nargs='?', help='Sort disk by environment. Use "all" for all environments or specify one.')
+    parser.add_argument('--output-os-by-version', action='store_true', help='Output OS by version')
+    parser.add_argument('--show-disk-space-by-os', action='store_true', help='Show disk space by OS')
+    parser.add_argument('--prod-env-labels', type=str, nargs='?', help="The values in your data that represent prod environments. This is used to generate prod and non-prod stats. Passed as CSV i.e. --prod-env-labels 'baker,dte'")
+    parser.add_argument('--generate-graphs', action='store_true', help='Choose whether or not to output visual graphs. If this option is not set, a text table will be outputted to the terminal')
+    parser.add_argument('--get-os-counts', action='store_true', help='Generate a report that counts the inventory broken down by OS')
+    parser.add_argument('--os-name', type=str, help='The name of the Operating System to produce a report about')
+    args = parser.parse_args()
+
     # Load the CSV file
-    df = pd.read_csv('/home/stratus/temp/Inventory_VMs_redhat_06_27_24_edited.csv')
+    #df = pd.read_csv('/home/stratus/temp/Inventory_VMs_redhat_06_27_24_edited.csv')
+    #file_path = "/home/stratus/Downloads/RVTools_tabvInfo.csv"
+    #file_path = "/home/stratus/Downloads/SC_Datacenter_Output.csv"
+    file_path = '/home/stratus/temp/Inventory_VMs_redhat_06_27_24_edited.csv'
+    file_type = get_file_type(file_path)
+    
+    if args.generate_graphs:
+        # If the user wants to see graphs, set the interactive mode on matplotlib
+        matplotlib.use('TkAgg')
+
+    # assuming someone has provided prod labels, we need to split them
+    environments = []
+    if args.prod_env_labels:
+        environments = args.prod_env_labels.split(',')
+    
+    if "csv" in file_type:
+        df = pd.read_csv(file_path)
+    elif "spreadsheetml" in file_type:
+        df = pd.read_excel(file_path)
+    else:
+        print("File passed in was neither a CSV nor an Excel file\nBailing...")
+        exit()
+
     add_extra_columns(df)
     calculate_average_ram(df, "test")
     
     # Call the function for each unique OS name in the 'OS Name' dataframe
     unique_os_names = df['OS Name'].unique()
+    if args.show_disk_space_by_os:
+        if args.os_name:
+            sort_attribute_by_environment(df, attribute="diskSpace", os_filter=args.os_name)
+        else:
+            for os_name in unique_os_names:
+                if environments:
+                    sort_attribute_by_environment(df, attribute="diskSpace", os_filter=os_name, *environments)
+                else:
+                    sort_attribute_by_environment(df, attribute="diskSpace", os_filter=os_name)
 
-    for os_name in unique_os_names:
-        disk_use_by_os(df, os_name)
+    if args.output_os_by_version:
+        for os_name in unique_os_names:
+            os_by_version(df, os_name)
 
-    for os_name in unique_os_names:
-        os_by_version(df, os_name)
+    if args.sort_disk_by_env == 'all':
+        disk_use_for_environment(df)
+    elif args.sort_disk_by_env:
+        sort_attribute_by_environment(df, "diskSpace", args.sort_disk_by_env, *environments)
 
-    sort_attribute_by_environment(df, "test", attribute="diskSpace", os_filter="Red Hat Enterprise Linux", environment_filter="prod")
+    if args.get_os_counts:
+        sort_attribute_by_environment(df)
+    #sort_attribute_by_environment(df, "test", attribute="diskSpace", os_filter="Red Hat Enterprise Linux", environment_filter="prod")
 
-    os_by_version(df, "Microsoft Windows")
+    #os_by_version(df, "Microsoft Windows")
 
-    disk_use_for_environment(df, filter_diskspace=True, frameHeading="VM Used (GB)")
+    # disk_use_for_environment(df, filter_diskspace=True, frameHeading="VM Used (GB)")
 
-    disk_use_for_environment(df, filter_diskspace=False, frameHeading="VM Used (GB)")
+    # disk_use_for_environment(df, filter_diskspace=False, frameHeading="VM Used (GB)")
 
-    generate_all_OS_counts(df)
-    generate_supported_OS_counts(df)
-    generate_unsupported_OS_counts(df)
+    # generate_all_OS_counts(df)
+    # generate_supported_OS_counts(df)
+    # generate_unsupported_OS_counts(df)
 
