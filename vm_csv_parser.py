@@ -26,15 +26,18 @@ import argparse
 
 
 def format_dataframe_output(dataFrame):
-    os_version = dataFrame.reset_index()['index'].values
-    count = dataFrame.reset_index()['OS Version'].values
+    if dataFrame.index.nlevels == 2:
+        pass
+    else:
+        os_version = dataFrame.reset_index()['index'].values
+        count = dataFrame.reset_index()['OS Version'].values
 
-    print("")
-    print(os_name)
-    print('--------------')
-    print("OS Version\t\t\t Count")
-    for version, count_value in zip(os_version, count):
-        print(f"{version.ljust(32)} {count_value}")
+        print("")
+        print(os_name)
+        print('--------------')
+        print("OS Version\t\t\t Count")
+        for version, count_value in zip(os_version, count):
+            print(f"{version.ljust(32)} {count_value}")
 
 
 def get_file_type(file_path):
@@ -181,12 +184,14 @@ def generate_unsupported_OS_counts(dataFrame):
         plt.show(block=True)
         plt.close()
 
-def generate_all_OS_counts(dataFrame):
+def generate_all_OS_counts(dataFrame, minimumCount=500, maximumCount=99999):
     """
     Generates a horizontal bar chart displaying the distribution of operating systems based on their frequency in the DataFrame.
 
     Args:
         dataFrame: DataFrame containing OS information.
+        minimumCount: The minimum number of VMs within a certain OS category to display. Default: 500
+        maximumCount: The maximum number of VMs within a certain OS category to display. Largely symbolic. Default 99999
 
     Returns:
         None
@@ -194,11 +199,8 @@ def generate_all_OS_counts(dataFrame):
     # Calculate the frequency of each unique OS name
     counts = dataFrame['OS Name'].value_counts()
 
-    # Set minimum and maximum thresholds for filtering counts
-    min_count_threshold = 500
-    max_count_threshold = 65000
     # Filter counts within the set thresholds
-    filtered_counts = counts[(counts >= min_count_threshold) & (counts <= max_count_threshold)]
+    filtered_counts = counts[(counts >= minimumCount) & (counts <= maximumCount)]
 
     # Define specific colors for identified OS names
     os_colors = {
@@ -462,53 +464,93 @@ def sort_attribute_by_environment(dataFrame, *env_keywords, attribute="operating
     Returns:
         None
     """
-
-    # Ensure 'Environment' column exists and categorize environments
-    dataFrame['Environment'] = dataFrame['Environment'].apply(categorize_environment, args=env_keywords)
+    # problems happen when you work with the original dataframe. Data becomes inconsistent
+    # create a new copy each time this function is called and then manipulate the copy
+    data_cp = dataFrame.copy()
+    data_cp['Environment'] = dataFrame['Environment'].apply(categorize_environment, args=env_keywords)
 
     if os_filter:
         print(os_filter)
         print('---------------------------------')
-        dataFrame = dataFrame[dataFrame['OS Name'] == os_filter]
+        data_cp = data_cp[data_cp['OS Name'] == os_filter]
 
-    if environment_filter:
-        dataFrame = dataFrame[dataFrame['Environment'] == environment_filter]
-
+    if environment_filter and environment_filter != "all" and environment_filter != "both":
+        data_cp = data_cp[data_cp['Environment'] == environment_filter]
+    
+    # If the dataFrame is empty it's most likely there are no entries in that environment heading
+    if data_cp.empty:
+        print(f"None found in {environment_filter} \n")
+        return
     if attribute == "operatingSystem":
         # Group by 'OS Name' and 'Environment', count occurrences, and unstack
-        os_counts = dataFrame.groupby(['OS Name', 'Environment']).size().unstack(fill_value=0)
-        print(os_counts)
-        # Filter rows where the total count across all OS Names is greater than or equal to 100
-        # Calculate total counts per OS Name
-        total_counts = os_counts.sum(axis=1).reset_index(name='Total')
+        if not environment_filter:
+            if args.sort_by_env:
+                counts = data_cp['OS Name'].value_counts()
+            else:
+                print("You specified --sort-by-env but you did not specify which env... Proceding with all environments")
+                # data_cp['OS Counts'] = data_cp.groupby('Environment')['OS Name'].transform(lambda x: x.value_counts().sum())
+                counts = data_cp.groupby('Environment')['OS Name'].value_counts().reset_index(name='OS Counts')
+        else:
+            counts = data_cp.groupby('Environment')['OS Name'].value_counts()
+        # Filter counts within the set thresholds
+        filtered_counts = counts[(counts >= 100)]
+        
+        #format_dataframe_output(filtered_counts)
+        print(filtered_counts)
+        if filtered_counts.index.nlevels == 2:
+            os_names = [idx[1] for idx in filtered_counts.index]
+        else:
+            os_names = filtered_counts.index
+        # Define specific colors for identified OS names
+        os_colors = {
+            'Red Hat Enterprise Linux': 'red',
+            'SUSE Linux Enterprise': 'green',
+            'Microsoft Windows Server': 'navy',
+            'Microsoft Windows': 'blue',
+            "Ubuntu": "orange",
+            "Oracle Linux": "maroon",
+            "unknown": "grey"
+            # Add more OS names and colors as needed
+        }
 
-        # Merge DataFrames based on OS Name (include all columns)
-        filtered_os_counts = os_counts.merge(total_counts, how='left', on='OS Name')
+        # Generate random colors for bars not in supported_os_colors
+        random_colors = cm.rainbow(np.linspace(0, 1, len(filtered_counts)))
+        colors = [os_colors.get(os, random_colors[i]) for i, os in enumerate(os_names)]
 
-        # Filter for OS Names with total count >= 100
-        filtered_os_counts = filtered_os_counts[filtered_os_counts['Total'] >= 100]
-        filtered_os_counts = filtered_os_counts.sort_values(by='Total', ascending=False)
-        filtered_os_counts.drop('Total', axis=1).plot(kind='barh', x='OS Name', figsize=(10, 6), rot=45)
+        # Plot the filtered counts as a horizontal bar chart with specified and random colors
+        #filtered_counts.plot(kind='barh', rot=45, color=colors)
+        # Plot the filtered counts as a horizontal bar chart with specified and random colors
+        ax = filtered_counts.plot(kind='barh', rot=45, color=colors)
+
+        # Format the y-axis labels as "$OS_Name - $Environment"
+        #ax.set_yticklabels([f"{os[1]} - {os[0]}" for os in filtered_counts.index])
+        ax.set_yticklabels([f"{os[1]} - {os[0]}" for os in filtered_counts.index])
+
         plt.xlabel('Count')
         plt.title('OS Counts by Environment Type (>= 100)')
 
     if attribute == "diskSpace":
         # Calculate disk space ranges based on the provisioned disk space of virtual machines
-        disk_space_ranges = calculate_disk_space_ranges(dataFrame)
+        disk_space_ranges = calculate_disk_space_ranges(data_cp)
 
         # Filter machines based on disk space condition
         for lower, upper in disk_space_ranges:
-            mask = (dataFrame['VM Provisioned (GB)'] >= lower) & (dataFrame['VM Provisioned (GB)'] <= upper)
+            mask = (data_cp['VM Provisioned (GB)'] >= lower) & (data_cp['VM Provisioned (GB)'] <= upper)
             # This copy function is used to avoid a SettingWithCopyWarning warning when using the original dataFrame
-            dataFrame_copy = dataFrame.copy()
+            dataFrame_copy = data_cp.copy()
             dataFrame_copy.loc[mask, 'Disk Space Range'] = f'{lower}-{upper} GB'
-            dataFrame = dataFrame_copy
+            data_cp = dataFrame_copy
 
         # Count the number of VMs in each disk space range based on environment
-        range_counts_by_environment = dataFrame.groupby(['Disk Space Range', 'Environment']).size().unstack(fill_value=0)
+        range_counts_by_environment = data_cp.groupby(['Disk Space Range', 'Environment']).size().unstack(fill_value=0)
 
         # Sort the disk space ranges in ascending order
-        range_counts_by_environment = range_counts_by_environment.reindex(sorted(range_counts_by_environment.index, key=lambda x: int(x.split('-')[0])))
+        if environment_filter == "prod":
+            range_counts_by_environment = data_cp[data_cp['Environment'] == 'prod'].groupby(['Disk Space Range', 'Environment']).size().unstack(fill_value=0)
+        elif environment_filter == "non-prod":
+            range_counts_by_environment = data_cp[data_cp['Environment'] == 'non-prod'].groupby(['Disk Space Range', 'Environment']).size().unstack(fill_value=0)
+        else:
+            range_counts_by_environment = range_counts_by_environment.reindex(sorted(range_counts_by_environment.index, key=lambda x: int(x.split('-')[0])))
         # Define column widths for better formatting
         if env_keywords:
             col_widths = {'Environment': 22, **{env: 10 for env in range_counts_by_environment.columns}}
@@ -589,14 +631,28 @@ def calculate_average_ram(df, environment_type):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process some arguments.')
-    parser.add_argument('--sort-disk-by-env', type=str, nargs='?', help='Sort disk by environment. Use "all" for all environments or specify one.')
-    parser.add_argument('--output-os-by-version', action='store_true', help='Output OS by version')
-    parser.add_argument('--show-disk-space-by-os', action='store_true', help='Show disk space by OS')
-    parser.add_argument('--prod-env-labels', type=str, nargs='?', help="The values in your data that represent prod environments. This is used to generate prod and non-prod stats. Passed as CSV i.e. --prod-env-labels 'baker,dte'")
-    parser.add_argument('--generate-graphs', action='store_true', help='Choose whether or not to output visual graphs. If this option is not set, a text table will be outputted to the terminal')
-    parser.add_argument('--get-os-counts', action='store_true', help='Generate a report that counts the inventory broken down by OS')
-    parser.add_argument('--os-name', type=str, help='The name of the Operating System to produce a report about')
+    disk_group = parser.add_argument_group('Disk Space Analysis', 'Options related to generating disk ranges by os, environment or both')
+    os_group = parser.add_argument_group('Operating System Analysis', 'Options related to generating OS type break downby OS version, environment or both')
+    generic_group = parser.add_argument_group('Arguments that apply to both OS and Disk')
+    generic_group.add_argument('--sort-by-env', type=str, nargs='?', help='Sort disk by environment. Use "all" for all environments or specify one.')
+    generic_group.add_argument('--prod-env-labels', type=str, nargs='?', help="The values in your data that represent prod environments. This is used to generate prod and non-prod stats. Passed as CSV i.e. --prod-env-labels 'baker,dte'")
+    generic_group.add_argument('--generate-graphs', action='store_true', help='Choose whether or not to output visual graphs. If this option is not set, a text table will be outputted to the terminal')
+    disk_group.add_argument('--get-disk-space-ranges', action='store_true', help="This flag will get disk space ranges regardless of OS. Can be combine with --prod-env-labels and --sort-by-env to target a specific environment")
+    disk_group.add_argument('--show-disk-space-by-os', action='store_true', help='Show disk space by OS')
+    os_group.add_argument('--output-os-by-version', action='store_true', help='Output OS by version')
+    os_group.add_argument('--get-os-counts', action='store_true', help='Generate a report that counts the inventory broken down by OS')
+    os_group.add_argument('--os-name', type=str, help='The name of the Operating System to produce a report about')
     args = parser.parse_args()
+
+
+    def required_if(argument, value):
+        def required(argument_value):
+            if argument_value == value and getattr(args, argument) is None:
+                raise argparse.ArgumentTypeError(f'{argument} is required when using --sort-by-env')
+            return argument_value
+        return required
+    args.sort_by_env = required_if('sort_by_env', '--sort-by-env')(args.sort_by_env)
+
 
     # Load the CSV file
     #df = pd.read_csv('/home/stratus/temp/Inventory_VMs_redhat_06_27_24_edited.csv')
@@ -605,6 +661,7 @@ if __name__ == "__main__":
     file_path = '/home/stratus/temp/Inventory_VMs_redhat_06_27_24_edited.csv'
     file_type = get_file_type(file_path)
     
+   
     if args.generate_graphs:
         # If the user wants to see graphs, set the interactive mode on matplotlib
         matplotlib.use('TkAgg')
@@ -613,7 +670,10 @@ if __name__ == "__main__":
     environments = []
     if args.prod_env_labels:
         environments = args.prod_env_labels.split(',')
-    
+    if args.sort_by_env and not environments:
+        print("\n\nYou specified you wanted to sort by environment but did not provide a definition of what categorizes a Prod environment... exiting\n")
+        exit()
+
     if "csv" in file_type:
         df = pd.read_csv(file_path)
     elif "spreadsheetml" in file_type:
@@ -623,31 +683,82 @@ if __name__ == "__main__":
         exit()
 
     add_extra_columns(df)
-    calculate_average_ram(df, "test")
     
+   
     # Call the function for each unique OS name in the 'OS Name' dataframe
     unique_os_names = df['OS Name'].unique()
+
+    ############## DISK RELATED OPTIONS
+    ###
     if args.show_disk_space_by_os:
+        # If the user specifies an OS,use that to filter out everything else
         if args.os_name:
-            sort_attribute_by_environment(df, attribute="diskSpace", os_filter=args.os_name)
+            # If the user has defined what values indicuate a prod environment, sort between prod and non-prod
+            if environments:
+                sort_attribute_by_environment(df, attribute="diskSpace", os_filter=args.os_name, *environments)
+            else:
+                sort_attribute_by_environment(df, attribute="diskSpace", os_filter=args.os_name)
         else:
+            # If the user has not specified an OS name, assume they want them all
             for os_name in unique_os_names:
                 if environments:
-                    sort_attribute_by_environment(df, attribute="diskSpace", os_filter=os_name, *environments)
+                    filter_env_label = "all"
+                    if args.sort_by_env == "prod":
+                        filter_env_label = "prod"
+                    if args.sort_by_env == "non-prod":
+                        filter_env_label = "non-prod"            
+                    sort_attribute_by_environment(df, attribute="diskSpace", os_filter=os_name,environment_filter=filter_env_label, *environments)
+                    matplotlib.pyplot.close()
                 else:
                     sort_attribute_by_environment(df, attribute="diskSpace", os_filter=os_name)
+                    matplotlib.pyplot.close()
 
+    if args.get_disk_space_ranges or args.show_disk_space_by_os:
+        if args.sort_by_env == 'all':
+            if args.show_disk_space_by_os:
+                if environments and args.sort_by_env:
+                    sort_attribute_by_environment(df, attribute="diskSpace",environment_filter=args.sort_by_env, *environments )
+                else:
+                    print("Missing information regarding how to sort the environment between prod and non-prod")
+                    exit()
+            else:
+                sort_attribute_by_environment(df, attribute="diskSpace", environment_filter=args.sort_by_env)
+                #disk_use_for_environment(df)
+        elif args.sort_by_env:
+            if args.get_disk_space_ranges and environments:
+                sort_attribute_by_environment(df, environment_filter=args.sort_by_env,  attribute="diskSpace", *environments)
+        else:
+            disk_use_for_environment(df)
+
+    ###
+    ############# END DISK SECTION
+
+
+
+    ############# OPERATING SYSTEM
+    ###
     if args.output_os_by_version:
         for os_name in unique_os_names:
             os_by_version(df, os_name)
 
-    if args.sort_disk_by_env == 'all':
-        disk_use_for_environment(df)
-    elif args.sort_disk_by_env:
-        sort_attribute_by_environment(df, "diskSpace", args.sort_disk_by_env, *environments)
-
     if args.get_os_counts:
-        sort_attribute_by_environment(df)
+        if environments:
+            if args.os_name:
+                sort_attribute_by_environment(df, attribute="operatingSystem", os_filter=args.os_name, *environments)
+            elif args.sort_by_env:
+                sort_attribute_by_environment(df, attribute="operatingSystem", *environments, environment_filter=args.sort_by_env)
+            else:
+                sort_attribute_by_environment(df, attribute="operatingSystem", *environments)
+        else:
+            if args.os_name:
+                sort_attribute_by_environment(df, attribute="operatingSystem", os_filter=args.os_name)
+            else:
+                sort_attribute_by_environment(df, attribute="operatingSystem")
+    
+    ###
+    ############# END OPERATING SYSTEM SECTION
+
+
     #sort_attribute_by_environment(df, "test", attribute="diskSpace", os_filter="Red Hat Enterprise Linux", environment_filter="prod")
 
     #os_by_version(df, "Microsoft Windows")
