@@ -382,7 +382,7 @@ def plot_disk_space_distribution(dataFrame, os_name=None, os_version=None, great
         elif os_name:
             ax.set_title(f'Hard Drive Space Breakdown for {os_name}')
         else:
-            ax.set_title('Hard Drive Space Breakdown for Organization')
+            ax.set_title('Hard Drive Space Breakdown for All Environments')
         ax.set_xlim(right=max(range_counts.values()) + 1.5)
 
         # Display the plot
@@ -541,27 +541,53 @@ def sort_attribute_by_environment(dataFrame, *env_keywords, attribute="operating
             dataFrame_copy.loc[mask, 'Disk Space Range'] = f'{lower}-{upper} GB'
             data_cp = dataFrame_copy
 
+        if environment_filter is None:
+            environment_filter = "all"
         # Count the number of VMs in each disk space range based on environment
-        range_counts_by_environment = data_cp.groupby(['Disk Space Range', 'Environment']).size().unstack(fill_value=0)
+        if environment_filter == "both":
+            range_counts_by_environment = data_cp.groupby(['Disk Space Range', 'Environment']).size().unstack(fill_value=0)
+        elif environment_filter == "all":
+            #range_counts_by_environment = data_cp.groupby(['Disk Space Range']).size()
+            range_counts_by_environment = data_cp['Disk Space Range'].value_counts().reset_index()
+            range_counts_by_environment.columns = ['Disk Space Range', 'Count']
+            range_counts_by_environment.set_index('Disk Space Range', inplace=True)
+
 
         # Sort the disk space ranges in ascending order
         if environment_filter == "prod":
             range_counts_by_environment = data_cp[data_cp['Environment'] == 'prod'].groupby(['Disk Space Range', 'Environment']).size().unstack(fill_value=0)
         elif environment_filter == "non-prod":
             range_counts_by_environment = data_cp[data_cp['Environment'] == 'non-prod'].groupby(['Disk Space Range', 'Environment']).size().unstack(fill_value=0)
-        else:
-            range_counts_by_environment = range_counts_by_environment.reindex(sorted(range_counts_by_environment.index, key=lambda x: int(x.split('-')[0])))
-        # Define column widths for better formatting
-        if env_keywords:
-            col_widths = {'Environment': 22, **{env: 10 for env in range_counts_by_environment.columns}}
+        
+        
 
+        # Define column widths for better formatting
+        if env_keywords and environment_filter != "all":
+            col_widths = {'Environment': 22, **{env: 10 for env in range_counts_by_environment.columns}}
+        elif environment_filter == "all":
+            col_widths = {**{env: 17 for env in range_counts_by_environment.columns}}
         else:           
             col_widths = {'Environment': 22, 'all envs': 15}
 
 
         formatted_rows = []
-        for index, row in range_counts_by_environment.iterrows():
-            formatted_row = [str(index).ljust(15)]  # Add index as the first column
+        if environment_filter == "all":
+            justification = 20
+            formatted_rows.append('Disk Space Range'.ljust(20) + 'Count'.ljust(col_widths['Count']))  # Add column headings
+        else:
+            justification = 15
+        
+        # Extract the second number from the range and convert it to integer for sorting
+        range_counts_by_environment['second_number'] = range_counts_by_environment.index.str.split('-').str[1].str.split().str[0].astype(int)
+
+        # Sort based on the second number in descending order
+        sorted_range_counts_by_environment = range_counts_by_environment.sort_values(by='second_number', ascending=True)
+
+        # Remove the temporary column used for sorting
+        sorted_range_counts_by_environment.drop('second_number', axis=1, inplace=True)
+
+        for index, row in sorted_range_counts_by_environment.iterrows():
+            formatted_row = [str(index).ljust(justification)]  # Add index as the first column
             for col_name, width in col_widths.items():
                 if col_name in row.index:
                     value = str(row[col_name])
@@ -572,6 +598,7 @@ def sort_attribute_by_environment(dataFrame, *env_keywords, attribute="operating
             formatted_rows.append(' '.join(formatted_row))
 
         formatted_df_str = '\n'.join(formatted_rows)
+
 
         # The column headings need to be set to the appropriate width before printing
         temp_heading = ''
@@ -584,7 +611,7 @@ def sort_attribute_by_environment(dataFrame, *env_keywords, attribute="operating
         print(formatted_df_str)
         print('')
         # Plot the bar chart for VMs in specific disk size ranges sorted by environment
-        range_counts_by_environment.plot(kind='bar', stacked=False, figsize=(12, 8), rot=45)
+        sorted_range_counts_by_environment.plot(kind='bar', stacked=False, figsize=(12, 8), rot=45)
     
         # Add labels and title for clarity
         plt.xlabel('Disk Space Range')
@@ -594,6 +621,9 @@ def sort_attribute_by_environment(dataFrame, *env_keywords, attribute="operating
             plt.title('VM Disk Size Ranges for %s' % os_filter)
     if args.generate_graphs:
         # Display the plot
+        if environment_filter == "all":
+            plt.legend(labels=["All Environments"])
+
         plt.show(block=True)
         plt.close()
 
@@ -634,7 +664,7 @@ if __name__ == "__main__":
     disk_group = parser.add_argument_group('Disk Space Analysis', 'Options related to generating disk ranges by os, environment or both')
     os_group = parser.add_argument_group('Operating System Analysis', 'Options related to generating OS type break downby OS version, environment or both')
     generic_group = parser.add_argument_group('Arguments that apply to both OS and Disk')
-    generic_group.add_argument('--sort-by-env', type=str, nargs='?', help='Sort disk by environment. Use "all" for all environments or specify one.')
+    generic_group.add_argument('--sort-by-env', type=str, nargs='?', help='Sort disk by environment. Use "all" to get combine count, "both" to show both non-prod and prod, or specify one.')
     generic_group.add_argument('--prod-env-labels', type=str, nargs='?', help="The values in your data that represent prod environments. This is used to generate prod and non-prod stats. Passed as CSV i.e. --prod-env-labels 'baker,dte'")
     generic_group.add_argument('--generate-graphs', action='store_true', help='Choose whether or not to output visual graphs. If this option is not set, a text table will be outputted to the terminal')
     disk_group.add_argument('--get-disk-space-ranges', action='store_true', help="This flag will get disk space ranges regardless of OS. Can be combine with --prod-env-labels and --sort-by-env to target a specific environment")
@@ -695,19 +725,17 @@ if __name__ == "__main__":
         if args.os_name:
             # If the user has defined what values indicuate a prod environment, sort between prod and non-prod
             if environments:
-                sort_attribute_by_environment(df, attribute="diskSpace", os_filter=args.os_name, *environments)
+                if args.sort_by_env:
+                    sort_attribute_by_environment(df, attribute="diskSpace", os_filter=args.os_name, environment_filter=args.sort_by_env, *environments)    
+                else:
+                    sort_attribute_by_environment(df, attribute="diskSpace", os_filter=args.os_name, *environments)
             else:
                 sort_attribute_by_environment(df, attribute="diskSpace", os_filter=args.os_name)
         else:
             # If the user has not specified an OS name, assume they want them all
             for os_name in unique_os_names:
-                if environments:
-                    filter_env_label = "all"
-                    if args.sort_by_env == "prod":
-                        filter_env_label = "prod"
-                    if args.sort_by_env == "non-prod":
-                        filter_env_label = "non-prod"            
-                    sort_attribute_by_environment(df, attribute="diskSpace", os_filter=os_name,environment_filter=filter_env_label, *environments)
+                if environments:           
+                    sort_attribute_by_environment(df, attribute="diskSpace", os_filter=os_name,environment_filter=args.sort_by_env, *environments)
                     matplotlib.pyplot.close()
                 else:
                     sort_attribute_by_environment(df, attribute="diskSpace", os_filter=os_name)
