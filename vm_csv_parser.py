@@ -450,183 +450,117 @@ def categorize_environment(x, *args):
             return 'prod'
     return 'non-prod'
 
+
 def sort_attribute_by_environment(dataFrame, *env_keywords, attribute="operatingSystem", os_filter=None, environment_filter=None):
-    """
-    Sorts the operating systems in the DataFrame by environment type and generates a bar plot of OS counts by environment type.
-
-    Args:
-        dataFrame: DataFrame containing OS information.
-        *env_keywords: Variable number of keywords defining a production environment.
-        attribute: Attribute to sort by (e.g., "operatingSystem" or "diskSpace").
-        os_filter: Filter for specific operating system (e.g., "Microsoft Windows").
-        environment_filter: Filter for specific environment (e.g., "prod").
-
-    Returns:
-        None
-    """
-    # problems happen when you work with the original dataframe. Data becomes inconsistent
-    # create a new copy each time this function is called and then manipulate the copy
     data_cp = dataFrame.copy()
     data_cp['Environment'] = dataFrame['Environment'].apply(categorize_environment, args=env_keywords)
 
     if os_filter:
-        print(os_filter)
-        print('---------------------------------')
         data_cp = data_cp[data_cp['OS Name'] == os_filter]
 
-    if environment_filter and environment_filter != "all" and environment_filter != "both":
+    if environment_filter and environment_filter not in ["all", "both"]:
         data_cp = data_cp[data_cp['Environment'] == environment_filter]
-    
-    # If the dataFrame is empty it's most likely there are no entries in that environment heading
+
     if data_cp.empty:
         print(f"None found in {environment_filter} \n")
         return
+
     if attribute == "operatingSystem":
-        # Group by 'OS Name' and 'Environment', count occurrences, and unstack
-        if not environment_filter:
-            if args.sort_by_env:
-                counts = data_cp['OS Name'].value_counts()
-            else:
-                print("You specified --sort-by-env but you did not specify which env... Proceding with all environments")
-                # data_cp['OS Counts'] = data_cp.groupby('Environment')['OS Name'].transform(lambda x: x.value_counts().sum())
-                counts = data_cp.groupby('Environment')['OS Name'].value_counts().reset_index(name='OS Counts')
-        else:
-            counts = data_cp.groupby('Environment')['OS Name'].value_counts()
-        # Filter counts within the set thresholds
-        filtered_counts = counts[(counts >= 100)]
-        
-        #format_dataframe_output(filtered_counts)
-        print(filtered_counts)
-        if filtered_counts.index.nlevels == 2:
-            os_names = [idx[1] for idx in filtered_counts.index]
-        else:
-            os_names = filtered_counts.index
-        # Define specific colors for identified OS names
-        os_colors = {
-            'Red Hat Enterprise Linux': 'red',
-            'SUSE Linux Enterprise': 'green',
-            'Microsoft Windows Server': 'navy',
-            'Microsoft Windows': 'blue',
-            "Ubuntu": "orange",
-            "Oracle Linux": "maroon",
-            "unknown": "grey"
-            # Add more OS names and colors as needed
-        }
+        handle_operating_system(data_cp, environment_filter)
+    elif attribute == "diskSpace":
+        handle_disk_space(data_cp, environment_filter, env_keywords, os_filter)
 
-        # Generate random colors for bars not in supported_os_colors
-        random_colors = cm.rainbow(np.linspace(0, 1, len(filtered_counts)))
-        colors = [os_colors.get(os, random_colors[i]) for i, os in enumerate(os_names)]
+def handle_operating_system(data_cp, environment_filter):
+    if not environment_filter:
+        counts = data_cp['OS Name'].value_counts()
+    else:
+        counts = data_cp.groupby('Environment')['OS Name'].value_counts()
 
-        # Plot the filtered counts as a horizontal bar chart with specified and random colors
-        #filtered_counts.plot(kind='barh', rot=45, color=colors)
-        # Plot the filtered counts as a horizontal bar chart with specified and random colors
-        ax = filtered_counts.plot(kind='barh', rot=45, color=colors)
+    filtered_counts = counts[counts >= 100]
+    print(filtered_counts)
 
-        # Format the y-axis labels as "$OS_Name - $Environment"
-        #ax.set_yticklabels([f"{os[1]} - {os[0]}" for os in filtered_counts.index])
-        ax.set_yticklabels([f"{os[1]} - {os[0]}" for os in filtered_counts.index])
+    os_names = [idx[1] for idx in filtered_counts.index] if filtered_counts.index.nlevels == 2 else filtered_counts.index
+    os_colors = {
+        'Red Hat Enterprise Linux': 'red',
+        'SUSE Linux Enterprise': 'green',
+        'Microsoft Windows Server': 'navy',
+        'Microsoft Windows': 'blue',
+        "Ubuntu": "orange",
+        "Oracle Linux": "maroon",
+        "unknown": "grey"
+    }
 
+    random_colors = cm.rainbow(np.linspace(0, 1, len(filtered_counts)))
+    colors = [os_colors.get(os, random_colors[i]) for i, os in enumerate(os_names)]
+
+    ax = filtered_counts.plot(kind='barh', rot=45, color=colors)
+    ax.set_yticklabels([f"{os[1]} - {os[0]}" for os in filtered_counts.index])
+    if args.generate_graphs:
         plt.xlabel('Count')
         plt.title('OS Counts by Environment Type (>= 100)')
+        plt.show(block=True)
 
-    if attribute == "diskSpace":
-        # Calculate disk space ranges based on the provisioned disk space of virtual machines
-        disk_space_ranges = calculate_disk_space_ranges(data_cp)
+def handle_disk_space(data_cp, environment_filter, env_keywords, os_filter):
+    disk_space_ranges = calculate_disk_space_ranges(data_cp)
+    for lower, upper in disk_space_ranges:
+        mask = (data_cp['VM Provisioned (GB)'] >= lower) & (data_cp['VM Provisioned (GB)'] <= upper)
+        data_cp.loc[mask, 'Disk Space Range'] = f'{lower}-{upper} GB'
 
-        # Filter machines based on disk space condition
-        for lower, upper in disk_space_ranges:
-            mask = (data_cp['VM Provisioned (GB)'] >= lower) & (data_cp['VM Provisioned (GB)'] <= upper)
-            # This copy function is used to avoid a SettingWithCopyWarning warning when using the original dataFrame
-            dataFrame_copy = data_cp.copy()
-            dataFrame_copy.loc[mask, 'Disk Space Range'] = f'{lower}-{upper} GB'
-            data_cp = dataFrame_copy
+    if environment_filter is None:
+        environment_filter = "all"
 
-        if environment_filter is None:
-            environment_filter = "all"
-        # Count the number of VMs in each disk space range based on environment
-        if environment_filter == "both":
-            range_counts_by_environment = data_cp.groupby(['Disk Space Range', 'Environment']).size().unstack(fill_value=0)
-        elif environment_filter == "all":
-            #range_counts_by_environment = data_cp.groupby(['Disk Space Range']).size()
-            range_counts_by_environment = data_cp['Disk Space Range'].value_counts().reset_index()
-            range_counts_by_environment.columns = ['Disk Space Range', 'Count']
-            range_counts_by_environment.set_index('Disk Space Range', inplace=True)
+    if environment_filter == "both":
+        range_counts_by_environment = data_cp.groupby(['Disk Space Range', 'Environment']).size().unstack(fill_value=0)
+    elif environment_filter == "all":
+        range_counts_by_environment = data_cp['Disk Space Range'].value_counts().reset_index()
+        range_counts_by_environment.columns = ['Disk Space Range', 'Count']
+        range_counts_by_environment.set_index('Disk Space Range', inplace=True)
+    else:
+        range_counts_by_environment = data_cp[data_cp['Environment'] == environment_filter].groupby(['Disk Space Range', 'Environment']).size().unstack(fill_value=0)
 
+    range_counts_by_environment['second_number'] = range_counts_by_environment.index.str.split('-').str[1].str.split().str[0].astype(int)
+    sorted_range_counts_by_environment = range_counts_by_environment.sort_values(by='second_number', ascending=True)
+    sorted_range_counts_by_environment.drop('second_number', axis=1, inplace=True)
 
-        # Sort the disk space ranges in ascending order
-        if environment_filter == "prod":
-            range_counts_by_environment = data_cp[data_cp['Environment'] == 'prod'].groupby(['Disk Space Range', 'Environment']).size().unstack(fill_value=0)
-        elif environment_filter == "non-prod":
-            range_counts_by_environment = data_cp[data_cp['Environment'] == 'non-prod'].groupby(['Disk Space Range', 'Environment']).size().unstack(fill_value=0)
-        
-        
-
-        # Define column widths for better formatting
-        if env_keywords and environment_filter != "all":
-            col_widths = {'Environment': 22, **{env: 10 for env in range_counts_by_environment.columns}}
-        elif environment_filter == "all":
-            col_widths = {**{env: 17 for env in range_counts_by_environment.columns}}
-        else:           
-            col_widths = {'Environment': 22, 'all envs': 15}
-
-
-        formatted_rows = []
-        if environment_filter == "all":
-            justification = 20
-            formatted_rows.append('Disk Space Range'.ljust(20) + 'Count'.ljust(col_widths['Count']))  # Add column headings
-        else:
-            justification = 15
-        
-        # Extract the second number from the range and convert it to integer for sorting
-        range_counts_by_environment['second_number'] = range_counts_by_environment.index.str.split('-').str[1].str.split().str[0].astype(int)
-
-        # Sort based on the second number in descending order
-        sorted_range_counts_by_environment = range_counts_by_environment.sort_values(by='second_number', ascending=True)
-
-        # Remove the temporary column used for sorting
-        sorted_range_counts_by_environment.drop('second_number', axis=1, inplace=True)
-
-        for index, row in sorted_range_counts_by_environment.iterrows():
-            formatted_row = [str(index).ljust(justification)]  # Add index as the first column
-            for col_name, width in col_widths.items():
-                if col_name in row.index:
-                    value = str(row[col_name])
-                    padded_value = value.ljust(width)
-                    formatted_row.append(padded_value)
-                else:
-                    formatted_row.append(" " * width)
-            formatted_rows.append(' '.join(formatted_row))
-
-        formatted_df_str = '\n'.join(formatted_rows)
-
-
-        # The column headings need to be set to the appropriate width before printing
-        temp_heading = ''
-        for headings in list(col_widths.keys()):
-            if temp_heading:
-                temp_heading += headings.ljust(11)
-            else:
-                temp_heading += headings.ljust(39)
-        print(temp_heading)
-        print(formatted_df_str)
-        print('')
-        # Plot the bar chart for VMs in specific disk size ranges sorted by environment
-        sorted_range_counts_by_environment.plot(kind='bar', stacked=False, figsize=(12, 8), rot=45)
-    
-        # Add labels and title for clarity
+    if os_filter:
+        print_formatted_disk_space(sorted_range_counts_by_environment, environment_filter, env_keywords, os_filter=os_filter)
+    else:
+        print_formatted_disk_space(sorted_range_counts_by_environment, environment_filter, env_keywords)    
+    sorted_range_counts_by_environment.plot(kind='bar', stacked=False, figsize=(12, 8), rot=45)
+    if args.generate_graphs:
         plt.xlabel('Disk Space Range')
         plt.ylabel('Number of VMs')
-        plt.title('VM Disk Size Ranges Sorted by Environment')
-        if os_filter:
-            plt.title('VM Disk Size Ranges for %s' % os_filter)
-    if args.generate_graphs:
-        # Display the plot
-        if environment_filter == "all":
-            plt.legend(labels=["All Environments"])
-
+        plt.title(f'VM Disk Size Ranges Sorted by Environment {f"for {os_filter}" if os_filter else ""}')
         plt.show(block=True)
-        plt.close()
 
+def print_formatted_disk_space(sorted_range_counts_by_environment, environment_filter, env_keywords, os_filter=None):
+    col_widths = {'Environment': 22, **{env: 10 for env in sorted_range_counts_by_environment.columns}} if env_keywords and environment_filter != "all" else {**{env: 17 for env in sorted_range_counts_by_environment.columns}}
+    formatted_rows = []
+    if environment_filter == "all":
+        formatted_rows.append('Disk Space Range'.ljust(20) + 'Count'.ljust(col_widths['Count']))
+
+    for index, row in sorted_range_counts_by_environment.iterrows():
+        formatted_row = [str(index).ljust(15)]
+        for col_name, width in col_widths.items():
+            value = str(row[col_name]) if col_name in row.index else ""
+            formatted_row.append(value.ljust(width))
+        formatted_rows.append(' '.join(formatted_row))
+
+    formatted_df_str = '\n'.join(formatted_rows)
+
+    temp_heading = ''
+    if os_filter:
+        print(os_filter)
+        print('---------------------------------')
+
+    for headings in list(col_widths.keys()):
+        if temp_heading:
+            temp_heading += headings.ljust(11)
+        else:
+            temp_heading += headings.ljust(39)
+    print(temp_heading)
+    print(formatted_df_str)
+    print()
 
 def calculate_average_ram(df, environment_type):
     """
