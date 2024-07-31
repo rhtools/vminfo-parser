@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.ticker as ticker
 import numpy as np
-from fuzzywuzzy import process
+#from fuzzywuzzy import process
 import magic
 import argparse
 
@@ -26,12 +26,24 @@ import argparse
 
 
 def format_dataframe_output(dataFrame):
+    """
+    Format the output of a pandas DataFrame containing OS version and count data.
+
+    Args:
+        dataFrame (pandas.DataFrame): The DataFrame containing OS version and count data.
+
+    Returns:
+        None
+
+    Examples:
+        format_dataframe_output(dataFrame)
+    """
+
     if dataFrame.index.nlevels == 2:
         pass
     else:
-        os_version = dataFrame.reset_index()['index'].values
-        count = dataFrame.reset_index()['OS Version'].values
-
+        os_version = dataFrame['OS Version'].values
+        count = dataFrame['Count'].values
         print("")
         print(os_name)
         print('--------------')
@@ -141,6 +153,8 @@ def generate_supported_OS_counts(dataFrame):
         plt.xlabel('Count')
         plt.xscale('log')
         plt.gca().xaxis.set_major_formatter(ticker.ScalarFormatter())
+        # This sets the ticks on the bottom so that very large numbers can be represented next to smaller numbers while still having a visible bar
+        # this is similar to leaving the log scale except it shows the actual number of the smallest and largest bars
         plt.xticks([filtered_counts.iloc[0] - (filtered_counts.iloc[0] % 100), filtered_counts.iloc[len(filtered_counts)//2] - (filtered_counts.iloc[len(filtered_counts)//2] % 100), filtered_counts.iloc[-1]])
 
         # Save and display the plot
@@ -198,7 +212,8 @@ def generate_all_OS_counts(dataFrame, minimumCount=500, maximumCount=99999):
     """
     # Calculate the frequency of each unique OS name
     counts = dataFrame['OS Name'].value_counts()
-
+    if args.minimum_count:
+        minimumCount = args.minimum_count
     # Filter counts within the set thresholds
     filtered_counts = counts[(counts >= minimumCount) & (counts <= maximumCount)]
 
@@ -250,21 +265,30 @@ def os_by_version(dataFrame, os_name):
     # Filter rows where the OS name matches the input parameter
     filtered_df = dataFrame[(dataFrame['OS Name'] == os_name)]
     # Calculate the frequency of each unique OS version
-    #counts = filtered_df['OS Version'].value_counts()
-    counts = filtered_df['OS Version'].fillna('unknown').value_counts()
-    # We want to print out a text table and not the dataframe
+    counts = filtered_df['OS Version'].fillna('unknown').value_counts().reset_index()
+    counts.columns = ['OS Version', 'Count']
 
     format_dataframe_output(counts)
+    
+    # We want to print out a text table and not the dataframe
+    if args.minimum_count is not None and args.minimum_count > 0:
+        # Filter counts to exclude entries with a count below args.minimum_count
+        counts = counts[counts['Count'] >= args.minimum_count]
     # Plot the counts as a horizontal bar chart
-    counts.plot(kind='barh', rot=45)
-    if args.generate_graphs:
-        # Print the filtered DataFrame    
-        # Set titles and labels for the plot
-        plt.title(f'Distribution of {os_name}')
-        plt.ylabel('OS Version')
-        plt.xlabel('Count')
-        plt.show(block=True)
-        plt.close()
+    if not counts.empty:
+        ax = counts.plot(kind='barh', rot=45)
+        if args.generate_graphs:
+            # Set titles and labels for the plot
+            plt.title(f'Distribution of {os_name}')
+            plt.ylabel('OS Version')
+            plt.xlabel('Count')
+
+            # Correctly set the x-axis tick labels to display OS Versions
+            plt.xticks(rotation=0)  # Adjust rotation as needed
+            ax.set_yticklabels(counts['OS Version'])
+
+            plt.show(block=True)
+            plt.close()
 
 
 def calculate_disk_space_ranges(dataFrame, show_disk_in_tb=False, frameHeading="VM Provisioned (GB)"):
@@ -378,7 +402,6 @@ def plot_disk_space_distribution(dataFrame, os_name=None, os_version=None, show_
         # Set titles and labels for the plot
         ax.set_ylabel('Disk Space Range')
         ax.set_xlabel('Number of Machines')
-        #ax.set_xscale('log')
         ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
         
         if os_name and os_version:
@@ -457,16 +480,24 @@ def handle_operating_system(data_cp, environment_filter):
     Returns:
         None
     """
-
-    if not environment_filter:
-        counts = data_cp['OS Name'].value_counts()
+    if args.minimum_count:
+        min_count = args.minimum_count
     else:
-        counts = data_cp.groupby('Environment')['OS Name'].value_counts()
+        min_count = 100
 
-    filtered_counts = counts[counts >= 100]
-    print(filtered_counts)
+    if not environment_filter or environment_filter == 'all':
+        counts = data_cp['OS Name'].value_counts()
+        counts = counts[counts >= min_count]
+    else:
+        counts = data_cp.groupby(['OS Name', 'Environment']).size().unstack().fillna(0)
+        counts['total'] = counts.sum(axis=1)
+        counts['combined_total'] = counts['prod'] + counts['non-prod']
+        counts = counts[(counts['total'] >= min_count) & (counts['combined_total'] >= min_count)].drop(['total', 'combined_total'], axis=1)
+        counts = counts.sort_values(by='prod', ascending=False)
+    
+    print(counts)
 
-    os_names = [idx[1] for idx in filtered_counts.index] if filtered_counts.index.nlevels == 2 else filtered_counts.index
+    os_names = [idx[1] for idx in counts.index] if counts.index.nlevels == 2 else counts.index
     os_colors = {
         'Red Hat Enterprise Linux': 'red',
         'SUSE Linux Enterprise': 'green',
@@ -477,14 +508,13 @@ def handle_operating_system(data_cp, environment_filter):
         "unknown": "grey"
     }
 
-    random_colors = cm.rainbow(np.linspace(0, 1, len(filtered_counts)))
+    random_colors = cm.rainbow(np.linspace(0, 1, len(counts)))
     colors = [os_colors.get(os, random_colors[i]) for i, os in enumerate(os_names)]
 
-    ax = filtered_counts.plot(kind='barh', rot=45, color=colors)
-    ax.set_yticklabels([f"{os[1]} - {os[0]}" for os in filtered_counts.index])
+    ax = counts.plot(kind='barh', rot=45, color=colors)
     if args.generate_graphs:
         plt.xlabel('Count')
-        plt.title('OS Counts by Environment Type (>= 100)')
+        plt.title(f'OS Counts by Environment Type (>= {min_count})')
         plt.show(block=True)
 
 def handle_disk_space(data_cp, environment_filter, env_keywords, os_filter, show_disk_in_tb=False):
@@ -623,6 +653,7 @@ if __name__ == "__main__":
     os_group.add_argument('--output-os-by-version', action='store_true', help='Output OS by version')
     os_group.add_argument('--get-os-counts', action='store_true', help='Generate a report that counts the inventory broken down by OS')
     os_group.add_argument('--os-name', type=str, help='The name of the Operating System to produce a report about')
+    os_group.add_argument('--minimum-count', type=int, help='Anything below this number will be excluded from the results')
     args = parser.parse_args()
 
 
@@ -762,6 +793,6 @@ if __name__ == "__main__":
     # disk_use_for_environment(df, show_disk_in_tb=False, frameHeading="VM Used (GB)")
 
     # generate_all_OS_counts(df)
-    # generate_supported_OS_counts(df)
+    generate_supported_OS_counts(df)
     # generate_unsupported_OS_counts(df)
 
