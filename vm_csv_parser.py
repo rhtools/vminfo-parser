@@ -115,20 +115,38 @@ def add_extra_columns(dataFrame):
     else:
         print("All columns already exist")
 
-def generate_supported_OS_counts(dataFrame):
+
+def categorize_environment(environment, *keywords):
+    # Dummy implementation for demonstration
+    return environment
+
+def generate_supported_OS_counts(dataFrame, *env_keywords, environment_filter=None):
     """
     Generates a horizontal bar chart displaying the distribution of supported operating systems based on their frequency in the DataFrame.
 
     Args:
         dataFrame: DataFrame containing OS information.
+        *env_keywords: Additional environment keywords.
+        environment_filter: Filter for specific environments.
 
     Returns:
         None
     """
 
+    data_cp = dataFrame.copy()
+    if environment_filter and env_keywords:
+        data_cp['Environment'] = dataFrame['Environment'].apply(categorize_environment, args=env_keywords)
+    
+    if environment_filter and environment_filter not in ["all", "both"]:
+        data_cp = data_cp[data_cp['Environment'] == environment_filter]
+    elif environment_filter == "both":
+        data_cp = data_cp.groupby(['OS Name', 'Environment']).size().unstack().fillna(0)
+        
     # Calculate the frequency of each unique OS name
-    counts = dataFrame['OS Name'].value_counts()
-
+    
+    if data_cp.empty:
+        print(f"None found in {environment_filter} \n")
+        return
     # Define specific colors for identified OS names
     supported_os_colors = {
         'Red Hat Enterprise Linux': 'red',
@@ -138,24 +156,35 @@ def generate_supported_OS_counts(dataFrame):
         # Add more OS names and colors as needed
     }
 
-    # Filter counts based on keys in supported_os_colors
-    filtered_counts = counts[counts.index.isin(supported_os_colors.keys())]
+    if environment_filter and environment_filter != "both":
+        filtered_counts = data_cp['OS Name'].value_counts()
+    # If we are looking at both prod/non-prod we don't want an OS Name count
+    else:
+        filtered_counts = data_cp
 
-    # Generate colors for filtered OS names based on supported_os_colors
+    filtered_counts = filtered_counts[filtered_counts.index.isin(supported_os_colors.keys())]
     colors = [supported_os_colors[os] for os in filtered_counts.index]
-
-    # Plot the supported OS counts as a horizontal bar chart with specified colors
-    filtered_counts.plot(kind='barh', rot=45, color=colors)
+    # We want to use the official OS colours when there is only 1 bar per os
+    if environment_filter and environment_filter != "both":
+        filtered_counts.plot(kind='barh', rot=45, color=colors)
+    # Remove the color coding if we are comparing both environments as it doesn't look correct
+    else:
+        filtered_counts.plot(kind='barh', rot=45)
+    
     if args.generate_graphs:
         # Set titles and labels for the plot
-        plt.title('Supported Operating System Distribution')
+        if environment_filter not in ['prod', 'non-prod']:
+            plt.title('Supported Operating Systems For All Environments')
+        else:
+            plt.title(f'Supported Operating Systems for {environment_filter.title()}')
         plt.ylabel('Operating Systems')
         plt.xlabel('Count')
         plt.xscale('log')
         plt.gca().xaxis.set_major_formatter(ticker.ScalarFormatter())
         # This sets the ticks on the bottom so that very large numbers can be represented next to smaller numbers while still having a visible bar
         # this is similar to leaving the log scale except it shows the actual number of the smallest and largest bars
-        plt.xticks([filtered_counts.iloc[0] - (filtered_counts.iloc[0] % 100), filtered_counts.iloc[len(filtered_counts)//2] - (filtered_counts.iloc[len(filtered_counts)//2] % 100), filtered_counts.iloc[-1]])
+        if environment_filter != "both":
+            plt.xticks([filtered_counts.iloc[0] - (filtered_counts.iloc[0] % 100), filtered_counts.iloc[len(filtered_counts)//2] - (filtered_counts.iloc[len(filtered_counts)//2] % 100), filtered_counts.iloc[-1]])
 
         # Save and display the plot
         plt.show(block=True)
@@ -654,6 +683,9 @@ if __name__ == "__main__":
     os_group.add_argument('--get-os-counts', action='store_true', help='Generate a report that counts the inventory broken down by OS')
     os_group.add_argument('--os-name', type=str, help='The name of the Operating System to produce a report about')
     os_group.add_argument('--minimum-count', type=int, help='Anything below this number will be excluded from the results')
+    os_group.add_argument('--get-supported-os', action="store_true", help="Display a graph of the supported operating systems for OpenShift Virt")
+    os_group.add_argument('--get-unsupported-os', action="store_true", help="Display a graph of the unsupported operating systems for OpenShift Virt")
+
     args = parser.parse_args()
 
 
@@ -678,7 +710,6 @@ if __name__ == "__main__":
     args.sort_by_env = required_if('sort_by_env', '--sort-by-env')(args.sort_by_env)
 
     # Load the CSV file
-    #df = pd.read_csv('/home/stratus/temp/Inventory_VMs_redhat_06_27_24_edited.csv')
     #file_path = "/home/stratus/Downloads/RVTools_tabvInfo.csv"
     #file_path = "/home/stratus/Downloads/SC_Datacenter_Output.csv"
     file_path = '/home/stratus/temp/Inventory_VMs_redhat_06_27_24_edited.csv'
@@ -785,6 +816,14 @@ if __name__ == "__main__":
             else:
                 sort_attribute_by_environment(df, attribute="operatingSystem")
     
+    if args.get_supported_os:
+        if args.prod_env_labels and args.sort_by_env:
+            generate_supported_OS_counts(df, *environments, environment_filter=args.sort_by_env)
+        else:
+            generate_supported_OS_counts(df)
+    if args.get_unsupported_os:
+        generate_unsupported_OS_counts(df)
+        
     ###
     ############# END OPERATING SYSTEM SECTION
 
@@ -793,6 +832,5 @@ if __name__ == "__main__":
     # disk_use_for_environment(df, show_disk_in_tb=False, frameHeading="VM Used (GB)")
 
     # generate_all_OS_counts(df)
-    generate_supported_OS_counts(df)
-    # generate_unsupported_OS_counts(df)
+    
 
