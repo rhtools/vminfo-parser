@@ -25,6 +25,25 @@ import argparse
 # The primary purpose of this script is to aide in the assessment of migration to OpenShift Virtualization
 
 
+def set_column_headings(dataFrame):
+    global column_headers
+        
+    version1_columns = {"operatingSystem": "OS Name", "environment": "Environment", "vmMemory": 'VM MEM (GB)', "vmDisk": 'VM Provisioned (GB)'}
+    version2_columns = {"operatingSystem": "OS according to the configuration file", "environment": "ent-env", "vmMemory": 'Memory', "vmDisk": 'Total disk capacity MiB'}
+    if all(col in dataFrame.columns for col in version1_columns.values()):
+        print("\nAll version 1 columns are present in the DataFrame.\n")
+        column_headers = version1_columns
+        column_headers["unitType"] = 'GB'
+    elif all(col in dataFrame.columns for col in version2_columns.values()):
+        print("\nAll version 2 columns are present in the DataFrame.\n")
+        column_headers = version2_columns
+        column_headers["unitType"] = 'MB'
+    else:
+        print(f"Missing column headers from either {version1_columns.values} or {version2_columns.values}")
+        raise ValueError("Headers don't match either of the versions expected")
+
+    
+    
 def format_dataframe_output(dataFrame):
     """
     Format the output of a pandas DataFrame containing OS version and count data.
@@ -98,27 +117,23 @@ def add_extra_columns(dataFrame):
         None
     """
     # Only attempt to add columns if the 3 columns don't already exist
+    os_column = column_headers['operatingSystem']
     if not all(col in dataFrame.columns for col in ['OS Name', 'OS Version', 'Architecture']):
         # Define a regex pattern to extract OS name, version, and architecture information
         pattern = r"^(?P<OS_Name>.*?)\s*(?P<OS_Version>(?:\d+\s+\w+|\w+)\s*(?:or later)?\s*)?\s*\((?P<Architecture>.*?64-bit|.*?32-bit)\)"
         
         # Extract the matched groups using str.extract and assign them to new columns in the DataFrame
-        dataFrame[['OS Name', 'OS Version', 'Architecture']] = dataFrame['VM OS'].str.extract(pattern)
+        dataFrame[['OS Name', 'OS Version', 'Architecture']] = dataFrame[os_column].str.extract(pattern)
         
         # Fill NaN values in the newly created columns with the original 'VM OS' column values
-        dataFrame['OS Name'].fillna(dataFrame['VM OS'], inplace=True)
-        dataFrame['OS Version'].fillna(dataFrame['VM OS'], inplace=True)
-        dataFrame['Architecture'].fillna(dataFrame['VM OS'], inplace=True)
-        
+        dataFrame.loc[:, 'OS Name'] = dataFrame[os_column].fillna(dataFrame[os_column])
         # Save the modified DataFrame to a CSV file
         dataFrame.to_csv('/tmp/Inventory_VMs_redhat_06_27_24.csv', index=False)
     else:
         print("All columns already exist")
+    
 
 
-def categorize_environment(environment, *keywords):
-    # Dummy implementation for demonstration
-    return environment
 
 def generate_supported_OS_counts(dataFrame, *env_keywords, environment_filter=None):
     """
@@ -320,7 +335,7 @@ def os_by_version(dataFrame, os_name):
             plt.close()
 
 
-def calculate_disk_space_ranges(dataFrame, show_disk_in_tb=False, frameHeading="VM Provisioned (GB)"):
+def calculate_disk_space_ranges(dataFrame, show_disk_in_tb=False):
     """
     Calculates disk space ranges based on the provisioned disk space of virtual machines in the DataFrame.
 
@@ -331,11 +346,25 @@ def calculate_disk_space_ranges(dataFrame, show_disk_in_tb=False, frameHeading="
     Returns:
         List of disk space ranges with VMs falling within each range.
     """
-    unit = "MB" if "MiB" in frameHeading or "MB" in frameHeading else "GB" if "GiB" in frameHeading or "GB" in frameHeading else None
+    frameHeading = column_headers['vmDisk']
+    # sometimes the values in this column are interpreted as a string and have a comma inserted
+    # we want to check and replace the comma
+    for index, value in enumerate(dataFrame[frameHeading]):
+        # Check if the current element is a string
+        if isinstance(value, str):
+            # Replace commas in the string
+            dataFrame.at[index, frameHeading] = value.replace(',', '')
+        
+    dataFrame[frameHeading] = pd.to_numeric(dataFrame[frameHeading], errors='coerce')
+    unit = column_headers['unitType']
 
     # Determine the minimum and maximum disk space provisioned across all VMs
-    min_disk_space = int(dataFrame[frameHeading].min())
-    max_disk_space = int(dataFrame[frameHeading].max())
+    if unit == "MB":
+        min_disk_space = round(int(dataFrame[frameHeading].min())/1024)
+        max_disk_space = round(int(dataFrame[frameHeading].max())/1024)
+    else:
+        min_disk_space = round(int(dataFrame[frameHeading].min()))
+        max_disk_space = round(int(dataFrame[frameHeading].max()))
     
     # Define the final range based on the maximum disk space provisioned
     if max_disk_space > 9000:
@@ -458,14 +487,24 @@ def categorize_environment(x, *args):
     """
     # if the user has not passed in any arguments denoting which things should be classified as prod
     # assume they want a count of OS' across all environments
+    # Convert x to a string to ensure compatibility with string operations
+    x_str = str(x)
+
+    # Check if x is a valid string (not NaN or empty) before proceeding
+    if not x_str.strip():
+        return 'non-prod'
+
+    # if the user has not passed in any arguments denoting which things should be classified as prod
+    # assume they want a count of OS' across all environments
     if not args:
         return 'all envs'
+    
     for arg in args:
-        if arg in x:
+        if arg in x_str and arg.strip():
             return 'prod'
     return 'non-prod'
 
-def sort_attribute_by_environment(dataFrame, *env_keywords, attribute="operatingSystem", os_filter=None, environment_filter=None, show_disk_in_tb=False):
+def sort_attribute_by_environment(dataFrame, *env_keywords, attribute="operatingSystem", os_filter=None, environment_filter=None, show_disk_in_tb=False, frameHeading="VM Provisioned (GB)"):
     """
     Sorts an attribute by environment in the provided DataFrame based on specified filters.
 
@@ -479,15 +518,21 @@ def sort_attribute_by_environment(dataFrame, *env_keywords, attribute="operating
     Returns:
         None
     """
-
+    env_column = "Environment"
     data_cp = dataFrame.copy()
-    data_cp['Environment'] = dataFrame['Environment'].apply(categorize_environment, args=env_keywords)
+    if env_column not in dataFrame.columns:
+        if 'ent-env' in dataFrame.columns:
+            env_column = 'ent-env'
+        else:
+            raise ValueError("Neither 'Environment' nor 'ent-env' found in DataFrame columns.")
+
+    data_cp[env_column] = dataFrame[env_column].apply(categorize_environment, args=env_keywords)
 
     if os_filter:
         data_cp = data_cp[data_cp['OS Name'] == os_filter]
 
     if environment_filter and environment_filter not in ["all", "both"]:
-        data_cp = data_cp[data_cp['Environment'] == environment_filter]
+        data_cp = data_cp[data_cp[env_column] == environment_filter]
 
     if data_cp.empty:
         print(f"None found in {environment_filter} \n")
@@ -559,10 +604,15 @@ def handle_disk_space(data_cp, environment_filter, env_keywords, os_filter, show
     Returns:
         None
     """
-
+    frameHeading = column_headers['vmDisk']
+    unit = column_headers['unitType']
     disk_space_ranges = calculate_disk_space_ranges(data_cp, show_disk_in_tb=show_disk_in_tb)
     for lower, upper in disk_space_ranges:
-        mask = (data_cp['VM Provisioned (GB)'] >= lower) & (data_cp['VM Provisioned (GB)'] <= upper)
+        if unit == "MB":
+            mask = (round(data_cp[frameHeading] /1024) >= lower) & (round(data_cp[frameHeading] /1024) <= upper)
+        else:
+            mask = (data_cp[frameHeading] >= lower) & (data_cp[frameHeading] <= upper)
+        print(data_cp[frameHeading])
         data_cp.loc[mask, 'Disk Space Range'] = f'{lower}-{upper} GB'
 
     if environment_filter is None:
@@ -673,6 +723,7 @@ if __name__ == "__main__":
     disk_group = parser.add_argument_group('Disk Space Analysis', 'Options related to generating disk ranges by os, environment or both')
     os_group = parser.add_argument_group('Operating System Analysis', 'Options related to generating OS type break downby OS version, environment or both')
     generic_group = parser.add_argument_group('Arguments that apply to both OS and Disk')
+    generic_group.add_argument('--file', type=str, help='The file to parse', required=True)
     generic_group.add_argument('--sort-by-env', type=str, nargs='?', help='Sort disk by environment. Use "all" to get combine count, "both" to show both non-prod and prod, or specify one.')
     generic_group.add_argument('--prod-env-labels', type=str, nargs='?', help="The values in your data that represent prod environments. This is used to generate prod and non-prod stats. Passed as CSV i.e. --prod-env-labels 'baker,dte'")
     generic_group.add_argument('--generate-graphs', action='store_true', help='Choose whether or not to output visual graphs. If this option is not set, a text table will be outputted to the terminal')
@@ -710,15 +761,15 @@ if __name__ == "__main__":
     args.sort_by_env = required_if('sort_by_env', '--sort-by-env')(args.sort_by_env)
 
     # Load the CSV file
-    #file_path = "/home/stratus/Downloads/RVTools_tabvInfo.csv"
+    file_path = args.file
     #file_path = "/home/stratus/Downloads/SC_Datacenter_Output.csv"
-    file_path = '/home/stratus/temp/Inventory_VMs_redhat_06_27_24_edited.csv'
+    #file_path = '/home/stratus/temp/Inventory_VMs_redhat_06_27_24_edited.csv'
     file_type = get_file_type(file_path)
     
-   
+    
     if args.generate_graphs:
         # If the user wants to see graphs, set the interactive mode on matplotlib
-        matplotlib.use('TkAgg')
+        matplotlib.use('Qt5Agg')
 
     # assuming someone has provided prod labels, we need to split them
     environments = []
@@ -736,6 +787,7 @@ if __name__ == "__main__":
         print("File passed in was neither a CSV nor an Excel file\nBailing...")
         exit()
 
+    set_column_headings(df)
     add_extra_columns(df)
     
    
