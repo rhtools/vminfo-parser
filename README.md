@@ -10,6 +10,16 @@ This program expects a CSV with the following headings:
 ```
 VM Power,	VM OS,	VM CPU,	VM MEM (GB), VM Provisioned (GB), VM Used (GB),	Environment	
 ```
+
+**OR**
+
+```
+OS according to the configuration file, ent-env, Memory, Total disk capacity MiB
+```
+
+More headings may be supported in the future and are currently parsed in the function called _set_column_headings_.
+
+
 The `add_extra_columns` funmction will add OS Name, OS Version and Architecture
 
 Sample input:
@@ -53,6 +63,7 @@ Operating System Analysis:
   --get-unsupported-os  Display a graph of the unsupported operating systems for OpenShift Virt
 
 Arguments that apply to both OS and Disk:
+  --file FILE           The file to parse
   --sort-by-env [SORT_BY_ENV]
                         Sort disk by environment. Use "all" to get combine count, "both" to show both non-prod and prod, or specify one.
   --prod-env-labels [PROD_ENV_LABELS]
@@ -69,7 +80,7 @@ Below are examples for both disk and OS related reports
 
 The following generates a text table to the CLI:
 ```
-./vm_csv_parser.py --sort-by-env both --show-disk-space-by-os --prod-env-labels atlas,herod
+./vm_csv_parser.py --file <path_to_file> --sort-by-env both --show-disk-space-by-os --prod-env-labels atlas,herod
 ```
 
 Output looks similar to (no graphs included):
@@ -107,6 +118,14 @@ Environment                            non-prod   prod
 This is a similar command but limiting the OS to a specific OS and generating a graph
 
 ```
-./vm_csv_parser.py --show-disk-space-by-os --sort-by-env both --prod-env-labels atlas,herod --generate-graphs --os-name "Microsoft Windows"
+./vm_csv_parser.py --file <path_to_file> --show-disk-space-by-os --sort-by-env both --prod-env-labels atlas,herod --generate-graphs --os-name "Microsoft Windows"
 ```
 
+
+
+### Generate Disk Range in TB by environment and OS
+
+
+```
+./vm_csv_parser.py --file <path_to_file> --get-disk-space-ranges --sort-by-env prod --prod-env-labels atlas,herod --breakdown-by-terabyte --generate-graphs
+```
