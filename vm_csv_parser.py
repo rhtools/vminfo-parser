@@ -13,12 +13,8 @@ import magic
 import argparse
 import re
 
-# This program expects a CSV with the following headings
-# VM Power,	VM OS,	VM CPU,	VM MEM (GB), VM Provisioned (GB), VM Used (GB),	Environment	
-# The add_extra_columns will add OS Name, OS Version and Architecture
-# sample data:
-#|VM Power	|VM OS		        |VM CPU |VM MEM (GB)|VM Provisioned (GB)|VM Used (GB)|Environment	
-#|PoweredOn	|CentOS 4/5 (32-bit)|	2   |	2	    | 82.112 	        |25.831	     |Test
+# This program expects a CSV or an Excel file. Supported headings are listed in set_column_headings()
+
 # While it is likely that this format is not standard to your environment, this program should be able to be
 # altered slightly to match what your requirements are
 
@@ -26,6 +22,7 @@ import re
 
 
 def set_column_headings(dataFrame):
+    # This will need to be rethought if a global dict becomes unwieldy
     global column_headers
         
     version1_columns = {"operatingSystem": "VM OS", "environment": "Environment", "vmMemory": 'VM MEM (GB)', "vmDisk": 'VM Provisioned (GB)'}
@@ -42,11 +39,7 @@ def set_column_headings(dataFrame):
         print(f"Missing column headers from either {version1_columns.values} or {version2_columns.values}")
         raise ValueError("Headers don't match either of the versions expected")
 
-    # drop everything but the needed columns
-    # Assuming column_headers is the global dictionary containing the column headers
-
-    
-    
+     
 def format_dataframe_output(dataFrame):
     """
     Format the output of a pandas DataFrame containing OS version and count data.
@@ -134,25 +127,22 @@ def add_extra_columns(dataFrame):
         dataFrame[windows_server_columns] = dataFrame[os_column].str.extract(windows_server_pattern)
         dataFrame[windows_desktop_columns] = dataFrame[os_column].str.extract(windows_desktop_pattern, flags=re.IGNORECASE)
         # Fill NaN values in the newly created columns with the original 'VM OS' column values
-        
-        dataFrame['OS Name'] = dataFrame.apply(lambda x: x['Server OS Name'] if pd.isnull(x['OS Name']) else x['OS Name'], axis=1)
-        dataFrame['OS Version'] = dataFrame.apply(lambda x: x['Server OS Version'] if pd.isnull(x['OS Version']) else x['OS Version'], axis=1)
-        dataFrame['Architecture'] = dataFrame.apply(lambda x: x['Server Architecture'] if pd.isnull(x['Architecture']) else x['Architecture'], axis=1)
 
-        dataFrame['OS Name'] = dataFrame.apply(lambda x: x['Desktop OS Name'] if pd.isnull(x['OS Name']) else x['OS Name'], axis=1)
-        dataFrame['OS Version'] = dataFrame.apply(lambda x: x['Desktop OS Version'] if pd.isnull(x['OS Version']) else x['OS Version'], axis=1)
-        dataFrame['Architecture'] = dataFrame.apply(lambda x: x['Desktop Architecture'] if pd.isnull(x['Architecture']) else x['Architecture'], axis=1)
+        dataFrame['OS Name'] = dataFrame['Server OS Name'].where(dataFrame['OS Name'].isnull(), dataFrame['OS Name'])
+        dataFrame['OS Version'] = dataFrame['Server OS Version'].where(dataFrame['OS Version'].isnull(), dataFrame['OS Version'])
+        dataFrame['Architecture'] = dataFrame['Server Architecture'].where(dataFrame['Architecture'].isnull(), dataFrame['Architecture'])
+
+        dataFrame['OS Name'] = dataFrame['Desktop OS Name'].where(dataFrame['OS Name'].isnull(), dataFrame['OS Name'])
+        dataFrame['OS Version'] = dataFrame['Desktop OS Version'].where(dataFrame['OS Version'].isnull(), dataFrame['OS Version'])
+        dataFrame['Architecture'] = dataFrame['Desktop Architecture'].where(dataFrame['Architecture'].isnull(), dataFrame['Architecture'])
         
-        dataFrame.drop(windows_server_columns, axis=1, inplace=True)
-        dataFrame.drop(windows_desktop_columns, axis=1, inplace=True)
+        dataFrame.drop(windows_server_columns + windows_desktop_columns, axis=1, inplace=True)
         # Save the modified DataFrame to a CSV file
         dataFrame.to_csv('/tmp/Inventory_VMs_redhat_06_27_24.csv', index=False)
     else:
         print("All columns already exist")
     
-
-
-
+    
 def generate_supported_OS_counts(dataFrame, *env_keywords, environment_filter=None):
     """
     Generates a horizontal bar chart displaying the distribution of supported operating systems based on their frequency in the DataFrame.
