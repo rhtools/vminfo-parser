@@ -277,7 +277,7 @@ def generate_all_OS_counts(dataFrame, minimumCount=500, maximumCount=99999):
         'SUSE Linux Enterprise': 'green',
         'Microsoft Windows Server': 'navy',
         'Microsoft Windows': 'blue',
-        "Ubuntu": "orange",
+        "Ubuntu Linux": "orange",
         "Oracle Linux": "maroon",
         "unknown": "grey"
         # Add more OS names and colors as needed
@@ -345,7 +345,7 @@ def os_by_version(dataFrame, os_name):
             plt.close()
 
 
-def calculate_disk_space_ranges(dataFrame, show_disk_in_tb=False):
+def calculate_disk_space_ranges(dataFrame, show_disk_in_tb=False, over_under_tb=False):
     """
     Calculates disk space ranges based on the provisioned disk space of virtual machines in the DataFrame.
 
@@ -388,6 +388,11 @@ def calculate_disk_space_ranges(dataFrame, show_disk_in_tb=False):
         (2001, 9000), 
         final_range
     ]
+    elif over_under_tb:
+        disk_space_ranges = [
+            (min_disk_space, 1000),
+            (1001, max_disk_space)
+        ]
     else:
         # Define predefined disk space ranges
         disk_space_ranges = [
@@ -507,7 +512,7 @@ def categorize_environment(x, *args):
             return 'prod'
     return 'non-prod'
 
-def sort_attribute_by_environment(dataFrame, *env_keywords, attribute="operatingSystem", os_filter=None, environment_filter=None, show_disk_in_tb=False, frameHeading="VM Provisioned (GB)"):
+def sort_attribute_by_environment(dataFrame, *env_keywords, attribute="operatingSystem", os_filter=None, environment_filter=None, show_disk_in_tb=False, over_under_tb=False, frameHeading="VM Provisioned (GB)"):
     """
     Sorts an attribute by environment in the provided DataFrame based on specified filters.
 
@@ -544,7 +549,7 @@ def sort_attribute_by_environment(dataFrame, *env_keywords, attribute="operating
     if attribute == "operatingSystem":
         handle_operating_system(data_cp, environment_filter)
     elif attribute == "diskSpace":
-        handle_disk_space(data_cp, environment_filter, env_keywords, os_filter, show_disk_in_tb=show_disk_in_tb)
+        handle_disk_space(data_cp, environment_filter, env_keywords, os_filter, show_disk_in_tb=show_disk_in_tb, over_under_tb=over_under_tb)
 
 def handle_operating_system(data_cp, environment_filter):
     """
@@ -580,7 +585,7 @@ def handle_operating_system(data_cp, environment_filter):
         'SUSE Linux Enterprise': 'green',
         'Microsoft Windows Server': 'navy',
         'Microsoft Windows': 'blue',
-        "Ubuntu": "orange",
+        "Ubuntu Linux": "orange",
         "Oracle Linux": "maroon",
         "unknown": "grey"
     }
@@ -594,7 +599,7 @@ def handle_operating_system(data_cp, environment_filter):
         plt.title(f'OS Counts by Environment Type (>= {min_count})')
         plt.show(block=True)
 
-def handle_disk_space(data_cp, environment_filter, env_keywords, os_filter, show_disk_in_tb=False):
+def handle_disk_space(data_cp, environment_filter, env_keywords, os_filter, show_disk_in_tb=False, over_under_tb=False):
     """
     Handles disk space information based on the provided data, environment filter, and operating system filter.
 
@@ -610,7 +615,7 @@ def handle_disk_space(data_cp, environment_filter, env_keywords, os_filter, show
     diskHeading = column_headers['vmDisk']
     envHeading = column_headers['environment']
     unit = column_headers['unitType']
-    disk_space_ranges = calculate_disk_space_ranges(data_cp, show_disk_in_tb=show_disk_in_tb)
+    disk_space_ranges = calculate_disk_space_ranges(data_cp, show_disk_in_tb=show_disk_in_tb, over_under_tb=over_under_tb)
     for lower, upper in disk_space_ranges:
         if unit == "MB":
             mask = (round(data_cp[diskHeading] /1024) >= lower) & (round(data_cp[diskHeading] /1024) <= upper)
@@ -736,6 +741,7 @@ if __name__ == "__main__":
     disk_group.add_argument('--get-disk-space-ranges', action='store_true', help="This flag will get disk space ranges regardless of OS. Can be combine with --prod-env-labels and --sort-by-env to target a specific environment")
     disk_group.add_argument('--show-disk-space-by-os', action='store_true', help='Show disk space by OS')
     disk_group.add_argument('--breakdown-by-terabyte', action='store_true', help='Breaks disk space down into 0-2TB, 2-9TB and 9TB+ instead of the default categories')
+    disk_group.add_argument('--over-under-tb', action='store_true', help='A simple break down of machines under 1TB and those over 1TB')
     os_group.add_argument('--output-os-by-version', action='store_true', help='Output OS by version')
     os_group.add_argument('--get-os-counts', action='store_true', help='Generate a report that counts the inventory broken down by OS')
     os_group.add_argument('--os-name', type=str, help='The name of the Operating System to produce a report about')
@@ -818,25 +824,22 @@ if __name__ == "__main__":
         else:
             # If the user has not specified an OS name, assume they want them all
             for os_name in unique_os_names:
-                if environments:           
-                    sort_attribute_by_environment(df, attribute="diskSpace", os_filter=os_name,environment_filter=args.sort_by_env, *environments)
+                if environments:                  
+                    sort_attribute_by_environment(df, attribute="diskSpace", os_filter=os_name,environment_filter=args.sort_by_env, over_under_tb=args.over_under_tb, *environments)
                     matplotlib.pyplot.close()
                 else:
-                    sort_attribute_by_environment(df, attribute="diskSpace", os_filter=os_name)
-                    matplotlib.pyplot.close()
+                    if args.over_under_tb:
+                        sort_attribute_by_environment(df, attribute="diskSpace", os_filter=os_name, )
+                    else:                            
+                        sort_attribute_by_environment(df, attribute="diskSpace", os_filter=os_name)
+                        matplotlib.pyplot.close()
 
     if args.get_disk_space_ranges:
         if args.sort_by_env == 'all':
-            if args.breakdown_by_terabyte:
-                sort_attribute_by_environment(df, attribute="diskSpace", environment_filter=args.sort_by_env, show_disk_in_tb=args.breakdown_by_terabyte)
-            else:
-                sort_attribute_by_environment(df, attribute="diskSpace", environment_filter=args.sort_by_env)
+                sort_attribute_by_environment(df, attribute="diskSpace", environment_filter=args.sort_by_env, show_disk_in_tb=args.breakdown_by_terabyte, over_under_tb=args.over_under_tb)
         elif args.sort_by_env:
             if args.get_disk_space_ranges and environments:
-                if args.breakdown_by_terabyte:
                     sort_attribute_by_environment(df, environment_filter=args.sort_by_env,  attribute="diskSpace", show_disk_in_tb=args.breakdown_by_terabyte, *environments)
-                else:
-                    sort_attribute_by_environment(df, environment_filter=args.sort_by_env,  attribute="diskSpace", *environments)
             else:
                 print("Failed to determine prod from non-prod environments... Perhaps you did not pass in the --prod-env-labels ?")
                 exit()
