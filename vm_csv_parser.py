@@ -101,7 +101,7 @@ def find_fuzzy_match_in_dataframe(df, text):
     
     return None
 
-def add_extra_columns(dataFrame):
+def add_extra_columns(dataFrame, column_headers):
     """
     Adds extra columns to the DataFrame by extracting OS name, version, and architecture information from the 'VM OS' column using a regex pattern.
 
@@ -726,9 +726,22 @@ def calculate_average_ram(df, environment_type):
             avg_ram = filtered_hosts['VM MEM (GB)'].mean()
             print("{:<20} {:<10.2f}".format(os, avg_ram))
 
+def main(arg_list: list[str] | None = None):
+    """
+    Main function that sets up the command-line argument parser and processes the input file for VM data analysis. It handles various options for disk space and operating system analysis, allowing users to generate reports and visualizations based on the provided data.
 
+    This function initializes argument groups for disk space and operating system analysis, defines the expected command-line arguments, and processes the input file accordingly. It also includes a decorator to enforce required arguments based on specific conditions.
 
-if __name__ == "__main__":
+    Args:
+        None
+
+    Returns:
+        None
+
+    Raises:
+        argparse.ArgumentTypeError: If a required argument is missing when using --sort-by-env.
+    """
+    global args
     parser = argparse.ArgumentParser(description='Process some arguments.')
     disk_group = parser.add_argument_group('Disk Space Analysis', 'Options related to generating disk ranges by os, environment or both')
     os_group = parser.add_argument_group('Operating System Analysis', 'Options related to generating OS type break downby OS version, environment or both')
@@ -748,7 +761,7 @@ if __name__ == "__main__":
     os_group.add_argument('--get-supported-os', action="store_true", help="Display a graph of the supported operating systems for OpenShift Virt")
     os_group.add_argument('--get-unsupported-os', action="store_true", help="Display a graph of the unsupported operating systems for OpenShift Virt")
 
-    args = parser.parse_args()
+    args = parser.parse_args(arg_list)
 
 
     def required_if(argument, value):
@@ -801,7 +814,7 @@ if __name__ == "__main__":
     column_headers = set_column_headings(df)
     columns_to_keep = column_headers.values()
     df = df.drop(columns=df.columns.difference(columns_to_keep))
-    add_extra_columns(df)
+    add_extra_columns(df, column_headers)
     
    
     # Call the function for each unique OS name in the 'OS Name' dataframe
@@ -880,6 +893,9 @@ if __name__ == "__main__":
         
     ###
     ############# END OPERATING SYSTEM SECTION
+
+if __name__ == "__main__":
+    main()
 
     # disk_use_for_environment(df, show_disk_in_tb=True, frameHeading="VM Used (GB)")
 
