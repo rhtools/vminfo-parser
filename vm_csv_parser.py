@@ -23,8 +23,7 @@ import re
 
 def set_column_headings(dataFrame):
     # This will need to be rethought if a global dict becomes unwieldy
-    global column_headers
-        
+    column_headers = ''
     version1_columns = {"operatingSystem": "VM OS", "environment": "Environment", "vmMemory": 'VM MEM (GB)', "vmDisk": 'VM Provisioned (GB)'}
     version2_columns = {"operatingSystem": "OS according to the configuration file", "environment": "ent-env", "vmMemory": 'Memory', "vmDisk": 'Total disk capacity MiB'}
     if all(col in dataFrame.columns for col in version1_columns.values()):
@@ -38,7 +37,7 @@ def set_column_headings(dataFrame):
     else:
         print(f"Missing column headers from either {version1_columns.values} or {version2_columns.values}")
         raise ValueError("Headers don't match either of the versions expected")
-
+    return column_headers
      
 def format_dataframe_output(dataFrame):
     """
@@ -798,8 +797,8 @@ if __name__ == "__main__":
     else:
         print("File passed in was neither a CSV nor an Excel file\nBailing...")
         exit()
-
-    set_column_headings(df)
+    global column_headers
+    column_headers = set_column_headings(df)
     columns_to_keep = column_headers.values()
     df = df.drop(columns=df.columns.difference(columns_to_keep))
     add_extra_columns(df)
