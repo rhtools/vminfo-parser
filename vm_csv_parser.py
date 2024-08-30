@@ -39,7 +39,7 @@ def set_column_headings(dataFrame):
         raise ValueError("Headers don't match either of the versions expected")
     return column_headers
      
-def format_dataframe_output(dataFrame):
+def format_dataframe_output(dataFrame, os_name=None):
     """
     Format the output of a pandas DataFrame containing OS version and count data.
 
@@ -321,7 +321,7 @@ def os_by_version(dataFrame, os_name):
     counts = filtered_df['OS Version'].fillna('unknown').value_counts().reset_index()
     counts.columns = ['OS Version', 'Count']
 
-    format_dataframe_output(counts)
+    format_dataframe_output(counts, os_name=os_name)
     
     # We want to print out a text table and not the dataframe
     if args.minimum_count is not None and args.minimum_count > 0:
