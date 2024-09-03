@@ -829,13 +829,6 @@ def main(arg_list: list[str]| None = None):
         print("\n\nYou specified you wanted to sort by environment but did not provide a definition of what categorizes a Prod environment... exiting\n")
         exit()
     
-    # Perform analysis and visualization based on config.args
-    if config.args.get_disk_space_ranges:
-        if config.args.sort_by_env:
-            analyzer.sort_attribute_by_environment(attribute="diskSpace", environment_filter=config.args.sort_by_env, over_under_tb=config.args.over_under_tb, *environments)
-           #disk_space_ranges = analyzer.calculate_disk_space_ranges(show_disk_in_tb=config.args.breakdown_by_terabyte, over_under_tb=config.args.over_under_tb)
-            #analyzer.print_disk_space_distribution(disk_space_ranges=disk_space_ranges)
-    
     if config.args.show_disk_space_by_os:
         if config.args.os_name:
             # If the user specifies an OS, use that to filter out everything else
@@ -865,7 +858,10 @@ def main(arg_list: list[str]| None = None):
             #visualizer.visualize_disk_space()
         elif config.args.sort_by_env:
             if config.args.get_disk_space_ranges and environments:
-                analyzer.calculate_disk_space_ranges(show_disk_in_tb=config.args.breakdown_by_terabyte, over_under_tb=config.args.over_under_tb)
+                #analyzer.calculate_disk_space_ranges(show_disk_in_tb=config.args.breakdown_by_terabyte, over_under_tb=config.args.over_under_tb)
+                analyzer.sort_attribute_by_environment(attribute="diskSpace", environment_filter=config.args.sort_by_env, over_under_tb=config.args.over_under_tb, 
+                                                       show_disk_in_tb=config.args.breakdown_by_terabyte, *environments)
+
                 #visualizer.visualize_disk_space()
             else:
                 print("Failed to determine prod from non-prod environments... Perhaps you did not pass in the --prod-env-labels ?")

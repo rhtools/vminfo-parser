@@ -15,7 +15,7 @@ class TestVMInfoParser(unittest.TestCase):
         # Restore the original stdout
         sys.stdout = sys.__stdout__
 
-    def test_main_output_both_envs(self):
+    def test_supported_os_both_envs(self):
         self.run_test_with_args([
             "--file", "machine_reports/tests/files/Test_Inventory_VMs.xlsx",
             "--get-supported-os",
@@ -23,7 +23,7 @@ class TestVMInfoParser(unittest.TestCase):
             "--prod-env-labels", "Prod-DC2,Prod-DC1"
         ], 'Environment               non-prod   prod\nOS Name\nMicrosoft Windows              399   6881\nMicrosoft Windows Server      3614  10118\nRed Hat Enterprise Linux       437    713\nSUSE Linux Enterprise          644   1347')
 
-    def test_main_output_all_envs(self):
+    def test_supported_os_all_envs(self):
         self.run_test_with_args([
             "--file", "machine_reports/tests/files/Test_Inventory_VMs.xlsx",
             "--get-supported-os",
@@ -31,7 +31,7 @@ class TestVMInfoParser(unittest.TestCase):
             "--prod-env-labels", "Prod-DC2,Prod-DC1"
         ], 'OS Name\nMicrosoft Windows Server    13732\nMicrosoft Windows            7280\nSUSE Linux Enterprise        1991\nRed Hat Enterprise Linux     1150')
 
-    def test_main_output_non_prod_env(self):
+    def test_supported_os_non_prod(self):
         self.run_test_with_args([
             "--file", "machine_reports/tests/files/Test_Inventory_VMs.xlsx",
             "--get-supported-os",
