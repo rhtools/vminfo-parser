@@ -1,21 +1,20 @@
-# vm_csv_parser.py
+#!/usr/bin/env python3
 
 import pandas as pd
-import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.ticker as ticker
 import numpy as np
 import re
 import argparse
-import os
 import magic
+import sys
 
 class Config:
     def __init__(self):
         self.args = None
     
-    def parse_arguments(self):
+    def parse_arguments(self, arg_list):
         parser = argparse.ArgumentParser(description='Process VM CSV file')
         parser.add_argument('--file', type=str, help='The file to parse', required=True)
         parser.add_argument('--sort-by-env', type=str, nargs='?', help='Sort disk by environment. Use "all" to get combine count, "both" to show both non-prod and prod, or specify one.')
@@ -31,7 +30,7 @@ class Config:
         parser.add_argument('--minimum-count', type=int, help='Anything below this number will be excluded from the results')
         parser.add_argument('--get-supported-os', action="store_true", help="Display a graph of the supported operating systems for OpenShift Virt")
         parser.add_argument('--get-unsupported-os', action="store_true", help="Display a graph of the unsupported operating systems for OpenShift Virt")
-        self.args = parser.parse_args()
+        self.args = parser.parse_args(arg_list)
     
     def load_from_file(self, file_path):
         # Implement loading configuration from file
@@ -80,11 +79,11 @@ class VMData:
         version2_columns = {"operatingSystem": "OS according to the configuration file", "environment": "ent-env", "vmMemory": 'Memory', "vmDisk": 'Total disk capacity MiB'}
         
         if all(col in self.df.columns for col in version1_columns.values()):
-            print("\nAll version 1 columns are present in the DataFrame.\n")
+            #print("\nAll version 1 columns are present in the DataFrame.\n")
             self.column_headers = version1_columns
             self.column_headers["unitType"] = 'GB'
         elif all(col in self.df.columns for col in version2_columns.values()):
-            print("\nAll version 2 columns are present in the DataFrame.\n")
+            #print("\nAll version 2 columns are present in the DataFrame.\n")
             self.column_headers = version2_columns
             self.column_headers["unitType"] = 'MB'
         else:
@@ -432,7 +431,9 @@ class Analyzer:
         
         colors = [supported_os_colors[os] for os in filtered_counts.index]
         
-        print(filtered_counts)
+        # This removes unwanted lines from the output that Pandas generates
+        clean_output = '\n'.join([line.strip() for line in str(filtered_counts).split('\n') if not line.startswith('Name:') and not line.startswith('dtype')])
+        print(clean_output)
         
         if self.args.generate_graphs:
             if environment_filter and environment_filter != "both":
@@ -535,26 +536,27 @@ class Analyzer:
         print(formatted_df_str)
         print()
 
-    def plot_disk_space_distribution(self, os_name=None, os_version=None, show_disk_in_tb=False):
+    def print_disk_space_distribution(self, dataFrame=None, disk_space_ranges=None, os_name=None, os_version=None, show_disk_in_tb=False):
         """
-        Plots the distribution of disk space for virtual machines based on specified criteria.
+        Prints the distribution of disk space for virtual machines based on specified criteria.
 
         Args:
             os_name: Name of the operating system (default: None).
             os_version: Version of the operating system (default: None).
             show_disk_in_tb: Boolean flag to filter disk space greater than 2000 GB (default: False).
-            frameHeading: Column header for disk space (default: "VM Provisioned (GB)").
 
         Returns:
             None
         """
-        # Create a subplot for plotting
-        fig, ax = plt.subplots()
+        if disk_space_ranges is None:
+            # Calculate disk space ranges and update the DataFrame with the corresponding disk space range for each VM
+            disk_space_ranges = self.calculate_disk_space_ranges(show_disk_in_tb=show_disk_in_tb)
 
-        # Calculate disk space ranges and update the DataFrame with the corresponding disk space range for each VM
-        disk_space_ranges = self.calculate_disk_space_ranges(show_disk_in_tb=show_disk_in_tb)
+        if dataFrame is None:
+            column_name = self.vm_data.column_headers['vmDisk']
+        else:
+            column_name = dataFrame.column_headers['vmDisk']
 
-        column_name = self.vm_data.column_headers['vmDisk']
         # Filter machines based on disk space condition
         for lower, upper in disk_space_ranges:
             mask = (self.vm_data.df[column_name] >= lower) & (self.vm_data.df[column_name] <= upper)
@@ -563,12 +565,9 @@ class Analyzer:
         # Count the number of VMs in each disk space range
         range_counts = {range_: 0 for range_ in disk_space_ranges}
         for lower, upper in disk_space_ranges:
-            mask = (self.vm_data.df[column_name]  >= lower) & (self.vm_data.df[column_name]  <= upper)
+            mask = (self.vm_data.df[column_name] >= lower) & (self.vm_data.df[column_name] <= upper)
             count = self.vm_data.df.loc[mask].shape[0]
             range_counts[(lower, upper)] = count
-
-        # Sort the counts and plot them as a horizontal bar chart
-        sorted_dict = dict(sorted(range_counts.items(), key=lambda x: x[1]))
 
         # Print the disk space ranges and counts
         print("Disk Space Range (GB)\t\tCount")
@@ -576,30 +575,116 @@ class Analyzer:
             disk_range_str = f"{disk_range[0][0]}-{disk_range[0][1]}"
             print(f"{disk_range_str.ljust(32)} {disk_range[1]}")
 
-        if self.args.generate_graphs:
-            for range_, count in sorted_dict.items():
-                if os_name:
-                    ax.barh(f'{range_[0]}-{range_[1]} GB', count, label=os_name)
-                else:
-                    ax.barh(f'{range_[0]}-{range_[1]} GB', count)
+    def plot_disk_space_distribution_graph(self, range_counts=None, os_name=None, os_version=None):
+        """
+        Plots the distribution of disk space for virtual machines based on specified criteria using matplotlib.
 
-            # Set titles and labels for the plot
-            ax.set_ylabel('Disk Space Range')
-            ax.set_xlabel('Number of Machines')
-            ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+        Args:
+            range_counts: Dictionary containing disk space ranges and their counts.
+            os_name: Name of the operating system (default: None).
+            os_version: Version of the operating system (default: None).
 
-            if os_name and os_version:
-                ax.set_title(f'Hard Drive Space Breakdown for {os_name} {os_version}')
-            elif os_name:
-                ax.set_title(f'Hard Drive Space Breakdown for {os_name}')
+        Returns:
+            None
+        """
+        if range_counts is None:
+            raise ValueError("range_counts cannot be None. Please provide a dictionary of disk space ranges and their counts.")
+
+        # Sort the counts and plot them as a horizontal bar chart
+        sorted_dict = dict(sorted(range_counts.items(), key=lambda x: x[1]))
+
+        fig, ax = plt.subplots()
+
+        for range_, count in sorted_dict.items():
+            if os_name:
+                ax.barh(f'{range_[0]}-{range_[1]} GB', count, label=os_name)
             else:
-                ax.set_title('Hard Drive Space Breakdown for All Environments')
+                ax.barh(f'{range_[0]}-{range_[1]} GB', count)
 
-            ax.set_xlim(right=max(range_counts.values()) + 1.5)
+        # Set titles and labels for the plot
+        ax.set_ylabel('Disk Space Range')
+        ax.set_xlabel('Number of Machines')
+        ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
 
-            # Display the plot
-            plt.show(block=True)
-            plt.close()
+        if os_name and os_version:
+            ax.set_title(f'Hard Drive Space Breakdown for {os_name} {os_version}')
+        elif os_name:
+            ax.set_title(f'Hard Drive Space Breakdown for {os_name}')
+        else:
+            ax.set_title('Hard Drive Space Breakdown for All Environments')
+
+        ax.set_xlim(right=max(range_counts.values()) + 1.5)
+
+        # Display the plot
+        plt.show(block=True)
+        plt.close()
+
+
+    # def plot_disk_space_distribution(self, dataFrame=None, os_name=None, os_version=None, show_disk_in_tb=False):
+    #     """
+    #     Plots the distribution of disk space for virtual machines based on specified criteria.
+
+    #     Args:
+    #         os_name: Name of the operating system (default: None).
+    #         os_version: Version of the operating system (default: None).
+    #         show_disk_in_tb: Boolean flag to filter disk space greater than 2000 GB (default: False).
+    #         frameHeading: Column header for disk space (default: "VM Provisioned (GB)").
+
+    #     Returns:
+    #         None
+    #     """
+    #     # Create a subplot for plotting
+    #     fig, ax = plt.subplots()
+        
+    #     # Calculate disk space ranges and update the DataFrame with the corresponding disk space range for each VM
+    #     disk_space_ranges = self.calculate_disk_space_ranges(show_disk_in_tb=show_disk_in_tb)
+
+    #     column_name = self.vm_data.column_headers['vmDisk']
+    #     # Filter machines based on disk space condition
+    #     for lower, upper in disk_space_ranges:
+    #         mask = (self.vm_data.df[column_name] >= lower) & (self.vm_data.df[column_name] <= upper)
+    #         self.vm_data.df.loc[mask, 'Disk Space Range'] = f'{lower}-{upper} GB'
+
+    #     # Count the number of VMs in each disk space range
+    #     range_counts = {range_: 0 for range_ in disk_space_ranges}
+    #     for lower, upper in disk_space_ranges:
+    #         mask = (self.vm_data.df[column_name]  >= lower) & (self.vm_data.df[column_name]  <= upper)
+    #         count = self.vm_data.df.loc[mask].shape[0]
+    #         range_counts[(lower, upper)] = count
+
+    #     # Sort the counts and plot them as a horizontal bar chart
+    #     sorted_dict = dict(sorted(range_counts.items(), key=lambda x: x[1]))
+
+    #     # Print the disk space ranges and counts
+    #     print("Disk Space Range (GB)\t\tCount")
+    #     for disk_range in range_counts.items():
+    #         disk_range_str = f"{disk_range[0][0]}-{disk_range[0][1]}"
+    #         print(f"{disk_range_str.ljust(32)} {disk_range[1]}")
+
+    #     if self.args.generate_graphs:
+    #         for range_, count in sorted_dict.items():
+    #             if os_name:
+    #                 ax.barh(f'{range_[0]}-{range_[1]} GB', count, label=os_name)
+    #             else:
+    #                 ax.barh(f'{range_[0]}-{range_[1]} GB', count)
+
+    #         # Set titles and labels for the plot
+    #         ax.set_ylabel('Disk Space Range')
+    #         ax.set_xlabel('Number of Machines')
+    #         ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+
+    #         if os_name and os_version:
+    #             ax.set_title(f'Hard Drive Space Breakdown for {os_name} {os_version}')
+    #         elif os_name:
+    #             ax.set_title(f'Hard Drive Space Breakdown for {os_name}')
+    #         else:
+    #             ax.set_title('Hard Drive Space Breakdown for All Environments')
+
+    #         ax.set_xlim(right=max(range_counts.values()) + 1.5)
+
+    #         # Display the plot
+    #         plt.show(block=True)
+    #         plt.close()
             
     def sort_attribute_by_environment(self, *env_keywords, attribute="operatingSystem", os_filter=None, environment_filter=None, show_disk_in_tb=False, over_under_tb=False, frameHeading="VM Provisioned (GB)"):
         env_column = "Environment"
@@ -633,8 +718,9 @@ class Visualizer:
     def __init__(self, analyzer):
         self.analyzer = analyzer
     
-    def visualize_disk_space(self):
-        disk_space_ranges = self.analyzer.calculate_disk_space_ranges()
+    def visualize_disk_space(self, disk_space_ranges=None):
+        if disk_space_ranges is None:
+            disk_space_ranges = self.analyzer.calculate_disk_space_ranges()
         
         # Count the number of VMs in each disk space range
         range_counts = {range_: 0 for range_ in disk_space_ranges}
@@ -722,9 +808,9 @@ class Visualizer:
         plt.show(block=True)
         plt.close()
 
-def main():
+def main(arg_list: list[str]| None = None):
     config = Config()
-    config.parse_arguments()
+    config.parse_arguments(arg_list=arg_list)
     
     vm_data = VMData.from_file(config.args.file)
     vm_data.set_column_headings()
@@ -745,8 +831,10 @@ def main():
     
     # Perform analysis and visualization based on config.args
     if config.args.get_disk_space_ranges:
-        analyzer.calculate_disk_space_ranges(config.args.breakdown_by_terabyte, config.args.over_under_tb)
-        #visualizer.visualize_disk_space()
+        if config.args.sort_by_env:
+            analyzer.sort_attribute_by_environment(attribute="diskSpace", environment_filter=config.args.sort_by_env, over_under_tb=config.args.over_under_tb, *environments)
+           #disk_space_ranges = analyzer.calculate_disk_space_ranges(show_disk_in_tb=config.args.breakdown_by_terabyte, over_under_tb=config.args.over_under_tb)
+            #analyzer.print_disk_space_distribution(disk_space_ranges=disk_space_ranges)
     
     if config.args.show_disk_space_by_os:
         if config.args.os_name:
@@ -773,17 +861,17 @@ def main():
     
     if config.args.get_disk_space_ranges:
         if config.args.sort_by_env == 'all':
-            analyzer.calculate_disk_space_ranges(config.args.breakdown_by_terabyte, config.args.over_under_tb)
+            analyzer.calculate_disk_space_ranges(show_disk_in_tb=config.args.breakdown_by_terabyte, over_under_tb=config.args.over_under_tb)
             #visualizer.visualize_disk_space()
         elif config.args.sort_by_env:
             if config.args.get_disk_space_ranges and environments:
-                analyzer.calculate_disk_space_ranges(config.args.breakdown_by_terabyte, config.args.over_under_tb)
+                analyzer.calculate_disk_space_ranges(show_disk_in_tb=config.args.breakdown_by_terabyte, over_under_tb=config.args.over_under_tb)
                 #visualizer.visualize_disk_space()
             else:
                 print("Failed to determine prod from non-prod environments... Perhaps you did not pass in the --prod-env-labels ?")
                 exit()
         else:
-            analyzer.calculate_disk_space_ranges(config.args.breakdown_by_terabyte, config.args.over_under_tb)
+            analyzer.calculate_disk_space_ranges(show_disk_in_tb=config.args.breakdown_by_terabyte, over_under_tb=config.args.over_under_tb)
             #visualizer.visualize_disk_space()
     
     if config.args.get_os_counts:
