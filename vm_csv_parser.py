@@ -232,7 +232,10 @@ def generate_unsupported_OS_counts(dataFrame):
     supported_os = ['Red Hat Enterprise Linux', 'SUSE Linux Enterprise', 'Microsoft Windows Server', 'Microsoft Windows']
 
     # Filter out supported OS counts
-    unsupported_counts = counts[~counts.index.isin(supported_os)]
+    if args.minimum_count is not None and args.minimum_count > 0:
+        unsupported_counts = counts[~counts.index.isin(supported_os) & (counts >= args.minimum_count)]
+    else:
+        unsupported_counts = counts[~counts.index.isin(supported_os)]
     
     # Combine unsupported OS under 0.7% into "Other" category
     threshold = 0.0075
