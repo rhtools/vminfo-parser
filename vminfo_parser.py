@@ -9,12 +9,13 @@ import re
 import argparse
 import magic
 import sys
+from typing import Union, Optional, List, Dict, Tuple
 
 class Config:
-    def __init__(self):
-        self.args = None
+    def __init__(self) -> None:
+        self.args: Optional[argparse.Namespace] = None
     
-    def parse_arguments(self, arg_list):
+    def parse_arguments(self, arg_list: List[str]) -> None:
         parser = argparse.ArgumentParser(description='Process VM CSV file')
         parser.add_argument('--file', type=str, help='The file to parse', required=True)
         parser.add_argument('--sort-by-env', type=str, nargs='?', help='Sort disk by environment. Use "all" to get combine count, "both" to show both non-prod and prod, or specify one.')
@@ -32,21 +33,21 @@ class Config:
         parser.add_argument('--get-unsupported-os', action="store_true", help="Display a graph of the unsupported operating systems for OpenShift Virt")
         self.args = parser.parse_args(arg_list)
     
-    def load_from_file(self, file_path):
+    def load_from_file(self, file_path: str) -> None:
         # Implement loading configuration from file
         pass
     
-    def load_from_env(self):
+    def load_from_env(self) -> None:
         # Implement loading configuration from environment variables
         pass
 
 class VMData:
-    def __init__(self, df):
-        self.df = df
-        self.column_headers = {}
+    def __init__(self, df: pd.DataFrame) -> None:
+        self.df: pd.DataFrame = df
+        self.column_headers: Dict[str, str] = {}
     
     @classmethod
-    def get_file_type(cls, file_path):
+    def get_file_type(cls, file_path: str) -> str:
         """
         Returns the MIME type of the file located at the specified file path.
 
@@ -63,7 +64,7 @@ class VMData:
         return mime_type
         
     @classmethod
-    def from_file(cls, file_path):
+    def from_file(cls, file_path: str) -> 'VMData':
         file_type = cls.get_file_type(file_path)
         if "csv" in file_type:
             df = pd.read_csv(file_path)
@@ -74,23 +75,21 @@ class VMData:
             exit()
         return cls(df)
     
-    def set_column_headings(self):
+    def set_column_headings(self) -> None:
         version1_columns = {"operatingSystem": "VM OS", "environment": "Environment", "vmMemory": 'VM MEM (GB)', "vmDisk": 'VM Provisioned (GB)'}
         version2_columns = {"operatingSystem": "OS according to the configuration file", "environment": "ent-env", "vmMemory": 'Memory', "vmDisk": 'Total disk capacity MiB'}
         
         if all(col in self.df.columns for col in version1_columns.values()):
-            #print("\nAll version 1 columns are present in the DataFrame.\n")
             self.column_headers = version1_columns
             self.column_headers["unitType"] = 'GB'
         elif all(col in self.df.columns for col in version2_columns.values()):
-            #print("\nAll version 2 columns are present in the DataFrame.\n")
             self.column_headers = version2_columns
             self.column_headers["unitType"] = 'MB'
         else:
             print(f"Missing column headers from either {version1_columns.values} or {version2_columns.values}")
             raise ValueError("Headers don't match either of the versions expected")
     
-    def add_extra_columns(self):
+    def add_extra_columns(self) -> None:
         os_column = self.column_headers['operatingSystem']
         windows_server_columns = ['Server OS Name', 'Server OS Version', 'Server Architecture']
         windows_desktop_columns = ['Desktop OS Name', 'Desktop OS Version', 'Desktop Architecture']
@@ -118,16 +117,16 @@ class VMData:
         
         self.save_to_csv("/tmp/my_file.csv")
     
-    def save_to_csv(self, path):
+    def save_to_csv(self, path: str) -> None:
         self.df.to_csv(path, index=False)
 
 class Analyzer:
-    def __init__(self, vm_data, parser_args, column_headers=None):
+    def __init__(self, vm_data: VMData, parser_args: argparse.Namespace, column_headers: Optional[Dict[str, str]] = None) -> None:
         self.vm_data = vm_data
         self.args = parser_args
         self.column_headers = column_headers
 
-    def calculate_average_ram(self, environment_type):
+    def calculate_average_ram(self, environment_type: str) -> None:
         os_values = self.vm_data.df['OS Name'].unique()
         
         print("{:<20} {:<10}".format("OS", "Average RAM (GB)"))
@@ -140,7 +139,7 @@ class Analyzer:
                 avg_ram = filtered_hosts[self.column_headers['vmMemory']].mean()
                 print("{:<20} {:<10.2f}".format(os, avg_ram))
 
-    def calculate_disk_space_ranges(self, dataFrame=None, show_disk_in_tb=False, over_under_tb=False):
+    def calculate_disk_space_ranges(self, dataFrame: Optional[pd.DataFrame] = None, show_disk_in_tb: bool = False, over_under_tb: bool = False) -> List[Tuple[int, int]]:
         if dataFrame is None:
             # default to the dataframe in the attribute unless overridden
             dataFrame = self.vm_data.df
@@ -191,7 +190,7 @@ class Analyzer:
         
         return disk_space_ranges_with_vms
 
-    def categorize_environment(self, x, *args):
+    def categorize_environment(self, x: str, *args: str) -> str:
         if pd.isnull(x):
             return 'non-prod'
 
@@ -207,7 +206,7 @@ class Analyzer:
         return 'non-prod'
 
 
-    def format_dataframe_output(self, dataFrame, os_name=None):
+    def format_dataframe_output(self, dataFrame: pd.DataFrame, os_name: Optional[str] = None) -> None:
         if dataFrame.index.nlevels == 2:
             pass
         else:
@@ -222,7 +221,8 @@ class Analyzer:
             for version, count_value in zip(os_version, count):
                 print(f"{version.ljust(32)} {count_value}")
 
-    def handle_disk_space(self, dataFrame, environment_filter, env_keywords, os_filter=None, show_disk_in_tb=False, over_under_tb=False):
+    def handle_disk_space(self, dataFrame: pd.DataFrame, environment_filter: str, env_keywords: List[str], os_filter: Optional[str] = None, 
+                          show_disk_in_tb: bool = False, over_under_tb: bool = False) -> None:
         # NOTE: I am taking in the dataFrame as it is a mutated copy of the original dataFrame stored in self.vmdata.df
         # This copy has a paired down version of the information and then environments have been changed to prod/non-prod
         diskHeading = self.column_headers['vmDisk']
@@ -289,8 +289,9 @@ class Analyzer:
             counts['combined_total'] = counts['prod'] + counts['non-prod']
             counts = counts[(counts['total'] >= min_count) & (counts['combined_total'] >= min_count)].drop(['total', 'combined_total'], axis=1)
             counts = counts.sort_values(by='prod', ascending=False)
-        
-        print(counts)
+
+        clean_output = '\n'.join([line.strip() for line in str(counts).split('\n') if not line.startswith('Name:') and not line.startswith('dtype')])
+        print(clean_output)
         
         os_names = [idx[1] for idx in counts.index] if counts.index.nlevels == 2 else counts.index
         os_colors = {
@@ -313,7 +314,7 @@ class Analyzer:
             plt.title(f'OS Counts by Environment Type (>= {min_count})')
             plt.show(block=True)
 
-    def generate_all_OS_counts(self, minimumCount=500, maximumCount=99999):
+    def generate_all_OS_counts(self, minimumCount: int = 500, maximumCount: int = 99999) -> None:
         counts = self.vm_data.df['OS Name'].value_counts()
         if self.args.minimum_count:
             minimumCount = self.args.minimum_count
@@ -380,7 +381,8 @@ class Analyzer:
         else:
             filtered_counts.plot(kind='barh', rot=45)
         
-        print(filtered_counts)
+        clean_output = '\n'.join([line.strip() for line in str(filtered_counts).split('\n') if not line.startswith('Name:') and not line.startswith('dtype')])
+        print(clean_output)
         
         if self.args.generate_graphs:
             if environment_filter not in ['prod', 'non-prod']:
@@ -400,7 +402,7 @@ class Analyzer:
             plt.close()
 
  
-    def generate_supported_OS_counts(self, *env_keywords, environment_filter=None):
+    def generate_supported_OS_counts(self, *env_keywords: str, environment_filter: Optional[str] = None) -> None:
         data_cp = self.vm_data.df.copy()
         if environment_filter and env_keywords:
             data_cp['Environment'] = self.vm_data.df['Environment'].apply(self.categorize_environment, args=env_keywords)
@@ -456,20 +458,20 @@ class Analyzer:
             plt.show(block=True)
             plt.close()
 
-    def generate_unsupported_OS_counts(self):
+    def generate_unsupported_OS_counts(self) -> None:
         counts = self.vm_data.df['OS Name'].value_counts()
         
         supported_os = ['Red Hat Enterprise Linux', 'SUSE Linux Enterprise', 'Microsoft Windows Server', 'Microsoft Windows']
-        
         unsupported_counts = counts[~counts.index.isin(supported_os)]
         
-        threshold = 0.0075
-        other_counts = unsupported_counts[unsupported_counts / unsupported_counts.sum() < threshold]
+        other_counts = unsupported_counts[unsupported_counts <= 500]
         other_total = other_counts.sum()
-        unsupported_counts = unsupported_counts[~unsupported_counts.index.isin(other_counts.index)]
+        unsupported_counts = unsupported_counts[unsupported_counts > 500]
         unsupported_counts['Other'] = other_total
         
-        print(unsupported_counts)
+        clean_output = '\n'.join([line.strip() for line in str(unsupported_counts).split('\n') if not line.startswith('Name:') and not line.startswith('dtype')])
+        
+        print(clean_output)
         
         if self.args.generate_graphs:
             random_colors = cm.rainbow(np.linspace(0, 1, len(unsupported_counts)))
@@ -479,7 +481,8 @@ class Analyzer:
             plt.show(block=True)
             plt.close()
 
-    def os_by_version(self, os_name):
+
+    def os_by_version(self, os_name: str) -> None:
         filtered_df = self.vm_data.df[(self.vm_data.df['OS Name'] == os_name)]
         counts = filtered_df['OS Version'].fillna('unknown').value_counts().reset_index()
         counts.columns = ['OS Version', 'Count']
@@ -503,7 +506,8 @@ class Analyzer:
                 plt.show(block=True)
                 plt.close()
 
-    def print_formatted_disk_space(self, sorted_range_counts_by_environment, environment_filter, env_keywords, os_filter=None):
+    def print_formatted_disk_space(self, sorted_range_counts_by_environment: pd.DataFrame, environment_filter: str, env_keywords: List[str], 
+                                   os_filter: Optional[str] = None) -> None:
         col_widths = {'Environment': 22, **{env: 10 for env in sorted_range_counts_by_environment.columns}} if env_keywords and environment_filter != "all" else {**{env: 17 for env in sorted_range_counts_by_environment.columns}}
         formatted_rows = []
         
@@ -536,7 +540,8 @@ class Analyzer:
         print(formatted_df_str)
         print()
 
-    def print_disk_space_distribution(self, dataFrame=None, disk_space_ranges=None, os_name=None, os_version=None, show_disk_in_tb=False):
+    def plot_disk_space_distribution_graph(self, range_counts: Optional[Dict[Tuple[int, int], int]] = None, os_name: Optional[str] = None, 
+                                           os_version: Optional[str] = None) -> None:
         """
         Prints the distribution of disk space for virtual machines based on specified criteria.
 
@@ -575,7 +580,8 @@ class Analyzer:
             disk_range_str = f"{disk_range[0][0]}-{disk_range[0][1]}"
             print(f"{disk_range_str.ljust(32)} {disk_range[1]}")
 
-    def plot_disk_space_distribution_graph(self, range_counts=None, os_name=None, os_version=None):
+    def plot_disk_space_distribution_graph(self, range_counts: Optional[Dict[Tuple[int, int], int]] = None, os_name: Optional[str] = None, 
+                                           os_version: Optional[str] = None) -> None:
         """
         Plots the distribution of disk space for virtual machines based on specified criteria using matplotlib.
 
@@ -619,74 +625,9 @@ class Analyzer:
         plt.show(block=True)
         plt.close()
 
-
-    # def plot_disk_space_distribution(self, dataFrame=None, os_name=None, os_version=None, show_disk_in_tb=False):
-    #     """
-    #     Plots the distribution of disk space for virtual machines based on specified criteria.
-
-    #     Args:
-    #         os_name: Name of the operating system (default: None).
-    #         os_version: Version of the operating system (default: None).
-    #         show_disk_in_tb: Boolean flag to filter disk space greater than 2000 GB (default: False).
-    #         frameHeading: Column header for disk space (default: "VM Provisioned (GB)").
-
-    #     Returns:
-    #         None
-    #     """
-    #     # Create a subplot for plotting
-    #     fig, ax = plt.subplots()
-        
-    #     # Calculate disk space ranges and update the DataFrame with the corresponding disk space range for each VM
-    #     disk_space_ranges = self.calculate_disk_space_ranges(show_disk_in_tb=show_disk_in_tb)
-
-    #     column_name = self.vm_data.column_headers['vmDisk']
-    #     # Filter machines based on disk space condition
-    #     for lower, upper in disk_space_ranges:
-    #         mask = (self.vm_data.df[column_name] >= lower) & (self.vm_data.df[column_name] <= upper)
-    #         self.vm_data.df.loc[mask, 'Disk Space Range'] = f'{lower}-{upper} GB'
-
-    #     # Count the number of VMs in each disk space range
-    #     range_counts = {range_: 0 for range_ in disk_space_ranges}
-    #     for lower, upper in disk_space_ranges:
-    #         mask = (self.vm_data.df[column_name]  >= lower) & (self.vm_data.df[column_name]  <= upper)
-    #         count = self.vm_data.df.loc[mask].shape[0]
-    #         range_counts[(lower, upper)] = count
-
-    #     # Sort the counts and plot them as a horizontal bar chart
-    #     sorted_dict = dict(sorted(range_counts.items(), key=lambda x: x[1]))
-
-    #     # Print the disk space ranges and counts
-    #     print("Disk Space Range (GB)\t\tCount")
-    #     for disk_range in range_counts.items():
-    #         disk_range_str = f"{disk_range[0][0]}-{disk_range[0][1]}"
-    #         print(f"{disk_range_str.ljust(32)} {disk_range[1]}")
-
-    #     if self.args.generate_graphs:
-    #         for range_, count in sorted_dict.items():
-    #             if os_name:
-    #                 ax.barh(f'{range_[0]}-{range_[1]} GB', count, label=os_name)
-    #             else:
-    #                 ax.barh(f'{range_[0]}-{range_[1]} GB', count)
-
-    #         # Set titles and labels for the plot
-    #         ax.set_ylabel('Disk Space Range')
-    #         ax.set_xlabel('Number of Machines')
-    #         ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
-
-    #         if os_name and os_version:
-    #             ax.set_title(f'Hard Drive Space Breakdown for {os_name} {os_version}')
-    #         elif os_name:
-    #             ax.set_title(f'Hard Drive Space Breakdown for {os_name}')
-    #         else:
-    #             ax.set_title('Hard Drive Space Breakdown for All Environments')
-
-    #         ax.set_xlim(right=max(range_counts.values()) + 1.5)
-
-    #         # Display the plot
-    #         plt.show(block=True)
-    #         plt.close()
-            
-    def sort_attribute_by_environment(self, *env_keywords, attribute="operatingSystem", os_filter=None, environment_filter=None, show_disk_in_tb=False, over_under_tb=False, frameHeading="VM Provisioned (GB)"):
+    def sort_attribute_by_environment(self, *env_keywords: str, attribute: str = "operatingSystem", os_filter: Optional[str] = None, 
+                                      environment_filter: Optional[str] = None, show_disk_in_tb: bool = False, over_under_tb: bool = False, 
+                                      frameHeading: str = "VM Provisioned (GB)") -> None:
         env_column = "Environment"
         data_cp = self.vm_data.df.copy()
         
@@ -715,10 +656,10 @@ class Analyzer:
             #handle_disk_space(self, environment_filter, env_keywords, os_filter=None, show_disk_in_tb=False, over_under_tb=False):
 
 class Visualizer:
-    def __init__(self, analyzer):
+    def __init__(self, analyzer: Analyzer) -> None:
         self.analyzer = analyzer
     
-    def visualize_disk_space(self, disk_space_ranges=None):
+    def visualize_disk_space(self, disk_space_ranges: Optional[List[Tuple[int, int]]] = None) -> None:
         if disk_space_ranges is None:
             disk_space_ranges = self.analyzer.calculate_disk_space_ranges()
         
@@ -763,7 +704,7 @@ class Visualizer:
         plt.show(block=True)
         plt.close()
     
-    def visualize_os_distribution(self):
+    def visualize_os_distribution(self) -> None:
         os_column = self.analyzer.vm_data.column_headers['operatingSystem']
         env_column = 'Environment'
         
@@ -808,7 +749,7 @@ class Visualizer:
         plt.show(block=True)
         plt.close()
 
-def main(arg_list: list[str]| None = None):
+def main(arg_list: Optional[List[str]] = None) -> None:
     config = Config()
     config.parse_arguments(arg_list=arg_list)
     
