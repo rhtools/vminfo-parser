@@ -34,7 +34,7 @@ class TestVMInfoParser(unittest.TestCase):
         self.run_test_with_args(
             [
                 "--file",
-                "machine_reports/tests/files/Test_Inventory_VMs.xlsx",
+                "tests/files/Test_Inventory_VMs.xlsx",
                 "--get-supported-os",
                 "--sort-by-env",
                 "all",
@@ -48,7 +48,7 @@ class TestVMInfoParser(unittest.TestCase):
         self.run_test_with_args(
             [
                 "--file",
-                "machine_reports/tests/files/Test_Inventory_VMs.xlsx",
+                "tests/files/Test_Inventory_VMs.xlsx",
                 "--get-supported-os",
                 "--sort-by-env",
                 "non-prod",
@@ -62,7 +62,7 @@ class TestVMInfoParser(unittest.TestCase):
         self.run_test_with_args(
             [
                 "--file",
-                "machine_reports/tests/files/Test_Inventory_VMs.xlsx",
+                "tests/files/Test_Inventory_VMs.xlsx",
                 "--get-supported-os",
                 "--minimum-count",
                 "500",
@@ -78,7 +78,7 @@ class TestVMInfoParser(unittest.TestCase):
         self.run_test_with_args(
             [
                 "--file",
-                "machine_reports/tests/files/Test_Inventory_VMs.xlsx",
+                "tests/files/Test_Inventory_VMs.xlsx",
                 "--get-unsupported-os",
                 "--minimum-count",
                 "500",
@@ -94,7 +94,7 @@ class TestVMInfoParser(unittest.TestCase):
         self.run_test_with_args(
             [
                 "--file",
-                "machine_reports/tests/files/Test_Inventory_VMs.xlsx",
+                "tests/files/Test_Inventory_VMs.xlsx",
                 "--get-os-counts",
                 "--minimum-count",
                 "500",
@@ -106,7 +106,7 @@ class TestVMInfoParser(unittest.TestCase):
         self.run_test_with_args(
             [
                 "--file",
-                "machine_reports/tests/files/Test_Inventory_VMs.xlsx",
+                "tests/files/Test_Inventory_VMs.xlsx",
                 "--get-disk-space-ranges",
                 "--sort-by-env",
                 "both",
@@ -120,7 +120,7 @@ class TestVMInfoParser(unittest.TestCase):
         self.run_test_with_args(
             [
                 "--file",
-                "machine_reports/tests/files/Test_Inventory_VMs.xlsx",
+                "tests/files/Test_Inventory_VMs.xlsx",
                 "--get-disk-space-ranges",
                 "--sort-by-env",
                 "prod",
@@ -134,7 +134,7 @@ class TestVMInfoParser(unittest.TestCase):
         self.run_test_with_args(
             [
                 "--file",
-                "machine_reports/tests/files/Test_Inventory_VMs.xlsx",
+                "tests/files/Test_Inventory_VMs.xlsx",
                 "--get-disk-space-ranges",
                 "--sort-by-env",
                 "prod",
