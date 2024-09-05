@@ -12,3 +12,10 @@ updates:
     target-branch: dev
     commit-message:
       prefix: "build(dep): "
+  - package-ecosystem: "github-actions" # See documentation for possible values
+    directory: "/" # Location of package manifests
+    schedule:
+      interval: "weekly"
+    target-branch: dev
+    commit-message:
+      prefix: "build(ci): "
