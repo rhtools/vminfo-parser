@@ -19,9 +19,7 @@ class Config:
 
     def parse_arguments(self: t.Self, arg_list: list[str]) -> None:
         parser = argparse.ArgumentParser(description="Process VM CSV file")
-        parser.add_argument(
-            "--file", type=str, help="The file to parse", required=True
-        )
+        parser.add_argument("--file", type=str, help="The file to parse", required=True)
         parser.add_argument(
             "--sort-by-env",
             type=str,
@@ -135,9 +133,7 @@ class VMData:
         elif "spreadsheetml" in file_type:
             df = pd.read_excel(file_path)
         else:
-            print(
-                "File passed in was neither a CSV nor an Excel file\nBailing..."
-            )
+            print("File passed in was neither a CSV nor an Excel file\nBailing...")
             exit()
         return cls(df)
 
@@ -162,12 +158,8 @@ class VMData:
             self.column_headers = version2_columns
             self.column_headers["unitType"] = "MB"
         else:
-            print(
-                f"Missing column headers from either {version1_columns.values} or {version2_columns.values}"
-            )
-            raise ValueError(
-                "Headers don't match either of the versions expected"
-            )
+            print(f"Missing column headers from either {version1_columns.values} or {version2_columns.values}")
+            raise ValueError("Headers don't match either of the versions expected")
 
     def add_extra_columns(self: t.Self) -> None:
         os_column = self.column_headers["operatingSystem"]
@@ -182,10 +174,7 @@ class VMData:
             "Desktop Architecture",
         ]
 
-        if not all(
-            col in self.df.columns
-            for col in ["OS Name", "OS Version", "Architecture"]
-        ):
+        if not all(col in self.df.columns for col in ["OS Name", "OS Version", "Architecture"]):
             exclude_windows_pattern = (
                 r"^(?!.*Microsoft)(?P<OS_Name>.*?)(?:\s+"
                 r"(?P<OS_Version>\d+(?:/\d+)*\s*(?:or later)?\s*)?\s*"
@@ -202,19 +191,13 @@ class VMData:
                 r"\((?P<Architecture>.*?64-bit|.*?32-bit)\)"
             )
 
-            self.df[["OS Name", "OS Version", "Architecture"]] = self.df[
-                os_column
-            ].str.extract(exclude_windows_pattern)
-            self.df[windows_server_columns] = self.df[os_column].str.extract(
-                windows_server_pattern
-            )
+            self.df[["OS Name", "OS Version", "Architecture"]] = self.df[os_column].str.extract(exclude_windows_pattern)
+            self.df[windows_server_columns] = self.df[os_column].str.extract(windows_server_pattern)
             self.df[windows_desktop_columns] = self.df[os_column].str.extract(
                 windows_desktop_pattern, flags=re.IGNORECASE
             )
 
-            self.df["OS Name"] = self.df["Server OS Name"].where(
-                self.df["OS Name"].isnull(), self.df["OS Name"]
-            )
+            self.df["OS Name"] = self.df["Server OS Name"].where(self.df["OS Name"].isnull(), self.df["OS Name"])
             self.df["OS Version"] = self.df["Server OS Version"].where(
                 self.df["OS Version"].isnull(), self.df["OS Version"]
             )
@@ -222,9 +205,7 @@ class VMData:
                 self.df["Architecture"].isnull(), self.df["Architecture"]
             )
 
-            self.df["OS Name"] = self.df["Desktop OS Name"].where(
-                self.df["OS Name"].isnull(), self.df["OS Name"]
-            )
+            self.df["OS Name"] = self.df["Desktop OS Name"].where(self.df["OS Name"].isnull(), self.df["OS Name"])
             self.df["OS Version"] = self.df["Desktop OS Version"].where(
                 self.df["OS Version"].isnull(), self.df["OS Version"]
             )
@@ -250,9 +231,7 @@ class CLIOutput:
     def __init__(self: t.Self) -> None:
         pass
 
-    def format_dataframe_output(
-        self: t.Self, dataFrame: pd.DataFrame, os_name: t.Optional[str] = None
-    ) -> None:
+    def format_dataframe_output(self: t.Self, dataFrame: pd.DataFrame, os_name: t.Optional[str] = None) -> None:
         if dataFrame.index.nlevels == 2:
             pass
         else:
@@ -267,24 +246,12 @@ class CLIOutput:
             for version, count_value in zip(os_version, count):
                 print(f"{version.ljust(32)} {count_value}")
 
-    def generate_os_version_distribution(
-        self: t.Self, analyzer: A, os_name: str
-    ) -> pd.DataFrame:
-        filtered_df = analyzer.vm_data.df[
-            (analyzer.vm_data.df["OS Name"] == os_name)
-        ]
-        counts = (
-            filtered_df["OS Version"]
-            .fillna("unknown")
-            .value_counts()
-            .reset_index()
-        )
+    def generate_os_version_distribution(self: t.Self, analyzer: A, os_name: str) -> pd.DataFrame:
+        filtered_df = analyzer.vm_data.df[(analyzer.vm_data.df["OS Name"] == os_name)]
+        counts = filtered_df["OS Version"].fillna("unknown").value_counts().reset_index()
         counts.columns = ["OS Version", "Count"]
 
-        if (
-            analyzer.args.minimum_count is not None
-            and analyzer.args.minimum_count > 0
-        ):
+        if analyzer.args.minimum_count is not None and analyzer.args.minimum_count > 0:
             counts = counts[counts["Count"] >= analyzer.args.minimum_count]
 
         return counts
@@ -299,26 +266,15 @@ class CLIOutput:
         col_widths = (
             {
                 "Environment": 22,
-                **{
-                    env: 10
-                    for env in sorted_range_counts_by_environment.columns
-                },
+                **{env: 10 for env in sorted_range_counts_by_environment.columns},
             }
             if env_keywords and environment_filter != "all"
-            else {
-                **{
-                    env: 17
-                    for env in sorted_range_counts_by_environment.columns
-                }
-            }
+            else {**{env: 17 for env in sorted_range_counts_by_environment.columns}}
         )
         formatted_rows = []
 
         if environment_filter == "all":
-            formatted_rows.append(
-                "Disk Space Range".ljust(20)
-                + "Count".ljust(col_widths["Count"])
-            )
+            formatted_rows.append("Disk Space Range".ljust(20) + "Count".ljust(col_widths["Count"]))
             justification = 19
         else:
             justification = 15
@@ -346,9 +302,7 @@ class CLIOutput:
         print(formatted_df_str)
         print()
 
-    def print_disk_space_ranges(
-        self: t.Self, range_counts: dict[tuple[int, int], int]
-    ) -> None:
+    def print_disk_space_ranges(self: t.Self, range_counts: dict[tuple[int, int], int]) -> None:
         print("Disk Space Range (GB)\t\tCount")
         for disk_range, count in range_counts.items():
             disk_range_str = f"{disk_range[0]}-{disk_range[1]}"
@@ -370,16 +324,8 @@ class Visualizer:
         # Count the number of VMs in each disk space range
         range_counts = {range_: 0 for range_ in disk_space_ranges}
         for lower, upper in disk_space_ranges:
-            mask = (
-                self.analyzer.vm_data.df[
-                    self.analyzer.vm_data.column_headers["vmDisk"]
-                ]
-                >= lower
-            ) & (
-                self.analyzer.vm_data.df[
-                    self.analyzer.vm_data.column_headers["vmDisk"]
-                ]
-                <= upper
+            mask = (self.analyzer.vm_data.df[self.analyzer.vm_data.column_headers["vmDisk"]] >= lower) & (
+                self.analyzer.vm_data.df[self.analyzer.vm_data.column_headers["vmDisk"]] <= upper
             )
             count = self.analyzer.vm_data.df.loc[mask].shape[0]
             range_counts[(lower, upper)] = count
@@ -418,15 +364,11 @@ class Visualizer:
         os_filter: t.Optional[str] = None,
     ) -> None:
         if self.analyzer.args.generate_graphs:
-            range_counts_by_environment.plot(
-                kind="bar", stacked=False, figsize=(12, 8), rot=45
-            )
+            range_counts_by_environment.plot(kind="bar", stacked=False, figsize=(12, 8), rot=45)
 
             plt.xlabel("Disk Space Range")
             plt.ylabel("Number of VMs")
-            plt.title(
-                f'VM Disk Size Ranges Sorted by Environment {f"for {os_filter}" if os_filter else ""}'
-            )
+            plt.title(f'VM Disk Size Ranges Sorted by Environment {f"for {os_filter}" if os_filter else ""}')
 
             plt.show(block=True)
             plt.close()
@@ -441,10 +383,7 @@ class Visualizer:
         # Define specific colors for identified OS names
         # Generate random colors for bars not in supported_os_colors
         random_colors = cm.rainbow(np.linspace(0, 1, len(counts)))
-        colors = [
-            self.analyzer.supported_os_colors.get(os, random_colors[i])
-            for i, os in enumerate(os_names)
-        ]
+        colors = [self.analyzer.supported_os_colors.get(os, random_colors[i]) for i, os in enumerate(os_names)]
 
         # Plot the counts as a horizontal bar chart with specified and random colors
         # ax = counts.plot(kind="barh", rot=45, color=colors)
@@ -471,10 +410,7 @@ class Visualizer:
         min_count: int = 500,
     ) -> None:
         random_colors = cm.rainbow(np.linspace(0, 1, len(counts)))
-        colors = [
-            self.analyzer.supported_os_colors.get(os, random_colors[i])
-            for i, os in enumerate(os_names)
-        ]
+        colors = [self.analyzer.supported_os_colors.get(os, random_colors[i]) for i, os in enumerate(os_names)]
 
         # ax = counts.plot(kind="barh", rot=45, color=colors)
         counts.plot(kind="barh", rot=45, color=colors)
@@ -490,13 +426,9 @@ class Visualizer:
             plt.show(block=True)
             plt.close()
 
-    def visualize_unsupported_os_distribution(
-        self: t.Self, unsupported_counts: pd.Series
-    ) -> None:
+    def visualize_unsupported_os_distribution(self: t.Self, unsupported_counts: pd.Series) -> None:
         if self.analyzer.args.generate_graphs:
-            random_colors = cm.rainbow(
-                np.linspace(0, 1, len(unsupported_counts))
-            )
+            random_colors = cm.rainbow(np.linspace(0, 1, len(unsupported_counts)))
             plt.pie(
                 unsupported_counts,
                 labels=unsupported_counts.index,
@@ -514,9 +446,7 @@ class Visualizer:
         environment_filter: t.Optional[str] = None,
     ) -> None:
         if self.analyzer.args.generate_graphs:
-            colors = [
-                self.analyzer.supported_os_colors[os] for os in counts.index
-            ]
+            colors = [self.analyzer.supported_os_colors[os] for os in counts.index]
 
             if environment_filter and environment_filter != "both":
                 counts.plot(kind="barh", rot=45, color=colors)
@@ -526,9 +456,7 @@ class Visualizer:
             if environment_filter not in ["prod", "non-prod"]:
                 plt.title("Supported Operating Systems For All Environments")
             else:
-                plt.title(
-                    f"Supported Operating Systems for {environment_filter.title()}"
-                )
+                plt.title(f"Supported Operating Systems for {environment_filter.title()}")
 
             plt.ylabel("Operating Systems")
             plt.xlabel("Count")
@@ -539,8 +467,7 @@ class Visualizer:
                 plt.xticks(
                     [
                         counts.iloc[0] - (counts.iloc[0] % 100),
-                        counts.iloc[len(counts) // 2]
-                        - (counts.iloc[len(counts) // 2] % 100),
+                        counts.iloc[len(counts) // 2] - (counts.iloc[len(counts) // 2] % 100),
                         counts.iloc[-1],
                     ]
                 )
@@ -549,9 +476,7 @@ class Visualizer:
             plt.close()
 
     def visualize_os_version_distribution(self: t.Self, os_name: str) -> None:
-        counts = self.cli_output.generate_os_version_distribution(
-            self.analyzer, os_name
-        )
+        counts = self.cli_output.generate_os_version_distribution(self.analyzer, os_name)
 
         if not counts.empty:
             ax = counts.plot(kind="barh", rot=45)
@@ -597,12 +522,7 @@ class Analyzer:
 
         for os in os_values:
             filtered_hosts = self.vm_data.df[
-                (self.vm_data.df["OS Name"] == os)
-                & (
-                    self.vm_data.df["Environment"].str.contains(
-                        environment_type
-                    )
-                )
+                (self.vm_data.df["OS Name"] == os) & (self.vm_data.df["Environment"].str.contains(environment_type))
             ]
 
             if not filtered_hosts.empty:
@@ -624,21 +544,15 @@ class Analyzer:
         # we want to check and replace the comma
         for index, row in dataFrame.iterrows():
             if isinstance(row[frameHeading], str):
-                dataFrame.at[index, frameHeading] = row[frameHeading].replace(
-                    ",", ""
-                )
+                dataFrame.at[index, frameHeading] = row[frameHeading].replace(",", "")
 
-        dataFrame[frameHeading] = pd.to_numeric(
-            dataFrame[frameHeading], errors="coerce"
-        )
+        dataFrame[frameHeading] = pd.to_numeric(dataFrame[frameHeading], errors="coerce")
         unit = self.column_headers["unitType"]
 
         min_disk_space = round(int(dataFrame[frameHeading].min()))
         max_disk_space = round(int(dataFrame[frameHeading].max()))
 
-        final_range = (
-            (9001, max_disk_space) if max_disk_space > 9000 else (10001, 15000)
-        )
+        final_range = (9001, max_disk_space) if max_disk_space > 9000 else (10001, 15000)
 
         if show_disk_in_tb:
             disk_space_ranges = [
@@ -719,13 +633,9 @@ class Analyzer:
 
         for lower, upper in disk_space_ranges:
             if unit == "MB":
-                mask = (round(dataFrame[diskHeading] / 1024) >= lower) & (
-                    round(dataFrame[diskHeading] / 1024) <= upper
-                )
+                mask = (round(dataFrame[diskHeading] / 1024) >= lower) & (round(dataFrame[diskHeading] / 1024) <= upper)
             else:
-                mask = (dataFrame[diskHeading] >= lower) & (
-                    dataFrame[diskHeading] <= upper
-                )
+                mask = (dataFrame[diskHeading] >= lower) & (dataFrame[diskHeading] <= upper)
 
             dataFrame.loc[mask, "Disk Space Range"] = f"{lower}-{upper} GB"
 
@@ -734,18 +644,12 @@ class Analyzer:
 
         if environment_filter == "both":
             range_counts_by_environment = (
-                dataFrame.groupby(["Disk Space Range", envHeading])
-                .size()
-                .unstack(fill_value=0)
+                dataFrame.groupby(["Disk Space Range", envHeading]).size().unstack(fill_value=0)
             )
         elif environment_filter == "all":
-            range_counts_by_environment = (
-                dataFrame["Disk Space Range"].value_counts().reset_index()
-            )
+            range_counts_by_environment = dataFrame["Disk Space Range"].value_counts().reset_index()
             range_counts_by_environment.columns = ["Disk Space Range", "Count"]
-            range_counts_by_environment.set_index(
-                "Disk Space Range", inplace=True
-            )
+            range_counts_by_environment.set_index("Disk Space Range", inplace=True)
         else:
             range_counts_by_environment = (
                 dataFrame[dataFrame[envHeading] == environment_filter]
@@ -755,20 +659,10 @@ class Analyzer:
             )
 
         range_counts_by_environment["second_number"] = (
-            range_counts_by_environment.index.str.split("-")
-            .str[1]
-            .str.split()
-            .str[0]
-            .astype(int)
+            range_counts_by_environment.index.str.split("-").str[1].str.split().str[0].astype(int)
         )
-        sorted_range_counts_by_environment = (
-            range_counts_by_environment.sort_values(
-                by="second_number", ascending=True
-            )
-        )
-        sorted_range_counts_by_environment.drop(
-            "second_number", axis=1, inplace=True
-        )
+        sorted_range_counts_by_environment = range_counts_by_environment.sort_values(by="second_number", ascending=True)
+        sorted_range_counts_by_environment.drop("second_number", axis=1, inplace=True)
 
         if os_filter:
             self.cli_output.print_formatted_disk_space(
@@ -794,12 +688,8 @@ class Analyzer:
                 os_filter=os_filter,
             )
 
-    def handle_operating_system_counts(
-        self: t.Self, environment_filter: str, dataFrame: pd.DataFrame = None
-    ) -> None:
-        counts, os_names = self._calculate_os_counts(
-            environment_filter, dataFrame
-        )
+    def handle_operating_system_counts(self: t.Self, environment_filter: str, dataFrame: pd.DataFrame = None) -> None:
+        counts, os_names = self._calculate_os_counts(environment_filter, dataFrame)
 
         clean_output = "\n".join(
             [
@@ -813,9 +703,7 @@ class Analyzer:
         min_count = self.args.minimum_count if self.args.minimum_count else 500
 
         if self.args.generate_graphs:
-            self.visualizer.visualize_os_distribution(
-                counts, os_names, environment_filter, min_count
-            )
+            self.visualizer.visualize_os_distribution(counts, os_names, environment_filter, min_count)
 
     def _calculate_os_counts(
         self: t.Self, environment_filter: str, dataFrame: pd.DataFrame = None
@@ -829,25 +717,15 @@ class Analyzer:
             counts = dataFrame["OS Name"].value_counts()
             counts = counts[counts >= min_count]
         else:
-            counts = (
-                dataFrame.groupby(["OS Name", "Environment"])
-                .size()
-                .unstack()
-                .fillna(0)
-            )
+            counts = dataFrame.groupby(["OS Name", "Environment"]).size().unstack().fillna(0)
             counts["total"] = counts.sum(axis=1)
             counts["combined_total"] = counts["prod"] + counts["non-prod"]
-            counts = counts[
-                (counts["total"] >= min_count)
-                & (counts["combined_total"] >= min_count)
-            ].drop(["total", "combined_total"], axis=1)
+            counts = counts[(counts["total"] >= min_count) & (counts["combined_total"] >= min_count)].drop(
+                ["total", "combined_total"], axis=1
+            )
             counts = counts.sort_values(by="prod", ascending=False)
 
-        os_names = (
-            [idx[1] for idx in counts.index]
-            if counts.index.nlevels == 2
-            else counts.index
-        )
+        os_names = [idx[1] for idx in counts.index] if counts.index.nlevels == 2 else counts.index
 
         return counts, os_names
 
@@ -865,12 +743,7 @@ class Analyzer:
         if environment_filter and environment_filter not in ["all", "both"]:
             data_cp = data_cp[data_cp["Environment"] == environment_filter]
         elif environment_filter == "both":
-            data_cp = (
-                data_cp.groupby(["OS Name", "Environment"])
-                .size()
-                .unstack()
-                .fillna(0)
-            )
+            data_cp = data_cp.groupby(["OS Name", "Environment"]).size().unstack().fillna(0)
 
         if data_cp.empty:
             print(f"None found in {environment_filter} \n")
@@ -881,9 +754,7 @@ class Analyzer:
         else:
             filtered_counts = data_cp
 
-        filtered_counts = filtered_counts[
-            filtered_counts.index.isin(self.supported_os_colors.keys())
-        ]
+        filtered_counts = filtered_counts[filtered_counts.index.isin(self.supported_os_colors.keys())]
         filtered_counts = filtered_counts.astype(int)
 
         # colors = [self.supported_os_colors[os] for os in filtered_counts.index]
@@ -945,13 +816,9 @@ class Analyzer:
             if "ent-env" in self.vm_data.df.columns:
                 env_column = "ent-env"
             else:
-                raise ValueError(
-                    "Neither 'Environment' nor 'ent-env' found in DataFrame columns."
-                )
+                raise ValueError("Neither 'Environment' nor 'ent-env' found in DataFrame columns.")
 
-        data_cp[env_column] = self.vm_data.df[env_column].apply(
-            self.categorize_environment, args=env_keywords
-        )
+        data_cp[env_column] = self.vm_data.df[env_column].apply(self.categorize_environment, args=env_keywords)
 
         if os_filter:
             data_cp = data_cp[data_cp["OS Name"] == os_filter]
@@ -973,9 +840,7 @@ class Analyzer:
                 over_under_tb=over_under_tb,
             )
         if attribute == "operatingSystem":
-            self.handle_operating_system_counts(
-                environment_filter, dataFrame=data_cp
-            )
+            self.handle_operating_system_counts(environment_filter, dataFrame=data_cp)
 
 
 def main(arg_list: t.Optional[list[str]] = None) -> None:  # noqa: C901
@@ -986,9 +851,7 @@ def main(arg_list: t.Optional[list[str]] = None) -> None:  # noqa: C901
     vm_data.set_column_headings()
     vm_data.add_extra_columns()
 
-    analyzer = Analyzer(
-        vm_data, config.args, column_headers=vm_data.column_headers
-    )
+    analyzer = Analyzer(vm_data, config.args, column_headers=vm_data.column_headers)
     visualizer = Visualizer(analyzer)
 
     # Load environments from prod-env-labels if provided
@@ -1034,7 +897,7 @@ def main(arg_list: t.Optional[list[str]] = None) -> None:  # noqa: C901
                         os_filter=os_name,
                         environment_filter=config.args.sort_by_env,
                         over_under_tb=config.args.over_under_tb,
-                        *environments,
+                        *environments,  # noqa: B026
                     )
 
                 else:
@@ -1054,7 +917,7 @@ def main(arg_list: t.Optional[list[str]] = None) -> None:  # noqa: C901
                     environment_filter=config.args.sort_by_env,
                     over_under_tb=config.args.over_under_tb,
                     show_disk_in_tb=config.args.breakdown_by_terabyte,
-                    *environments,
+                    *environments,  # noqa: B026
                 )
             else:
                 print(
@@ -1075,31 +938,25 @@ def main(arg_list: t.Optional[list[str]] = None) -> None:  # noqa: C901
                 analyzer.sort_attribute_by_environment(
                     attribute="operatingSystem",
                     os_filter=config.args.os_name,
-                    *environments,
+                    *environments,  # noqa: B026
                 )
                 # visualizer.visualize_os_distribution()
             elif config.args.sort_by_env:
                 analyzer.sort_attribute_by_environment(
                     attribute="operatingSystem",
-                    *environments,
+                    *environments,  # noqa: B026
                     environment_filter=config.args.sort_by_env,
                 )
                 # visualizer.visualize_os_distribution()
             else:
-                analyzer.sort_attribute_by_environment(
-                    attribute="operatingSystem", *environments
-                )
+                analyzer.sort_attribute_by_environment(attribute="operatingSystem", *environments)  # noqa: B026
                 # visualizer.visualize_os_distribution()
         else:
             if config.args.os_name:
-                analyzer.sort_attribute_by_environment(
-                    attribute="operatingSystem", os_filter=config.args.os_name
-                )
+                analyzer.sort_attribute_by_environment(attribute="operatingSystem", os_filter=config.args.os_name)
                 # visualizer.visualize_os_distribution()
             else:
-                analyzer.sort_attribute_by_environment(
-                    attribute="operatingSystem"
-                )
+                analyzer.sort_attribute_by_environment(attribute="operatingSystem")
                 ###
                 # visualizer.visualize_os_distribution()
 
@@ -1113,16 +970,10 @@ def main(arg_list: t.Optional[list[str]] = None) -> None:  # noqa: C901
                 *config.args.prod_env_labels.split(","),
                 environment_filter=config.args.sort_by_env,
             )
-            visualizer.visualize_supported_os_distribution(
-                supported_counts, environment_filter=config.args.sort_by_env
-            )
+            visualizer.visualize_supported_os_distribution(supported_counts, environment_filter=config.args.sort_by_env)
         else:
-            supported_counts = analyzer.generate_supported_OS_counts(
-                environment_filter=config.args.sort_by_env
-            )
-            visualizer.visualize_supported_os_distribution(
-                supported_counts, environment_filter=config.args.sort_by_env
-            )
+            supported_counts = analyzer.generate_supported_OS_counts(environment_filter=config.args.sort_by_env)
+            visualizer.visualize_supported_os_distribution(supported_counts, environment_filter=config.args.sort_by_env)
 
     if config.args.get_unsupported_os:
         unsupported_counts = analyzer.generate_unsupported_OS_counts()

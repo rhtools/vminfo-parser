@@ -51,12 +51,13 @@ extend-ignore = ['E501', 'E203', 'E701']
 extend-select = ['B950']
 
 [tool.black]
-line_length = 80
+line-length = 120
 extend-exclude = 'legacy' # This is old code
 
 [tool.isort]
 profile = "black"
-extend_skip = ["legacy"] # This is old code
+extend_skip = ["legacy"]                     # This is old code
+target-version = ["py310", "py311", "py312"]
 
 [tool.pytest.ini_options]
 python_files = ["test_*.py", "*_test.py"]

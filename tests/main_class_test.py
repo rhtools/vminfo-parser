@@ -196,9 +196,7 @@ class TestVMInfoParser(unittest.TestCase):
             "9001-114256 GB                         707",
         )
 
-    def run_test_with_args(
-        self: t.Self, args: list[str], expected_output: str
-    ) -> None:
+    def run_test_with_args(self: t.Self, args: list[str], expected_output: str) -> None:
         try:
             # Run the main function with sample arguments
             main(args)
