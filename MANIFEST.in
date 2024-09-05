@@ -1,0 +1,4 @@
+exclude .gitignore
+
+prune .github
+prune legacy

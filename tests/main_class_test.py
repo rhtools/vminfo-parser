@@ -1,22 +1,23 @@
-import unittest
 import io
 import sys
-from contextlib import redirect_stdout
+import typing as t
+import unittest
+
 from vminfo_parser import main
 
 
 class TestVMInfoParser(unittest.TestCase):
 
-    def setUp(self):
+    def setUp(self: t.Self) -> None:
         # Create an in-memory text stream
         self.captured_output = io.StringIO()
         sys.stdout = self.captured_output
 
-    def tearDown(self):
+    def tearDown(self: t.Self) -> None:
         # Restore the original stdout
         sys.stdout = sys.__stdout__
 
-    def test_get_supported_os_both_envs(self):
+    def test_get_supported_os_both_envs(self: t.Self) -> None:
         self.run_test_with_args(
             [
                 "--file",
@@ -27,42 +28,55 @@ class TestVMInfoParser(unittest.TestCase):
                 "--prod-env-labels",
                 "Prod-DC2,Prod-DC1",
             ],
-            "Environment               non-prod   prod\nOS Name\nMicrosoft Windows              399   6881\nMicrosoft Windows Server      3614  10118\nRed Hat Enterprise Linux       437    713\nSUSE Linux Enterprise          644   1347",
+            "Environment               non-prod   prod\n"
+            "OS Name\n"
+            "Microsoft Windows              399   6881\n"
+            "Microsoft Windows Server      3614  10118\n"
+            "Red Hat Enterprise Linux       437    713\n"
+            "SUSE Linux Enterprise          644   1347",
         )
 
-    def test_get_supported_os_all_envs(self):
+    def test_get_supported_os_all_envs(self: t.Self) -> None:
         self.run_test_with_args(
             [
                 "--file",
-                "machine_reports/tests/files/Test_Inventory_VMs.xlsx",
+                "tests/files/Test_Inventory_VMs.xlsx",
                 "--get-supported-os",
                 "--sort-by-env",
                 "all",
                 "--prod-env-labels",
                 "Prod-DC2,Prod-DC1",
             ],
-            "OS Name\nMicrosoft Windows Server    13732\nMicrosoft Windows            7280\nSUSE Linux Enterprise        1991\nRed Hat Enterprise Linux     1150",
+            "OS Name\n"
+            "Microsoft Windows Server    13732\n"
+            "Microsoft Windows            7280\n"
+            "SUSE Linux Enterprise        1991\n"
+            "Red Hat Enterprise Linux     1150",
         )
 
-    def test_get_supported_os_non_prod(self):
+    def test_get_supported_os_non_prod(self: t.Self) -> None:
         self.run_test_with_args(
             [
                 "--file",
-                "machine_reports/tests/files/Test_Inventory_VMs.xlsx",
+                "tests/files/Test_Inventory_VMs.xlsx",
                 "--get-supported-os",
                 "--sort-by-env",
                 "non-prod",
                 "--prod-env-labels",
                 "Prod-DC2,Prod-DC1",
             ],
-            "OS Name\nMicrosoft Windows Server    3614\nSUSE Linux Enterprise        644\nRed Hat Enterprise Linux     437\nMicrosoft Windows            399",
+            "OS Name\n"
+            "Microsoft Windows Server    3614\n"
+            "SUSE Linux Enterprise        644\n"
+            "Red Hat Enterprise Linux     437\n"
+            "Microsoft Windows            399",
         )
 
-    def test_get_supported_os_minimum_count(self):
+    def test_get_supported_os_minimum_count(self: t.Self) -> None:
         self.run_test_with_args(
             [
                 "--file",
-                "machine_reports/tests/files/Test_Inventory_VMs.xlsx",
+                "tests/files/Test_Inventory_VMs.xlsx",
                 "--get-supported-os",
                 "--minimum-count",
                 "500",
@@ -71,14 +85,18 @@ class TestVMInfoParser(unittest.TestCase):
                 "--prod-env-labels",
                 "Prod-DC2,Prod-DC1",
             ],
-            "OS Name\nMicrosoft Windows Server    13732\nMicrosoft Windows            7280\nSUSE Linux Enterprise        1991\nRed Hat Enterprise Linux     1150",
+            "OS Name\n"
+            "Microsoft Windows Server    13732\n"
+            "Microsoft Windows            7280\n"
+            "SUSE Linux Enterprise        1991\n"
+            "Red Hat Enterprise Linux     1150",
         )
 
-    def test_get_unsupported_os(self):
+    def test_get_unsupported_os(self: t.Self) -> None:
         self.run_test_with_args(
             [
                 "--file",
-                "machine_reports/tests/files/Test_Inventory_VMs.xlsx",
+                "tests/files/Test_Inventory_VMs.xlsx",
                 "--get-unsupported-os",
                 "--minimum-count",
                 "500",
@@ -87,54 +105,85 @@ class TestVMInfoParser(unittest.TestCase):
                 "--prod-env-labels",
                 "Prod-DC2,Prod-DC1",
             ],
-            "OS Name\nUbuntu Linux    16583\nOracle Linux    10589\nCentOS            592\nOther             671",
+            "OS Name\n"
+            "Ubuntu Linux    16583\n"
+            "Oracle Linux    10589\n"
+            "CentOS            592\n"
+            "Other             671",
         )
 
-    def test_get_os_counts(self):
+    def test_get_os_counts(self: t.Self) -> None:
         self.run_test_with_args(
             [
                 "--file",
-                "machine_reports/tests/files/Test_Inventory_VMs.xlsx",
+                "tests/files/Test_Inventory_VMs.xlsx",
                 "--get-os-counts",
                 "--minimum-count",
                 "500",
             ],
-            "OS Name\nUbuntu Linux                16583\nMicrosoft Windows Server    13732\nOracle Linux                10589\nMicrosoft Windows            7280\nSUSE Linux Enterprise        1991\nRed Hat Enterprise Linux     1150\nCentOS                        592",
+            "OS Name\n"
+            "Ubuntu Linux                16583\n"
+            "Microsoft Windows Server    13732\n"
+            "Oracle Linux                10589\n"
+            "Microsoft Windows            7280\n"
+            "SUSE Linux Enterprise        1991\n"
+            "Red Hat Enterprise Linux     1150\n"
+            "CentOS                        592",
         )
 
-    def test_disk_space_ranges_both_envs(self):
+    def test_disk_space_ranges_both_envs(self: t.Self) -> None:
         self.run_test_with_args(
             [
                 "--file",
-                "machine_reports/tests/files/Test_Inventory_VMs.xlsx",
+                "tests/files/Test_Inventory_VMs.xlsx",
                 "--get-disk-space-ranges",
                 "--sort-by-env",
                 "both",
                 "--prod-env-labels",
                 "Prod-DC2,Prod-DC1",
             ],
-            "Environment                            non-prod   prod       \n0-200 GB                               2312       5082      \n201-400 GB                             6176       12970     \n401-600 GB                             3338       5232      \n601-900 GB                             1828       6744      \n901-1500 GB                            1039       3580      \n1501-2000 GB                           253        658       \n2001-3000 GB                           1398       915       \n3001-5000 GB                           338        821       \n5001-9000 GB                           131        1006      \n9001-114256 GB                         65         707",
+            "Environment                            non-prod   prod       \n"
+            "0-200 GB                               2312       5082      \n"
+            "201-400 GB                             6176       12970     \n"
+            "401-600 GB                             3338       5232      \n"
+            "601-900 GB                             1828       6744      \n"
+            "901-1500 GB                            1039       3580      \n"
+            "1501-2000 GB                           253        658       \n"
+            "2001-3000 GB                           1398       915       \n"
+            "3001-5000 GB                           338        821       \n"
+            "5001-9000 GB                           131        1006      \n"
+            "9001-114256 GB                         65         707",
         )
 
-    def test_disk_space_ranges_prod_env(self):
+    def test_disk_space_ranges_prod_env(self: t.Self) -> None:
         self.run_test_with_args(
             [
                 "--file",
-                "machine_reports/tests/files/Test_Inventory_VMs.xlsx",
+                "tests/files/Test_Inventory_VMs.xlsx",
                 "--get-disk-space-ranges",
                 "--sort-by-env",
                 "prod",
                 "--prod-env-labels",
                 "Prod-DC2,Prod-DC1",
             ],
-            "Environment                            prod       \n0-200 GB                               5082      \n201-400 GB                             12970     \n401-600 GB                             5232      \n601-900 GB                             6744      \n901-1500 GB                            3580      \n1501-2000 GB                           658       \n2001-3000 GB                           915       \n3001-5000 GB                           821       \n5001-9000 GB                           1006      \n9001-114256 GB                         707",
+            "Environment                            prod       \n"
+            "0-200 GB                               5082      \n"
+            "201-400 GB                             12970     \n"
+            "401-600 GB                             5232      \n"
+            "601-900 GB                             6744      \n"
+            "901-1500 GB                            3580      \n"
+            "1501-2000 GB                           658       \n"
+            "2001-3000 GB                           915       \n"
+            "3001-5000 GB                           821       \n"
+            "5001-9000 GB                           1006      \n"
+            "9001-114256 GB                         707",
         )
 
-    def test_disk_space_ranges_prod_env_by_terabyte(self):
+    def test_disk_space_ranges_prod_env_by_terabyte(self: t.Self) -> None:
         self.run_test_with_args(
             [
                 "--file",
-                "machine_reports/tests/files/Test_Inventory_VMs.xlsx",
+                "tests/files/Test_Inventory_VMs.xlsx",
                 "--get-disk-space-ranges",
                 "--sort-by-env",
                 "prod",
@@ -142,10 +191,13 @@ class TestVMInfoParser(unittest.TestCase):
                 "Prod-DC2,Prod-DC1",
                 "--breakdown-by-terabyte",
             ],
-            "Environment                            prod       \n0-2000 GB                              34621     \n2001-9000 GB                           2805      \n9001-114256 GB                         707",
+            "Environment                            prod       \n"
+            "0-2000 GB                              34621     \n"
+            "2001-9000 GB                           2805      \n"
+            "9001-114256 GB                         707",
         )
 
-    def run_test_with_args(self, args, expected_output):
+    def run_test_with_args(self: t.Self, args: list[str], expected_output: str) -> None:
         try:
             # Run the main function with sample arguments
             main(args)
