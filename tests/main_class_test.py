@@ -2,7 +2,7 @@ import unittest
 import io
 import sys
 from contextlib import redirect_stdout
-from ..vminfo_parser import main
+from vminfo_parser import main
 
 class TestVMInfoParser(unittest.TestCase):
 
