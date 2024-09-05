@@ -1,7 +1,8 @@
-import typing as t
-import unittest
 import io
 import sys
+import typing as t
+import unittest
+
 from vminfo_parser import main
 
 
