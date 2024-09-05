@@ -46,7 +46,7 @@ jobs:
           flake8 ./vminfo_parser --count --show-source --statistics
       - name: Check imports with isort
         run: |
-          isort -c --diff ./src
+          isort -c --diff ./vminfo_parser
   test:
     runs-on: ubuntu-latest
     name: Run pytest and report test coverage
