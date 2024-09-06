@@ -1,22 +1,21 @@
 import typing as t
-import pytest
-
 from pathlib import Path
 
-
-@pytest.fixture
-def csv_file(tmp_path: Path) -> t.Generator[str, None, None]:
-    csv_file = tmp_path / "test.csv"
-    with open("tests/files/Test_Inventory_VMs.csv", "r") as src:
-        with open(csv_file, "w") as dst:
-            dst.writelines(src.readlines())
-    yield str(csv_file)
+import pytest
 
 
-@pytest.fixture
-def xlsx_file(tmp_path: Path) -> t.Generator[str, None, None]:
-    xlsx_file = tmp_path / "test.xlsx"
-    with open("tests/files/Test_Inventory_VMs.xlsx", "rb") as src:
-        with open(xlsx_file, "wb") as dst:
-            dst.writelines(src.readlines())
-    yield str(xlsx_file)
+@pytest.fixture(params=["csv", "xlsx", "emptycsv", "emptyxlsx"])
+def datafile(
+    tmp_path: Path, request: pytest.FixtureRequest
+) -> t.Generator[tuple[str, bool, str], None, None]:
+    datafile = tmp_path / "test"
+    suffix = request.param.removeprefix("empty")
+    datafile.with_suffix(f".{suffix}")
+    empty = True if "empty" in request.param else False
+    if empty:
+        datafile.touch()
+    else:
+        with open(f"tests/files/Test_Inventory_VMs.{suffix}", "rb") as src:
+            with open(datafile, "wb") as dst:
+                dst.writelines(src.readlines())
+    yield (suffix, empty, str(datafile))
