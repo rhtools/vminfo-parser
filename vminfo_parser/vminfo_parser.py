@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
+import yaml
+
 
 A = t.TypeVar("Analyzer", bound="Analyzer")
 
@@ -20,7 +22,11 @@ class Config:
 
     def parse_arguments(self: t.Self, arg_list: list[str]) -> None:
         parser = argparse.ArgumentParser(description="Process VM CSV file")
-        parser.add_argument("--file", type=str, help="The file to parse", required=True)
+        group = parser.add_mutually_exclusive_group(required=True)
+        group.add_argument("--file", type=str, help="The file to parse")
+        group.add_argument("--yaml", type=str, help="Path to YAML configuration file")
+
+
         parser.add_argument(
             "--sort-by-env",
             type=str,
@@ -94,14 +100,48 @@ class Config:
             help="Display a graph of the unsupported operating systems for OpenShift Virt",
         )
         self.args = parser.parse_args(arg_list)
+        
+        # Check if --yaml is used and exit if other arguments are provided
+        if self.args.yaml:
+            if any(getattr(self.args, arg) for arg in vars(self.args) if arg != 'yaml'):
+                print("When using --yaml, no other arguments should be provided.")
+                parser.print_help()
+                exit(1)
+        elif not self.args.file:
+            print("--file is required when --yaml is not used.")
+            parser.print_help()
+            exit(1)
 
-    def load_from_file(self: t.Self, file_path: str) -> None:
-        # Implement loading configuration from file
-        pass
+        # Load configuration from YAML if specified
+        if self.args.yaml:
+            self.load_from_yaml(self.args.yaml)       
+        
+
+    def load_from_yaml(self: t.Self, yaml_path: str) -> None:
+        try:
+            with open(yaml_path, 'r') as yaml_file:
+                config_dict = yaml.safe_load(yaml_file)
+                
+                # Convert dash-separated keys to underscore-separated keys
+                converted_dict = {}
+                for key, value in config_dict.items():
+                    new_key = key.replace('-', '_')
+                    converted_dict[new_key] = value
+                
+                self.args = argparse.Namespace(**converted_dict)
+        
+        except FileNotFoundError:
+            print(f"YAML file not found: {yaml_path}")
+            exit(1)
+        except yaml.YAMLError as e:
+            print(f"Error parsing YAML file: {e}")
+            exit(1)
 
     def load_from_env(self: t.Self) -> None:
         # Implement loading configuration from environment variables
         pass
+
+
 
 
 class VMData:
