@@ -26,7 +26,6 @@ class Config:
         group.add_argument("--file", type=str, help="The file to parse")
         group.add_argument("--yaml", type=str, help="Path to YAML configuration file")
 
-
         parser.add_argument(
             "--sort-by-env",
             type=str,
@@ -100,10 +99,10 @@ class Config:
             help="Display a graph of the unsupported operating systems for OpenShift Virt",
         )
         self.args = parser.parse_args(arg_list)
-        
+
         # Check if --yaml is used and exit if other arguments are provided
         if self.args.yaml:
-            if any(getattr(self.args, arg) for arg in vars(self.args) if arg != 'yaml'):
+            if any(getattr(self.args, arg) for arg in vars(self.args) if arg != "yaml"):
                 print("When using --yaml, no other arguments should be provided.")
                 parser.print_help()
                 exit(1)
@@ -114,22 +113,21 @@ class Config:
 
         # Load configuration from YAML if specified
         if self.args.yaml:
-            self.load_from_yaml(self.args.yaml)       
-        
+            self.load_from_yaml(self.args.yaml)
 
     def load_from_yaml(self: t.Self, yaml_path: str) -> None:
         try:
-            with open(yaml_path, 'r') as yaml_file:
+            with open(yaml_path, "r") as yaml_file:
                 config_dict = yaml.safe_load(yaml_file)
-                
+
                 # Convert dash-separated keys to underscore-separated keys
                 converted_dict = {}
                 for key, value in config_dict.items():
-                    new_key = key.replace('-', '_')
+                    new_key = key.replace("-", "_")
                     converted_dict[new_key] = value
-                
+
                 self.args = argparse.Namespace(**converted_dict)
-        
+
         except FileNotFoundError:
             print(f"YAML file not found: {yaml_path}")
             exit(1)
@@ -140,8 +138,6 @@ class Config:
     def load_from_env(self: t.Self) -> None:
         # Implement loading configuration from environment variables
         pass
-
-
 
 
 class VMData:
