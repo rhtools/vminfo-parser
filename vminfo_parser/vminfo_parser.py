@@ -13,7 +13,6 @@ import numpy as np
 import pandas as pd
 import yaml
 
-
 A = t.TypeVar("Analyzer", bound="Analyzer")
 
 
