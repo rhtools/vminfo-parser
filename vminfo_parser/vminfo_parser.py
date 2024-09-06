@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 
 import argparse
-import re
-import typing as t
-
 import magic
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
+import re
+import typing as t
 import yaml
 
 
