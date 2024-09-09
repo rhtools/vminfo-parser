@@ -6,13 +6,13 @@ import pytest
 import vminfo_parser.const as vm_const
 from vminfo_parser.vminfo_parser import VMData
 
-from . import const
+from . import const as test_const
 
 
 def test_get_file_type(datafile: tuple[str, bool, str]) -> None:
     filename = datafile[2]
     empty = datafile[1]
-    mime = const.MIME.get(datafile[0])
+    mime = vm_const.MIME.get(datafile[0])
     result = VMData.get_file_type(filename)
 
     if empty:
@@ -35,7 +35,7 @@ def test_from_file(datafile: tuple[str, bool, str], capsys: pytest.CaptureFixtur
         result = VMData.from_file(filename)
         assert isinstance(result, VMData)
         assert isinstance(result.df, pd.DataFrame)
-        assert result.df.shape == const.TESTFILE_SHAPE
+        assert result.df.shape == test_const.TESTFILE_SHAPE
 
 
 @pytest.mark.parametrize(
@@ -73,7 +73,7 @@ def test_from_file(datafile: tuple[str, bool, str], capsys: pytest.CaptureFixtur
     ids=["Version 1", "Version 2"],
 )
 def test_set_column_headings(df: pd.DataFrame, units: str, version: int) -> None:
-    expected_headers = deepcopy(vm_const.COLUMN_HEADERS.get(f"VERSION_{version}"))
+    expected_headers = deepcopy(vm_const.COLUMN_HEADERS.get(f"VERSION_{version}").copy())
     expected_headers["unitType"] = units
 
     vmdata = VMData(df=df)

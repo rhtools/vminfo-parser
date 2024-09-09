@@ -167,9 +167,9 @@ class VMData:
     @classmethod
     def from_file(cls: t.Self, file_path: str) -> "VMData":
         file_type = cls.get_file_type(file_path)
-        if "csv" in file_type:
+        if file_type == const.MIME.get("csv"):
             df = pd.read_csv(file_path)
-        elif "spreadsheetml" in file_type:
+        elif file_type in const.MIME.get("excel"):
             df = pd.read_excel(file_path)
         else:
             print("File passed in was neither a CSV nor an Excel file\nBailing...")
