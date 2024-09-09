@@ -184,7 +184,10 @@ class VMData:
                 break
         else:
             print(
-                f"Missing column headers from either {" or ".join([str([h for h in v.values()]) for v in const.COLUMN_HEADERS.values()])}"
+                "Missing column headers from either "
+                f"{" or ".join(
+                    [str([header for header in version.values()])
+                        for version in const.COLUMN_HEADERS.values()])}"
             )
             raise ValueError("Headers don't match either of the versions expected")
 
