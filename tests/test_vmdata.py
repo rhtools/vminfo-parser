@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import pandas as pd
 import pytest
 
@@ -19,9 +21,7 @@ def test_get_file_type(datafile: tuple[str, bool, str]) -> None:
         assert result == mime
 
 
-def test_from_file(
-    datafile: tuple[str, bool, str], capsys: pytest.CaptureFixture
-) -> None:
+def test_from_file(datafile: tuple[str, bool, str], capsys: pytest.CaptureFixture) -> None:
     filename = datafile[2]
     empty = datafile[1]
 
@@ -30,10 +30,7 @@ def test_from_file(
             result = VMData.from_file(filename)
             assert result is None
         output = capsys.readouterr()
-        assert (
-            output.out
-            == "File passed in was neither a CSV nor an Excel file\nBailing...\n"
-        )
+        assert output.out == "File passed in was neither a CSV nor an Excel file\nBailing...\n"
     else:
         result = VMData.from_file(filename)
         assert isinstance(result, VMData)
@@ -75,13 +72,12 @@ def test_from_file(
     ],
     ids=["Version 1", "Version 2"],
 )
-def test_set_column_headings(
-    df: pd.DataFrame, units: str, version: int
-) -> None:
+def test_set_column_headings(df: pd.DataFrame, units: str, version: int) -> None:
+    expected_headers = deepcopy(vm_const.COLUMN_HEADERS.get(f"VERSION_{version}"))
+    expected_headers["unitType"] = units
+
     vmdata = VMData(df=df)
     vmdata.set_column_headings()
 
-    expected_headers = vm_const.COLUMN_HEADERS.get(f"VERSION_{version}")
-    expected_headers["unitType"] = units
-
     assert vmdata.column_headers == expected_headers
+    assert all([version is not vmdata.column_headers for version in vm_const.COLUMN_HEADERS.values()])
