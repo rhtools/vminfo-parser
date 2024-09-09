@@ -179,7 +179,7 @@ class VMData:
     def set_column_headings(self: t.Self) -> None:
         for version, headers in const.COLUMN_HEADERS.items():
             if all(col in self.df.columns for col in headers.values()):
-                self.column_headers = headers
+                self.column_headers = headers.copy()
                 self.column_headers["unitType"] = "GB" if version == "VERSION_1" else "MB"
                 break
         else:
