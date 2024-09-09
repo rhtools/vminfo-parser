@@ -5,9 +5,7 @@ import pytest
 
 
 @pytest.fixture(params=["csv", "xlsx", "emptycsv", "emptyxlsx"])
-def datafile(
-    tmp_path: Path, request: pytest.FixtureRequest
-) -> t.Generator[tuple[str, bool, str], None, None]:
+def datafile(tmp_path: Path, request: pytest.FixtureRequest) -> t.Generator[tuple[str, bool, str], None, None]:
     datafile = tmp_path / "test"
     suffix = request.param.removeprefix("empty")
     datafile.with_suffix(f".{suffix}")
