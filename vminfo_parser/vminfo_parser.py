@@ -13,6 +13,8 @@ import numpy as np
 import pandas as pd
 import yaml
 
+from . import const
+
 A = t.TypeVar("Analyzer", bound="Analyzer")
 
 
@@ -175,27 +177,15 @@ class VMData:
         return cls(df)
 
     def set_column_headings(self: t.Self) -> None:
-        version1_columns = {
-            "operatingSystem": "VM OS",
-            "environment": "Environment",
-            "vmMemory": "VM MEM (GB)",
-            "vmDisk": "VM Provisioned (GB)",
-        }
-        version2_columns = {
-            "operatingSystem": "OS according to the configuration file",
-            "environment": "ent-env",
-            "vmMemory": "Memory",
-            "vmDisk": "Total disk capacity MiB",
-        }
-
-        if all(col in self.df.columns for col in version1_columns.values()):
-            self.column_headers = version1_columns
-            self.column_headers["unitType"] = "GB"
-        elif all(col in self.df.columns for col in version2_columns.values()):
-            self.column_headers = version2_columns
-            self.column_headers["unitType"] = "MB"
+        for version, headers in const.COLUMN_HEADERS.items():
+            if all(col in self.df.columns for col in headers.values()):
+                self.column_headers = headers
+                self.column_headers["unitType"] = "GB" if version == "VERSION_1" else "MB"
+                break
         else:
-            print(f"Missing column headers from either {version1_columns.values} or {version2_columns.values}")
+            print(
+                f"Missing column headers from either {" or ".join([str([h for h in v.values()]) for v in const.COLUMN_HEADERS.values()])}"
+            )
             raise ValueError("Headers don't match either of the versions expected")
 
     def add_extra_columns(self: t.Self) -> None:
