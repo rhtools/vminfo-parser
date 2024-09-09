@@ -12,6 +12,7 @@ on:
 permissions:
   checks: write
   contents: read
+  pull-requests: write
 
 jobs:
   flake8:
@@ -80,6 +81,7 @@ jobs:
         continue-on-error: true
 
       - name: Pytest coverage comment
+        continue-on-error: true
         uses: MishaKav/pytest-coverage-comment@main
         with:
           pytest-xml-coverage-path: coverage.xml
