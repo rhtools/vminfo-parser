@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
 
+import vminfo_parser.const as vm_const
 from vminfo_parser.vminfo_parser import VMData
 
 from . import const
@@ -38,3 +39,49 @@ def test_from_file(
         assert isinstance(result, VMData)
         assert isinstance(result.df, pd.DataFrame)
         assert result.df.shape == const.TESTFILE_SHAPE
+
+
+@pytest.mark.parametrize(
+    ["df", "units", "version"],
+    [
+        (
+            pd.DataFrame(
+                {
+                    "VM OS": ["Windows 10", "Ubuntu 20.04", "CentOS 7"],
+                    "Environment": ["Prod", "Dev", "Prod"],
+                    "VM MEM (GB)": [8, 16, 32],
+                    "VM Provisioned (GB)": [100, 200, 300],
+                }
+            ),
+            "GB",
+            1,
+        ),
+        (
+            pd.DataFrame(
+                {
+                    "OS according to the configuration file": [
+                        "Windows 10",
+                        "Ubuntu 20.04",
+                        "CentOS 7",
+                    ],
+                    "ent-env": ["Prod", "Dev", "Prod"],
+                    "Memory": [8, 16, 32],
+                    "Total disk capacity MiB": [100, 200, 300],
+                }
+            ),
+            "MB",
+            2,
+        ),
+    ],
+    ids=["Version 1", "Version 2"],
+)
+def test_set_column_headings(
+    df: pd.DataFrame, units: str, version: int
+) -> None:
+    vmdata = VMData(df=df)
+    vmdata.set_column_headings()
+
+    expected_headers = vm_const.COLUMN_HEADERS.get(f"VERSION_{version}")
+    expected_headers["unitType"] = units
+
+    assert vmdata.column_headers == expected_headers
