@@ -126,6 +126,32 @@ def test_add_extra_columns(vmdata: VMData) -> None:
     assert original_df[unmodified_columns].equals(vmdata.df[unmodified_columns])
 
 
+@pytest.mark.usefixtures("datafile")
+@pytest.mark.parametrize("datafile", ["csv"], indirect=["datafile"])
+def test_add_extra_columns_bypass(vmdata: VMData, capsys: pytest.CaptureFixture) -> None:
+    vmdata.set_column_headings()
+    vmdata.add_extra_columns()
+
+    original_df = vmdata.df.copy()
+    vmdata.add_extra_columns()
+    output = capsys.readouterr()
+
+    assert (
+        len(
+            set(vm_const.EXTRA_WINDOWS_DESKTOP_COLUMNS + vm_const.EXTRA_WINDOWS_DESKTOP_COLUMNS).intersection(
+                set(vmdata.column_headers)
+            )
+        )
+        == 0
+    )
+
+    assert all(col in vmdata.df.columns for col in vm_const.EXTRA_COLUMNS_DEST)
+
+    assert original_df.equals(vmdata.df)
+
+    assert output.out == "All columns already exist\n"
+
+
 @pytest.mark.parametrize(
     "osname,expected",
     [(name, expected) for name, expected in test_const.SERVER_NAME_MATCHES.items() if "Microsoft" not in name],
