@@ -559,7 +559,8 @@ class Analyzer:
 
         for os in os_values:
             filtered_hosts = self.vm_data.df[
-                (self.vm_data.df["OS Name"] == os) & (self.vm_data.df["Environment"].str.contains(environment_type))
+                (self.vm_data.df["OS Name"] == os)
+                & (self.vm_data.df[self.column_headers["environment"]].str.contains(environment_type))
             ]
 
             if not filtered_hosts.empty:
@@ -754,7 +755,7 @@ class Analyzer:
             counts = dataFrame["OS Name"].value_counts()
             counts = counts[counts >= min_count]
         else:
-            counts = dataFrame.groupby(["OS Name", "Environment"]).size().unstack().fillna(0)
+            counts = dataFrame.groupby(["OS Name", self.column_headers["environment"]]).size().unstack().fillna(0)
             counts["total"] = counts.sum(axis=1)
             counts["combined_total"] = counts["prod"] + counts["non-prod"]
             counts = counts[(counts["total"] >= min_count) & (counts["combined_total"] >= min_count)].drop(
@@ -773,14 +774,14 @@ class Analyzer:
     ) -> pd.Series:
         data_cp = self.vm_data.df.copy()
         if environment_filter and env_keywords:
-            data_cp["Environment"] = self.vm_data.df["Environment"].apply(
+            data_cp[self.column_headers["environment"]] = self.vm_data.df[self.column_headers["environment"]].apply(
                 self.categorize_environment, args=env_keywords
             )
 
         if environment_filter and environment_filter not in ["all", "both"]:
-            data_cp = data_cp[data_cp["Environment"] == environment_filter]
+            data_cp = data_cp[data_cp[self.column_headers["environment"]] == environment_filter]
         elif environment_filter == "both":
-            data_cp = data_cp.groupby(["OS Name", "Environment"]).size().unstack().fillna(0)
+            data_cp = data_cp.groupby(["OS Name", self.column_headers["environment"]]).size().unstack().fillna(0)
 
         if data_cp.empty:
             print(f"None found in {environment_filter} \n")
@@ -793,8 +794,6 @@ class Analyzer:
 
         filtered_counts = filtered_counts[filtered_counts.index.isin(self.supported_os_colors.keys())]
         filtered_counts = filtered_counts.astype(int)
-
-        # colors = [self.supported_os_colors[os] for os in filtered_counts.index]
 
         # This removes unwanted lines from the output that Pandas generates
         clean_output = "\n".join(
