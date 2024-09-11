@@ -30,18 +30,9 @@ def vmdata(request: pytest.FixtureRequest) -> t.Generator[VMData, None, None]:
 
 
 @pytest.fixture(scope="session")
-def extra_columns_non_windows_regex() -> t.Generator[re.Pattern, None, None]:
-    pattern = re.compile(vm_const.EXTRA_COLUMNS_NON_WINDOWS_REGEX)
-    yield pattern
-
-
-@pytest.fixture(scope="session")
-def extra_columns_windows_server_regex() -> t.Generator[re.Pattern, None, None]:
-    pattern = re.compile(vm_const.EXTRA_COLUMNS_WINDOWS_SERVER_REGEX)
-    yield pattern
-
-
-@pytest.fixture(scope="session")
-def extra_columns_windows_desktop_regex() -> t.Generator[re.Pattern, None, None]:
-    pattern = re.compile(vm_const.EXTRA_COLUMNS_WINDOWS_DESKTOP_REGEX)
-    yield pattern
+def extra_columns_regexs() -> t.Generator[dict[str, re.Pattern], None, None]:
+    yield {
+        "non_windows": re.compile(vm_const.EXTRA_COLUMNS_NON_WINDOWS_REGEX),
+        "windows_server": re.compile(vm_const.EXTRA_COLUMNS_WINDOWS_SERVER_REGEX),
+        "windows_desktop": re.compile(vm_const.EXTRA_COLUMNS_WINDOWS_DESKTOP_REGEX),
+    }

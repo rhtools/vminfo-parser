@@ -154,55 +154,31 @@ def test_add_extra_columns_bypass(vmdata: VMData, capsys: pytest.CaptureFixture)
 
 @pytest.mark.parametrize(
     "osname,expected",
-    [(name, expected) for name, expected in test_const.SERVER_NAME_MATCHES.items() if "Microsoft" not in name],
-    ids=[name for name in test_const.SERVER_NAME_MATCHES.keys() if "Microsoft" not in name],
+    [(name, expected) for name, expected in test_const.SERVER_NAME_MATCHES.items()],
+    ids=[name for name in test_const.SERVER_NAME_MATCHES.keys()],
 )
-def test_extra_column_non_windows_regex(
-    extra_columns_non_windows_regex: re.Pattern, osname: str, expected: t.Optional[dict[str, str]]
+def test_extra_column_regex(
+    extra_columns_regexs: dict[str, re.Pattern], osname: str, expected: t.Optional[dict[str, str]]
 ) -> None:
-    re_match = extra_columns_non_windows_regex.match(osname)
+    re_matches = {}
+    for name, matcher in extra_columns_regexs.items():
+        re_matches[name] = matcher.match(osname)
 
-    if expected is None:
-        assert re_match is None
-    else:
-        assert re_match.groupdict() == expected
-
-
-@pytest.mark.parametrize(
-    "osname,expected",
-    [
-        (name, expected)
-        for name, expected in test_const.SERVER_NAME_MATCHES.items()
-        if "Microsoft" in name and "Server" in name
-    ],
-    ids=[name for name in test_const.SERVER_NAME_MATCHES.keys() if "Microsoft" in name and "Server" in name],
-)
-def test_extra_column_windows_server_regex(
-    extra_columns_windows_server_regex: re.Pattern, osname: str, expected: t.Optional[dict[str, str]]
-) -> None:
-    re_match = extra_columns_windows_server_regex.match(osname)
-
-    if expected is None:
-        assert re_match is None
-    else:
-        assert re_match.groupdict() == expected
-
-
-@pytest.mark.parametrize(
-    "osname,expected",
-    [
-        (name, expected)
-        for name, expected in test_const.SERVER_NAME_MATCHES.items()
-        if "Microsoft" in name and "Server" not in name
-    ],
-    ids=[name for name in test_const.SERVER_NAME_MATCHES.keys() if "Microsoft" in name and "Server" not in name],
-)
-def test_extra_column_windows_desktop_regex(
-    extra_columns_windows_desktop_regex: re.Pattern, osname: str, expected: t.Optional[dict[str, str]]
-) -> None:
-    re_match = extra_columns_windows_desktop_regex.match(osname)
-
-    if expected is None:
-        assert re_match is None
-    else:
-        assert re_match.groupdict() == expected
+    match expected.get("OS_Name") if expected is not None else None:
+        case None:
+            assert all(re_match is None for re_match in re_matches.values())
+        case "Microsoft Windows Server":
+            assert all(
+                re_match.groupdict() == expected if name == "windows_server" else re_match is None
+                for name, re_match in re_matches.items()
+            )
+        case "Microsoft Windows":
+            assert all(
+                re_match.groupdict() == expected if name == "windows_desktop" else re_match is None
+                for name, re_match in re_matches.items()
+            )
+        case _:
+            assert all(
+                re_match.groupdict() == expected if name == "non_windows" else re_match is None
+                for name, re_match in re_matches.items()
+            )
