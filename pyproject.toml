@@ -19,8 +19,11 @@ classifiers = [
 dynamic = ["version", "dependencies", "optional-dependencies"]
 
 [project.urls]
-"Homepage" = "https://github.com/csfreak/flask-journal"
-"Bug Tracker" = "https://github.com/csfreak/flask-journal"
+"Homepage" = "https://github.com/rhtools/vminfo-parser"
+"Bug Tracker" = "https://github.com/rhtools/vminfo-parser/issues"
+
+[project.scripts]
+vminfo-parser = "vminfo_parser:main"
 
 [tool.setuptools.packages.find]
 include = ["vminfo_parser*"]
