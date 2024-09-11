@@ -75,3 +75,28 @@ options:
   --get-unsupported-os  Display a graph of the unsupported operating systems 
                         for OpenShift Virt 
 ```
+
+Configurations can also be passed as a yaml based config file using the same option names.
+
+For examle, if the below yaml was in a file named `config.yaml`,
+
+```yaml
+file: <filename>
+get-supported-os: true
+prod-env-labels: Prod-DC2,Prod-DC1
+sort-by-env: both
+```
+
+the script could be executed as
+
+```sh
+vminfo-parse --yaml config.yaml
+```
+
+or as
+
+```sh
+vminfo-parse --file <filename> --get-supported-os --prod-env-labels "Prod-DC2,Prod-DC1" --sort-by-env "both"
+```
+
+and produce the same output.
