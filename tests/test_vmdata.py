@@ -112,17 +112,20 @@ def test_add_extra_columns(vmdata: VMData) -> None:
 
     vmdata.add_extra_columns()
 
+    # Validate that temporary columns are dropped
     assert (
         len(
-            set(vm_const.EXTRA_WINDOWS_DESKTOP_COLUMNS + vm_const.EXTRA_WINDOWS_DESKTOP_COLUMNS).intersection(
+            set(vm_const.EXTRA_WINDOWS_SERVER_COLUMNS + vm_const.EXTRA_WINDOWS_DESKTOP_COLUMNS).intersection(
                 set(vmdata.column_headers)
             )
         )
         == 0
     )
 
+    # Validate that added columns exist
     assert all(col in vmdata.df.columns for col in vm_const.EXTRA_COLUMNS_DEST)
 
+    # Validate that no other columns were changed
     assert original_df[unmodified_columns].equals(vmdata.df[unmodified_columns])
 
 
@@ -136,19 +139,23 @@ def test_add_extra_columns_bypass(vmdata: VMData, capsys: pytest.CaptureFixture)
     vmdata.add_extra_columns()
     output = capsys.readouterr()
 
+    # Validate that temporary columns do not exist
     assert (
         len(
-            set(vm_const.EXTRA_WINDOWS_DESKTOP_COLUMNS + vm_const.EXTRA_WINDOWS_DESKTOP_COLUMNS).intersection(
+            set(vm_const.EXTRA_WINDOWS_SERVER_COLUMNS + vm_const.EXTRA_WINDOWS_DESKTOP_COLUMNS).intersection(
                 set(vmdata.column_headers)
             )
         )
         == 0
     )
 
+    # Validate that added columns exist
     assert all(col in vmdata.df.columns for col in vm_const.EXTRA_COLUMNS_DEST)
 
+    # Validate that no columns were changed
     assert original_df.equals(vmdata.df)
 
+    # Validate that print stmt from else block was executed
     assert output.out == "All columns already exist\n"
 
 
@@ -166,18 +173,22 @@ def test_extra_column_regex(
 
     match expected.get("OS_Name") if expected is not None else None:
         case None:
+            # Validate that no regexs matched
             assert all(re_match is None for re_match in re_matches.values())
         case "Microsoft Windows Server":
+            # Validate that only the windows server regex matched and has expected results
             assert all(
                 re_match.groupdict() == expected if name == "windows_server" else re_match is None
                 for name, re_match in re_matches.items()
             )
         case "Microsoft Windows":
+            # Validate that only the windows desktop regex matched and has expected results
             assert all(
                 re_match.groupdict() == expected if name == "windows_desktop" else re_match is None
                 for name, re_match in re_matches.items()
             )
         case _:
+            # Validate that only the non windows regex matched and has expected results
             assert all(
                 re_match.groupdict() == expected if name == "non_windows" else re_match is None
                 for name, re_match in re_matches.items()
