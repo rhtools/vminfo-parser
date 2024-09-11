@@ -193,65 +193,31 @@ class VMData:
 
     def add_extra_columns(self: t.Self) -> None:
         os_column = self.column_headers["operatingSystem"]
-        windows_server_columns = [
-            "Server OS Name",
-            "Server OS Version",
-            "Server Architecture",
-        ]
-        windows_desktop_columns = [
-            "Desktop OS Name",
-            "Desktop OS Version",
-            "Desktop Architecture",
-        ]
 
-        if not all(col in self.df.columns for col in ["OS Name", "OS Version", "Architecture"]):
-            exclude_windows_pattern = (
-                r"^(?!.*Microsoft)(?P<OS_Name>.*?)(?:\s+"
-                r"(?P<OS_Version>\d+(?:/\d+)*\s*(?:or later)?\s*)?\s*"
-                r"\((?P<Architecture>.*?64-bit|.*?32-bit)\))"
+        if not all(col in self.df.columns for col in const.EXTRA_COLUMNS_DEST):
+            self.df[const.EXTRA_COLUMNS_DEST] = self.df[os_column].str.extract(const.EXTRA_COLUMNS_NON_WINDOWS_REGEX)
+            self.df[const.EXTRA_WINDOWS_SERVER_COLUMNS] = self.df[os_column].str.extract(
+                const.EXTRA_COLUMNS_WINDOWS_SERVER_REGEX
             )
-            windows_server_pattern = (
-                r"^(?P<OS_Name>Microsoft Windows Server)\s+"
-                r"(?P<OS_Version>\d+(?:\.\d+)*(?:\s*R\d+)?(?:\s*SP\d+)?)"
-                r"(?:\s*\((?P<Architecture>.*?64-bit|.*?32-bit)\))?"
-            )
-            windows_desktop_pattern = (
-                r"^(?P<OS_Name>Microsoft Windows)\s+(?!Server)"
-                r"(?P<OS_Version>XP Professional|\d+(?:\.\d+)*|Vista|7|8|10)\s*"
-                r"\((?P<Architecture>.*?64-bit|.*?32-bit)\)"
+            self.df[const.EXTRA_WINDOWS_DESKTOP_COLUMNS] = self.df[os_column].str.extract(
+                const.EXTRA_COLUMNS_WINDOWS_DESKTOP_REGEX, flags=re.IGNORECASE
             )
 
-            self.df[["OS Name", "OS Version", "Architecture"]] = self.df[os_column].str.extract(exclude_windows_pattern)
-            self.df[windows_server_columns] = self.df[os_column].str.extract(windows_server_pattern)
-            self.df[windows_desktop_columns] = self.df[os_column].str.extract(
-                windows_desktop_pattern, flags=re.IGNORECASE
-            )
-
-            self.df["OS Name"] = self.df["Server OS Name"].where(self.df["OS Name"].isnull(), self.df["OS Name"])
-            self.df["OS Version"] = self.df["Server OS Version"].where(
-                self.df["OS Version"].isnull(), self.df["OS Version"]
-            )
-            self.df["Architecture"] = self.df["Server Architecture"].where(
-                self.df["Architecture"].isnull(), self.df["Architecture"]
-            )
-
-            self.df["OS Name"] = self.df["Desktop OS Name"].where(self.df["OS Name"].isnull(), self.df["OS Name"])
-            self.df["OS Version"] = self.df["Desktop OS Version"].where(
-                self.df["OS Version"].isnull(), self.df["OS Version"]
-            )
-            self.df["Architecture"] = self.df["Desktop Architecture"].where(
-                self.df["Architecture"].isnull(), self.df["Architecture"]
-            )
+            for idx, column in enumerate(const.EXTRA_COLUMNS_DEST):
+                self.df[column] = self.df[const.EXTRA_WINDOWS_SERVER_COLUMNS[idx]].where(
+                    self.df[column].isnull(), self.df[column]
+                )
+                self.df[column] = self.df[const.EXTRA_WINDOWS_DESKTOP_COLUMNS[idx]].where(
+                    self.df[column].isnull(), self.df[column]
+                )
 
             self.df.drop(
-                windows_server_columns + windows_desktop_columns,
+                const.EXTRA_WINDOWS_SERVER_COLUMNS + const.EXTRA_WINDOWS_DESKTOP_COLUMNS,
                 axis=1,
                 inplace=True,
             )
         else:
             print("All columns already exist")
-
-        self.save_to_csv("/tmp/my_file.csv")
 
     def save_to_csv(self: t.Self, path: str) -> None:
         self.df.to_csv(path, index=False)
