@@ -156,7 +156,7 @@ class Config:
                 # Convert dash-separated keys to underscore-separated keys
                 for key, value in config_dict.items():
                     new_key = key.replace("-", "_")
-                    if getattr(self, new_key):
+                    if getattr(self, new_key, None):
                         print(f"Ignoring {new_key} from yaml, already set.")
                     setattr(self, new_key, value)
             delattr(self, "yaml")
