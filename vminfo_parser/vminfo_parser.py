@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # Std lib imports
-import argparse
 import re
 import typing as t
 
@@ -11,135 +10,11 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
-import yaml
 
 from . import const
+from .config import Config
 
 A = t.TypeVar("Analyzer", bound="Analyzer")
-
-
-class Config:
-    def __init__(self: t.Self) -> None:
-        self.args: t.Optional[argparse.Namespace] = None
-
-    def parse_arguments(self: t.Self, arg_list: list[str]) -> None:
-        parser = argparse.ArgumentParser(description="Process VM CSV file")
-        group = parser.add_mutually_exclusive_group(required=True)
-        group.add_argument("--file", type=str, help="The file to parse")
-        group.add_argument("--yaml", type=str, help="Path to YAML configuration file")
-
-        parser.add_argument(
-            "--sort-by-env",
-            type=str,
-            nargs="?",
-            help='Sort disk by environment. Use "all" to get combine count, '
-            '"both" to show both non-prod and prod, or specify one.',
-        )
-        parser.add_argument(
-            "--prod-env-labels",
-            type=str,
-            nargs="?",
-            help="The values in your data that represent prod environments. "
-            "This is used to generate prod and non-prod stats. "
-            "Passed as CSV i.e. --prod-env-labels 'baker,dte'",
-        )
-        parser.add_argument(
-            "--generate-graphs",
-            action="store_true",
-            help="Choose whether or not to output visual graphs. "
-            "If this option is not set, a text table will be outputted to the terminal",
-        )
-        parser.add_argument(
-            "--get-disk-space-ranges",
-            action="store_true",
-            help="This flag will get disk space ranges regardless of OS. "
-            "Can be combine with --prod-env-labels and --sort-by-env to target a specific environment",
-        )
-        parser.add_argument(
-            "--show-disk-space-by-os",
-            action="store_true",
-            help="Show disk space by OS",
-        )
-        parser.add_argument(
-            "--breakdown-by-terabyte",
-            action="store_true",
-            help="Breaks disk space down into 0-2TB, 2-9TB and 9TB+ instead of the default categories",
-        )
-        parser.add_argument(
-            "--over-under-tb",
-            action="store_true",
-            help="A simple break down of machines under 1TB and those over 1TB",
-        )
-        parser.add_argument(
-            "--output-os-by-version",
-            action="store_true",
-            help="Output OS by version",
-        )
-        parser.add_argument(
-            "--get-os-counts",
-            action="store_true",
-            help="Generate a report that counts the inventory broken down by OS",
-        )
-        parser.add_argument(
-            "--os-name",
-            type=str,
-            help="The name of the Operating System to produce a report about",
-        )
-        parser.add_argument(
-            "--minimum-count",
-            type=int,
-            help="Anything below this number will be excluded from the results",
-        )
-        parser.add_argument(
-            "--get-supported-os",
-            action="store_true",
-            help="Display a graph of the supported operating systems for OpenShift Virt",
-        )
-        parser.add_argument(
-            "--get-unsupported-os",
-            action="store_true",
-            help="Display a graph of the unsupported operating systems for OpenShift Virt",
-        )
-        self.args = parser.parse_args(arg_list)
-
-        # Check if --yaml is used and exit if other arguments are provided
-        if self.args.yaml:
-            if any(getattr(self.args, arg) for arg in vars(self.args) if arg != "yaml"):
-                print("When using --yaml, no other arguments should be provided.")
-                parser.print_help()
-                exit(1)
-        elif not self.args.file:
-            print("--file is required when --yaml is not used.")
-            parser.print_help()
-            exit(1)
-
-        # Load configuration from YAML if specified
-        if self.args.yaml:
-            self.load_from_yaml(self.args.yaml)
-
-    def load_from_yaml(self: t.Self, yaml_path: str) -> None:
-        try:
-            with open(yaml_path, "r") as yaml_file:
-                config_dict = yaml.safe_load(yaml_file)
-
-                # Convert dash-separated keys to underscore-separated keys
-                converted_dict = {}
-                for key, value in config_dict.items():
-                    new_key = key.replace("-", "_")
-                    converted_dict[new_key] = value
-
-                self.args = argparse.Namespace(**converted_dict)
-
-        except FileNotFoundError:
-            print(f"YAML file not found: {yaml_path}")
-            exit(1)
-        except yaml.YAMLError as e:
-            print(f"Error parsing YAML file: {e}")
-            exit(1)
-
-    def load_from_env(self: t.Self) -> None:
-        # Implement loading configuration from environment variables
-        pass
 
 
 class VMData:
@@ -247,8 +122,8 @@ class CLIOutput:
         counts = filtered_df["OS Version"].fillna("unknown").value_counts().reset_index()
         counts.columns = ["OS Version", "Count"]
 
-        if analyzer.args.minimum_count is not None and analyzer.args.minimum_count > 0:
-            counts = counts[counts["Count"] >= analyzer.args.minimum_count]
+        if analyzer.config.minimum_count is not None and analyzer.config.minimum_count > 0:
+            counts = counts[counts["Count"] >= analyzer.config.minimum_count]
 
         return counts
 
@@ -359,7 +234,7 @@ class Visualizer:
         environment_filter: str,
         os_filter: t.Optional[str] = None,
     ) -> None:
-        if self.analyzer.args.generate_graphs:
+        if self.analyzer.config.generate_graphs:
             range_counts_by_environment.plot(kind="bar", stacked=False, figsize=(12, 8), rot=45)
 
             plt.xlabel("Disk Space Range")
@@ -377,9 +252,9 @@ class Visualizer:
         min_count: int = 500,
     ) -> None:
         # Define specific colors for identified OS names
-        # Generate random colors for bars not in supported_os_colors
+        # Generate random colors for bars not in SUPPORTED_OS_COLORS
         random_colors = cm.rainbow(np.linspace(0, 1, len(counts)))
-        colors = [self.analyzer.supported_os_colors.get(os, random_colors[i]) for i, os in enumerate(os_names)]
+        colors = [const.SUPPORTED_OS_COLORS.get(os, random_colors[i]) for i, os in enumerate(os_names)]
 
         # Plot the counts as a horizontal bar chart with specified and random colors
         # ax = counts.plot(kind="barh", rot=45, color=colors)
@@ -406,7 +281,7 @@ class Visualizer:
         min_count: int = 500,
     ) -> None:
         random_colors = cm.rainbow(np.linspace(0, 1, len(counts)))
-        colors = [self.analyzer.supported_os_colors.get(os, random_colors[i]) for i, os in enumerate(os_names)]
+        colors = [const.SUPPORTED_OS_COLORS.get(os, random_colors[i]) for i, os in enumerate(os_names)]
 
         # ax = counts.plot(kind="barh", rot=45, color=colors)
         counts.plot(kind="barh", rot=45, color=colors)
@@ -418,12 +293,12 @@ class Visualizer:
         plt.xscale("log")
         plt.gca().xaxis.set_major_formatter(ticker.ScalarFormatter())
 
-        if self.analyzer.args.generate_graphs:
+        if self.analyzer.config.generate_graphs:
             plt.show(block=True)
             plt.close()
 
     def visualize_unsupported_os_distribution(self: t.Self, unsupported_counts: pd.Series) -> None:
-        if self.analyzer.args.generate_graphs:
+        if self.analyzer.config.generate_graphs:
             random_colors = cm.rainbow(np.linspace(0, 1, len(unsupported_counts)))
             plt.pie(
                 unsupported_counts,
@@ -441,8 +316,8 @@ class Visualizer:
         counts: pd.Series,
         environment_filter: t.Optional[str] = None,
     ) -> None:
-        if self.analyzer.args.generate_graphs:
-            colors = [self.analyzer.supported_os_colors[os] for os in counts.index]
+        if self.analyzer.config.generate_graphs:
+            colors = [const.SUPPORTED_OS_COLORS[os] for os in counts.index]
 
             if environment_filter and environment_filter != "both":
                 counts.plot(kind="barh", rot=45, color=colors)
@@ -477,7 +352,7 @@ class Visualizer:
         if not counts.empty:
             ax = counts.plot(kind="barh", rot=45)
 
-            if self.analyzer.args.generate_graphs:
+            if self.analyzer.config.generate_graphs:
                 plt.title(f"Distribution of {os_name}")
                 plt.ylabel("OS Version")
                 plt.xlabel("Count")
@@ -495,18 +370,12 @@ class Analyzer:
     def __init__(
         self: t.Self,
         vm_data: VMData,
-        parser_args: argparse.Namespace,
+        config: Config,
         column_headers: t.Optional[dict[str, str]] = None,
     ) -> None:
         self.vm_data = vm_data
-        self.args = parser_args
+        self.config = config
         self.column_headers = column_headers
-        self.supported_os_colors = {
-            "Red Hat Enterprise Linux": "red",
-            "SUSE Linux Enterprise": "green",
-            "Microsoft Windows Server": "navy",
-            "Microsoft Windows": "blue",
-        }
         self.visualizer = Visualizer(self)
         self.cli_output = CLIOutput()
 
@@ -697,9 +566,9 @@ class Analyzer:
         )
         print(clean_output)
 
-        min_count = self.args.minimum_count if self.args.minimum_count else 500
+        min_count = self.config.minimum_count if self.config.minimum_count else 500
 
-        if self.args.generate_graphs:
+        if self.config.generate_graphs:
             self.visualizer.visualize_os_distribution(counts, os_names, environment_filter, min_count)
 
     def _calculate_os_counts(
@@ -708,7 +577,7 @@ class Analyzer:
         if dataFrame is None:
             dataFrame = self.vm_data.df
 
-        min_count = self.args.minimum_count if self.args.minimum_count else 500
+        min_count = self.config.minimum_count if self.config.minimum_count else 500
 
         if not environment_filter or environment_filter == "all":
             counts = dataFrame["OS Name"].value_counts()
@@ -751,7 +620,7 @@ class Analyzer:
         else:
             filtered_counts = data_cp
 
-        filtered_counts = filtered_counts[filtered_counts.index.isin(self.supported_os_colors.keys())]
+        filtered_counts = filtered_counts[filtered_counts.index.isin(const.SUPPORTED_OSES)]
         filtered_counts = filtered_counts.astype(int)
 
         # This removes unwanted lines from the output that Pandas generates
@@ -769,13 +638,7 @@ class Analyzer:
     def generate_unsupported_OS_counts(self: t.Self) -> pd.Series:
         counts = self.vm_data.df["OS Name"].value_counts()
 
-        supported_os = [
-            "Red Hat Enterprise Linux",
-            "SUSE Linux Enterprise",
-            "Microsoft Windows Server",
-            "Microsoft Windows",
-        ]
-        unsupported_counts = counts[~counts.index.isin(supported_os)]
+        unsupported_counts = counts[~counts.index.isin(const.SUPPORTED_OSES)]
 
         other_counts = unsupported_counts[unsupported_counts <= 500]
         other_total = other_counts.sum()
@@ -838,80 +701,80 @@ class Analyzer:
             self.handle_operating_system_counts(environment_filter, dataFrame=data_cp)
 
 
-def main(arg_list: t.Optional[list[str]] = None) -> None:  # noqa: C901
+def main(*args: t.Optional[str]) -> None:  # noqa: C901
     config = Config()
-    config.parse_arguments(arg_list=arg_list)
+    config = Config.from_args(*args)
 
-    vm_data = VMData.from_file(config.args.file)
+    vm_data = VMData.from_file(config.file)
     vm_data.set_column_headings()
     vm_data.add_extra_columns()
 
-    analyzer = Analyzer(vm_data, config.args, column_headers=vm_data.column_headers)
+    analyzer = Analyzer(vm_data, config, column_headers=vm_data.column_headers)
     visualizer = Visualizer(analyzer)
 
     # Load environments from prod-env-labels if provided
     environments = []
-    if config.args.prod_env_labels:
-        environments = config.args.prod_env_labels.split(",")
+    if config.prod_env_labels:
+        environments = config.prod_env_labels.split(",")
 
     # Check if environments are defined for sorting
-    if config.args.sort_by_env and not environments:
+    if config.sort_by_env and not environments:
         print(
             "\n\nYou specified you wanted to sort by environment but "
             "did not provide a definition of what categorizes a Prod environment... exiting\n"
         )
         exit()
 
-    if config.args.show_disk_space_by_os:
-        if config.args.os_name:
+    if config.show_disk_space_by_os:
+        if config.os_name:
             # If the user specifies an OS, use that to filter out everything else
             if environments:
-                if config.args.sort_by_env:
+                if config.sort_by_env:
                     analyzer.plot_disk_space_distribution(
-                        os_name=config.args.os_name,
-                        environment_filter=config.args.sort_by_env,
-                        show_disk_in_tb=config.args.breakdown_by_terabyte,
+                        os_name=config.os_name,
+                        environment_filter=config.sort_by_env,
+                        show_disk_in_tb=config.breakdown_by_terabyte,
                     )
                 else:
                     analyzer.plot_disk_space_distribution(
-                        os_name=config.args.os_name,
-                        show_disk_in_tb=config.args.breakdown_by_terabyte,
+                        os_name=config.os_name,
+                        show_disk_in_tb=config.breakdown_by_terabyte,
                     )
             else:
                 analyzer.plot_disk_space_distribution(
-                    os_name=config.args.os_name,
-                    show_disk_in_tb=config.args.breakdown_by_terabyte,
+                    os_name=config.os_name,
+                    show_disk_in_tb=config.breakdown_by_terabyte,
                 )
         else:
             # If the user has not specified an OS name, assume they want them all
             for os_name in vm_data.df["OS Name"].unique():
                 if environments:
-                    # analyzer.plot_disk_space_distribution(os_name=os_name, show_disk_in_tb=config.args.breakdown_by_terabyte)
+                    # analyzer.plot_disk_space_distribution(os_name=os_name, show_disk_in_tb=config.breakdown_by_terabyte)
                     analyzer.sort_attribute_by_environment(
                         attribute="diskSpace",
                         os_filter=os_name,
-                        environment_filter=config.args.sort_by_env,
-                        over_under_tb=config.args.over_under_tb,
+                        environment_filter=config.sort_by_env,
+                        over_under_tb=config.over_under_tb,
                         *environments,  # noqa: B026
                     )
 
                 else:
-                    if config.args.over_under_tb:
+                    if config.over_under_tb:
                         analyzer.sort_attribute_by_environment(
                             os_name=os_name,
-                            show_disk_in_tb=config.args.breakdown_by_terabyte,
+                            show_disk_in_tb=config.breakdown_by_terabyte,
                         )
                     else:
                         analyzer.sort_attribute_by_environment(os_name=os_name)
 
-    if config.args.get_disk_space_ranges:
-        if config.args.sort_by_env != "all":
+    if config.get_disk_space_ranges:
+        if config.sort_by_env != "all":
             if environments:
                 analyzer.sort_attribute_by_environment(
                     attribute="diskSpace",
-                    environment_filter=config.args.sort_by_env,
-                    over_under_tb=config.args.over_under_tb,
-                    show_disk_in_tb=config.args.breakdown_by_terabyte,
+                    environment_filter=config.sort_by_env,
+                    over_under_tb=config.over_under_tb,
+                    show_disk_in_tb=config.breakdown_by_terabyte,
                     *environments,  # noqa: B026
                 )
             else:
@@ -922,55 +785,55 @@ def main(arg_list: t.Optional[list[str]] = None) -> None:  # noqa: C901
         else:
             analyzer.sort_attribute_by_environment(
                 attribute="diskSpace",
-                environment_filter=config.args.sort_by_env,
-                over_under_tb=config.args.over_under_tb,
-                show_disk_in_tb=config.args.breakdown_by_terabyte,
+                environment_filter=config.sort_by_env,
+                over_under_tb=config.over_under_tb,
+                show_disk_in_tb=config.breakdown_by_terabyte,
             )
 
-    if config.args.get_os_counts:
+    if config.get_os_counts:
         if environments:
-            if config.args.os_name:
+            if config.os_name:
                 analyzer.sort_attribute_by_environment(
                     attribute="operatingSystem",
-                    os_filter=config.args.os_name,
+                    os_filter=config.os_name,
                     *environments,  # noqa: B026
                 )
                 # visualizer.visualize_os_distribution()
-            elif config.args.sort_by_env:
+            elif config.sort_by_env:
                 analyzer.sort_attribute_by_environment(
                     attribute="operatingSystem",
                     *environments,  # noqa: B026
-                    environment_filter=config.args.sort_by_env,
+                    environment_filter=config.sort_by_env,
                 )
                 # visualizer.visualize_os_distribution()
             else:
                 analyzer.sort_attribute_by_environment(attribute="operatingSystem", *environments)  # noqa: B026
                 # visualizer.visualize_os_distribution()
         else:
-            if config.args.os_name:
-                analyzer.sort_attribute_by_environment(attribute="operatingSystem", os_filter=config.args.os_name)
+            if config.os_name:
+                analyzer.sort_attribute_by_environment(attribute="operatingSystem", os_filter=config.os_name)
                 # visualizer.visualize_os_distribution()
             else:
                 analyzer.sort_attribute_by_environment(attribute="operatingSystem")
                 ###
                 # visualizer.visualize_os_distribution()
 
-    if config.args.output_os_by_version:
+    if config.output_os_by_version:
         for os_name in vm_data.df["OS Name"].unique():
             visualizer.visualize_os_version_distribution(os_name)
 
-    if config.args.get_supported_os:
-        if config.args.prod_env_labels and config.args.sort_by_env:
+    if config.get_supported_os:
+        if config.prod_env_labels and config.sort_by_env:
             supported_counts = analyzer.generate_supported_OS_counts(
-                *config.args.prod_env_labels.split(","),
-                environment_filter=config.args.sort_by_env,
+                *config.prod_env_labels.split(","),
+                environment_filter=config.sort_by_env,
             )
-            visualizer.visualize_supported_os_distribution(supported_counts, environment_filter=config.args.sort_by_env)
+            visualizer.visualize_supported_os_distribution(supported_counts, environment_filter=config.sort_by_env)
         else:
-            supported_counts = analyzer.generate_supported_OS_counts(environment_filter=config.args.sort_by_env)
-            visualizer.visualize_supported_os_distribution(supported_counts, environment_filter=config.args.sort_by_env)
+            supported_counts = analyzer.generate_supported_OS_counts(environment_filter=config.sort_by_env)
+            visualizer.visualize_supported_os_distribution(supported_counts, environment_filter=config.sort_by_env)
 
-    if config.args.get_unsupported_os:
+    if config.get_unsupported_os:
         unsupported_counts = analyzer.generate_unsupported_OS_counts()
         visualizer.visualize_unsupported_os_distribution(unsupported_counts)
 
