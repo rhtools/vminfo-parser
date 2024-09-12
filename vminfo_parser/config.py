@@ -131,7 +131,8 @@ class Config:
         """
         parser = _get_parser()
         config = cls()
-
+        if not args:
+            args = None
         parser.parse_args(args=args, namespace=config)
 
         # Check if --yaml is used and exit if other arguments are provided
