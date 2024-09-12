@@ -200,7 +200,7 @@ class TestVMInfoParser(unittest.TestCase):
     def run_test_with_args(self: t.Self, args: list[str], expected_output: str) -> None:
         try:
             # Run the main function with sample arguments
-            main(args)
+            main(*args)
 
             # Get the output
             output = self.captured_output.getvalue().strip()
