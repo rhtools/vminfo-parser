@@ -176,3 +176,136 @@ SERVER_NAME_MATCHES = {
         "Architecture": "32-bit",
     },
 }
+
+CLI_OPTIONS = {
+    "default": {},
+    "disk_space_range_both_env": {
+        "get-disk-space-ranges": True,
+        "prod-env-labels": "Prod-DC2,Prod-DC1",
+        "sort-by-env": "both",
+    },
+    "disk_space_range_prod_env": {
+        "get-disk-space-ranges": True,
+        "prod-env-labels": "Prod-DC2,Prod-DC1",
+        "sort-by-env": "prod",
+    },
+    "disk_space_range_prod_env_by_terabyte": {
+        "breakdown-by-terabyte": True,
+        "get-disk-space-ranges": True,
+        "prod-env-labels": "Prod-DC2,Prod-DC1",
+        "sort-by-env": "prod",
+    },
+    "os_min_counts": {
+        "get-os-counts": True,
+        "minimum-count": 500,
+    },
+    "supported_os_all_envs": {
+        "get-supported-os": True,
+        "prod-env-labels": "Prod-DC2,Prod-DC1",
+        "sort-by-env": "all",
+    },
+    "supported_os_both_envs": {
+        "get-supported-os": True,
+        "prod-env-labels": "Prod-DC2,Prod-DC1",
+        "sort-by-env": "both",
+    },
+    "supported_os_min_count": {
+        "get-supported-os": True,
+        "minimum-count": 500,
+        "prod-env-labels": "Prod-DC2,Prod-DC1",
+        "sort-by-env": "all",
+    },
+    "supported_os_non_prod": {
+        "get-supported-os": True,
+        "minimum-count": 500,
+        "prod-env-labels": "Prod-DC2,Prod-DC1",
+        "sort-by-env": "non-prod",
+    },
+    "unsupported_os_both": {
+        "get-unsupported-os": True,
+        "minimum-count": 500,
+        "prod-env-labels": "Prod-DC2,Prod-DC1",
+        "sort-by-env": "both",
+    },
+}
+
+EXPECTED_CLI_OUTPUT = {
+    "disk_space_range_both_env": (
+        "Environment                            non-prod   prod       \n"
+        "0-200 GB                               2312       5082      \n"
+        "201-400 GB                             6176       12970     \n"
+        "401-600 GB                             3338       5232      \n"
+        "601-900 GB                             1828       6744      \n"
+        "901-1500 GB                            1039       3580      \n"
+        "1501-2000 GB                           253        658       \n"
+        "2001-3000 GB                           1398       915       \n"
+        "3001-5000 GB                           338        821       \n"
+        "5001-9000 GB                           131        1006      \n"
+        "9001-114256 GB                         65         707"
+    ),
+    "disk_space_range_prod_env": (
+        "Environment                            prod       \n"
+        "0-200 GB                               5082      \n"
+        "201-400 GB                             12970     \n"
+        "401-600 GB                             5232      \n"
+        "601-900 GB                             6744      \n"
+        "901-1500 GB                            3580      \n"
+        "1501-2000 GB                           658       \n"
+        "2001-3000 GB                           915       \n"
+        "3001-5000 GB                           821       \n"
+        "5001-9000 GB                           1006      \n"
+        "9001-114256 GB                         707"
+    ),
+    "disk_space_range_prod_env_by_terabyte": (
+        "Environment                            prod       \n"
+        "0-2000 GB                              34621     \n"
+        "2001-9000 GB                           2805      \n"
+        "9001-114256 GB                         707"
+    ),
+    "os_min_counts": (
+        "OS Name\n"
+        "Ubuntu Linux                16583\n"
+        "Microsoft Windows Server    13732\n"
+        "Oracle Linux                10589\n"
+        "Microsoft Windows            7280\n"
+        "SUSE Linux Enterprise        1991\n"
+        "Red Hat Enterprise Linux     1150\n"
+        "CentOS                        592"
+    ),
+    "supported_os_all_envs": (
+        "OS Name\n"
+        "Microsoft Windows Server    13732\n"
+        "Microsoft Windows            7280\n"
+        "SUSE Linux Enterprise        1991\n"
+        "Red Hat Enterprise Linux     1150"
+    ),
+    "supported_os_both_envs": (
+        "Environment               non-prod   prod\n"
+        "OS Name\n"
+        "Microsoft Windows              399   6881\n"
+        "Microsoft Windows Server      3614  10118\n"
+        "Red Hat Enterprise Linux       437    713\n"
+        "SUSE Linux Enterprise          644   1347"
+    ),
+    "supported_os_min_count": (
+        "OS Name\n"
+        "Microsoft Windows Server    13732\n"
+        "Microsoft Windows            7280\n"
+        "SUSE Linux Enterprise        1991\n"
+        "Red Hat Enterprise Linux     1150"
+    ),
+    "supported_os_non_prod": (
+        "OS Name\n"
+        "Microsoft Windows Server    3614\n"
+        "SUSE Linux Enterprise        644\n"
+        "Red Hat Enterprise Linux     437\n"
+        "Microsoft Windows            399"
+    ),
+    "unsupported_os_both": (
+        "OS Name\n"
+        "Ubuntu Linux    16583\n"
+        "Oracle Linux    10589\n"
+        "CentOS            592\n"
+        "Other             671"
+    ),
+}
