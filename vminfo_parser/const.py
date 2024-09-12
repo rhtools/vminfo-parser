@@ -59,3 +59,14 @@ EXTRA_COLUMNS_WINDOWS_DESKTOP_REGEX = (
     r"(?P<OS_Version>XP Professional|\d+(?:\.\d+)*|Vista|7|8|10)\s*"
     r"\((?P<Architecture>.*?64-bit|.*?32-bit)\)"
 )
+
+SUPPORTED_OS_COLORS = MappingProxyType(
+    {
+        "Red Hat Enterprise Linux": "red",
+        "SUSE Linux Enterprise": "green",
+        "Microsoft Windows Server": "navy",
+        "Microsoft Windows": "blue",
+    }
+)
+
+SUPPORTED_OSES = frozenset(SUPPORTED_OS_COLORS.keys())
