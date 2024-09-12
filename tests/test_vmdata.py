@@ -1,3 +1,4 @@
+import logging
 import re
 import typing as t
 from copy import deepcopy
@@ -23,7 +24,7 @@ def test_get_file_type(datafile: tuple[str, bool, str]) -> None:
         assert result == mime
 
 
-def test_from_file(datafile: tuple[str, bool, str], capsys: pytest.CaptureFixture) -> None:
+def test_from_file(datafile: tuple[str, bool, str], caplog: pytest.LogCaptureFixture) -> None:
     filename = datafile[2]
     empty = datafile[1]
 
@@ -31,8 +32,9 @@ def test_from_file(datafile: tuple[str, bool, str], capsys: pytest.CaptureFixtur
         with pytest.raises(SystemExit):
             result = VMData.from_file(filename)
             assert result is None
-        output = capsys.readouterr()
-        assert output.out == "File passed in was neither a CSV nor an Excel file\nBailing...\n"
+        assert caplog.record_tuples == [
+            ("vminfo_parser.vminfo_parser", logging.CRITICAL, "File passed in was neither a CSV nor an Excel file")
+        ]
     else:
         result = VMData.from_file(filename)
         assert isinstance(result, VMData)
@@ -131,13 +133,12 @@ def test_add_extra_columns(vmdata: VMData) -> None:
 
 @pytest.mark.usefixtures("datafile")
 @pytest.mark.parametrize("datafile", ["csv"], indirect=["datafile"])
-def test_add_extra_columns_bypass(vmdata: VMData, capsys: pytest.CaptureFixture) -> None:
+def test_add_extra_columns_bypass(vmdata: VMData, caplog: pytest.LogCaptureFixture) -> None:
     vmdata.set_column_headings()
     vmdata.add_extra_columns()
 
     original_df = vmdata.df.copy()
     vmdata.add_extra_columns()
-    output = capsys.readouterr()
 
     # Validate that temporary columns do not exist
     assert (
@@ -155,8 +156,8 @@ def test_add_extra_columns_bypass(vmdata: VMData, capsys: pytest.CaptureFixture)
     # Validate that no columns were changed
     assert original_df.equals(vmdata.df)
 
-    # Validate that print stmt from else block was executed
-    assert output.out == "All columns already exist\n"
+    # Validate that log stmt from else block was executed
+    assert caplog.record_tuples == [("vminfo_parser.vminfo_parser", logging.INFO, "All columns already exist")]
 
 
 @pytest.mark.parametrize(
