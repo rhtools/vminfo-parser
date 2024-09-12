@@ -158,7 +158,8 @@ class Config:
                     new_key = key.replace("-", "_")
                     if getattr(self, new_key, None):
                         print(f"Ignoring {new_key} from yaml, already set.")
-                    setattr(self, new_key, value)
+                    else:
+                        setattr(self, new_key, value)
             delattr(self, "yaml")
 
         except FileNotFoundError:
@@ -167,26 +168,6 @@ class Config:
         except yaml.YAMLError as e:
             print(f"Error parsing YAML file: {e}")
             exit(1)
-
-    @classmethod
-    def from_yaml(cls: t.Self, filename: str) -> t.Self:
-        """Create Config object from yaml file directly.
-        Wrapper around Config._load_yaml() to allow bypassing argparse.
-        Note: this prevents defaults from being set by argparse,
-        which may be problematic.
-
-        Args:
-            filename (str): path to yaml config file.
-
-        Returns:
-            Config: Config object loaded with attributes from yaml
-        """
-        # TODO: apply defaults for unset options.
-        config = cls()
-        config.yaml = filename
-        config._load_yaml()
-        config._validate()
-        return config
 
     def load_from_env(self: t.Self) -> None:
         # Implement loading configuration from environment variables
