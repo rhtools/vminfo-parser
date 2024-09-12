@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Std lib imports
+import logging
 import re
 import typing as t
 
@@ -15,6 +16,7 @@ from . import const
 from .config import Config
 
 A = t.TypeVar("Analyzer", bound="Analyzer")
+LOGGER = logging.getLogger(__name__)
 
 
 class VMData:
@@ -47,7 +49,7 @@ class VMData:
         elif file_type in const.MIME.get("excel"):
             df = pd.read_excel(file_path)
         else:
-            print("File passed in was neither a CSV nor an Excel file\nBailing...")
+            LOGGER.critical("File passed in was neither a CSV nor an Excel file")
             exit()
         return cls(df)
 
@@ -58,11 +60,11 @@ class VMData:
                 self.column_headers["unitType"] = "GB" if version == "VERSION_1" else "MB"
                 break
         else:
-            print(
-                "Missing column headers from either "
-                f"{" or ".join(
-                    [str([header for header in version.values()])
-                        for version in const.COLUMN_HEADERS.values()])}"
+            LOGGER.error(
+                "Missing column headers from either %s",
+                " or ".join(
+                    [str([header for header in version.values()]) for version in const.COLUMN_HEADERS.values()]
+                ),
             )
             raise ValueError("Headers don't match either of the versions expected")
 
@@ -92,7 +94,7 @@ class VMData:
                 inplace=True,
             )
         else:
-            print("All columns already exist")
+            LOGGER.info("All columns already exist")
 
     def save_to_csv(self: t.Self, path: str) -> None:
         self.df.to_csv(path, index=False)
@@ -205,7 +207,7 @@ class Visualizer:
         sorted_dict = dict(sorted(range_counts.items(), key=lambda x: x[1]))
 
         if self.analyzer.vm_data.df.empty:
-            print("No data to plot")
+            LOGGER.warning("No data to plot")
             return
 
         # Create a subplot for plotting
@@ -261,7 +263,7 @@ class Visualizer:
         counts.plot(kind="barh", rot=45, color=colors)
 
         if self.analyzer.vm_data.df.empty:
-            print("No data to plot")
+            LOGGER.warning("No data to plot")
             return
 
         # Set titles and labels for the plot
@@ -612,7 +614,7 @@ class Analyzer:
             data_cp = data_cp.groupby(["OS Name", self.column_headers["environment"]]).size().unstack().fillna(0)
 
         if data_cp.empty:
-            print(f"None found in {environment_filter} \n")
+            LOGGER.warning("None found in %s", environment_filter)
             return pd.Series()
 
         if environment_filter and environment_filter != "both":
@@ -685,7 +687,7 @@ class Analyzer:
             data_cp = data_cp[data_cp[env_column] == environment_filter]
 
         if data_cp.empty:
-            print(f"None found in {environment_filter} \n")
+            LOGGER.warning("None found in %s", environment_filter)
             return
 
         if attribute == "diskSpace":
@@ -719,9 +721,9 @@ def main(*args: t.Optional[str]) -> None:  # noqa: C901
 
     # Check if environments are defined for sorting
     if config.sort_by_env and not environments:
-        print(
-            "\n\nYou specified you wanted to sort by environment but "
-            "did not provide a definition of what categorizes a Prod environment... exiting\n"
+        LOGGER.critical(
+            "You specified you wanted to sort by environment but "
+            "did not provide a definition of what categorizes a Prod environment... exiting"
         )
         exit()
 
@@ -778,7 +780,7 @@ def main(*args: t.Optional[str]) -> None:  # noqa: C901
                     *environments,  # noqa: B026
                 )
             else:
-                print(
+                LOGGER.critical(
                     "Failed to determine prod from non-prod environments... Perhaps you did not pass in the --prod-env-labels ?"
                 )
                 exit()

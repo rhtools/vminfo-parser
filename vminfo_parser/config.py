@@ -1,7 +1,11 @@
 import argparse
+import logging
+import sys
 import typing as t
 
 import yaml
+
+LOGGER = logging.getLogger(__name__)
 
 
 def _get_parser() -> argparse.ArgumentParser:
@@ -106,8 +110,8 @@ def _get_parser() -> argparse.ArgumentParser:
 
 
 def _parse_fail(msg: str) -> None:
-    print(msg)
-    _get_parser().print_help()
+    LOGGER.error(msg)
+    _get_parser().print_help(sys.stderr)
     exit(1)
 
 
@@ -133,6 +137,7 @@ class Config:
         config = cls()
         if not args:
             args = None
+
         parser.parse_args(args=args, namespace=config)
 
         # Check if --yaml is used and exit if other arguments are provided
@@ -158,16 +163,16 @@ class Config:
                 for key, value in config_dict.items():
                     new_key = key.replace("-", "_")
                     if getattr(self, new_key, None):
-                        print(f"Ignoring {new_key} from yaml, already set.")
+                        LOGGER.warning(f"Ignoring {new_key} from yaml, already set.")
                     else:
                         setattr(self, new_key, value)
             delattr(self, "yaml")
 
         except FileNotFoundError:
-            print(f"YAML file not found: {self.yaml}")
+            LOGGER.critical("YAML file not found: %s", self.yaml)
             exit(1)
         except yaml.YAMLError as e:
-            print(f"Error parsing YAML file: {e}")
+            LOGGER.critical("Error parsing YAML file", exc_info=e)
             exit(1)
 
     def load_from_env(self: t.Self) -> None:
@@ -180,5 +185,5 @@ class Config:
         # TODO: implement further validation or force yaml through argparse validation.
         # perhaps using subparsers for yaml and everything else
         if not hasattr(self, "file"):
-            print("File not specified in yaml or command line")
+            LOGGER.critical("File not specified in yaml or command line")
             exit(1)
