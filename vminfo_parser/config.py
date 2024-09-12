@@ -5,6 +5,12 @@ import yaml
 
 
 def _get_parser() -> argparse.ArgumentParser:
+    """Create ArguementParser object and add arguements to it.
+    This is separated into its own function to increase readability.
+
+    Returns:
+        argparse.ArgumentParser: ArgumentParser object configured for all cli options.
+    """
     parser = argparse.ArgumentParser(description="Process VM CSV file")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--file", type=str, help="The file to parse")
@@ -115,6 +121,14 @@ class Config:
 
     @classmethod
     def from_args(cls: t.Self, *args: str) -> t.Self:
+        """Create Config object from passed arguements or sys.argv
+
+        Args:
+            *args (str): strings to be interpreted as command line arguements.
+
+        Returns:
+            Config: Config object with all parsed arguements as attributes
+        """
         parser = _get_parser()
         config = cls()
 
@@ -126,15 +140,19 @@ class Config:
                 _parse_fail("When using --yaml, no other arguments should be provided.")
             config._load_yaml()
         elif not config.file:
+            # this is likely never reachable because argparse forces it.
             _parse_fail("--file is required when --yaml is not used.")
 
+        config._validate()
         return config
 
     def _load_yaml(self: t.Self) -> None:
+        """Read yaml file and add arguements as attributes to Config object.
+        Does not override non-default attributes set elsewhere.
+        """
         try:
             with open(self.yaml, "r") as yaml_file:
                 config_dict = yaml.safe_load(yaml_file)
-
                 # Convert dash-separated keys to underscore-separated keys
                 for key, value in config_dict.items():
                     new_key = key.replace("-", "_")
@@ -152,11 +170,33 @@ class Config:
 
     @classmethod
     def from_yaml(cls: t.Self, filename: str) -> t.Self:
+        """Create Config object from yaml file directly.
+        Wrapper around Config._load_yaml() to allow bypassing argparse.
+        Note: this prevents defaults from being set by argparse,
+        which may be problematic.
+
+        Args:
+            filename (str): path to yaml config file.
+
+        Returns:
+            Config: Config object loaded with attributes from yaml
+        """
+        # TODO: apply defaults for unset options.
         config = cls()
         config.yaml = filename
         config._load_yaml()
+        config._validate()
         return config
 
     def load_from_env(self: t.Self) -> None:
         # Implement loading configuration from environment variables
         pass
+
+    def _validate(self: t.Self) -> None:
+        """Ensure that necessary options are available for parser to function."""
+
+        # TODO: implement further validation or force yaml through argparse validation.
+        # perhaps using subparsers for yaml and everything else
+        if not hasattr(self, "file"):
+            print("File not specified in yaml or command line")
+            exit(1)
