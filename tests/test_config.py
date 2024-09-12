@@ -1,4 +1,5 @@
 import pathlib
+import sys
 
 import pytest
 
@@ -73,6 +74,13 @@ def test_yaml_from_args(config_dict: dict, yaml_config: str) -> None:
 def test_from_args(config_dict: dict, cli_args: list) -> None:
     config_obj = Config.from_args(*cli_args)
 
+    assert_config_correct(config_dict, config_obj)
+
+
+def test_from_sys_argv(config_dict: dict, cli_args: list, monkeypatch: pytest.MonkeyPatch) -> None:
+    with monkeypatch.context() as m:
+        m.setattr(sys, "argv", ["run_pytest_script.py"] + cli_args, raising=False)
+        config_obj = Config.from_args()
     assert_config_correct(config_dict, config_obj)
 
 
