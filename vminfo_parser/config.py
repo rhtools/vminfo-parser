@@ -25,6 +25,12 @@ def _get_parser() -> argparse.ArgumentParser:
         '"both" to show both non-prod and prod, or specify one.',
     )
     parser.add_argument(
+        "--sort-by-site",
+        action="store_true",
+        default=False,
+        help='Generate per-site stats.',
+    )
+    parser.add_argument(
         "--prod-env-labels",
         type=str,
         nargs="?",
