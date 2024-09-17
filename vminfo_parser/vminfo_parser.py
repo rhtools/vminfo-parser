@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 # Std lib imports
+import io
 import logging
 import re
+import sys
 import typing as t
+import weakref
 
 # 3rd party imports
 import magic
@@ -150,7 +153,48 @@ class VMData:
 
 class CLIOutput:
     def __init__(self: t.Self) -> None:
-        pass
+        # Output buffer to store output.
+        self.output = io.StringIO(initial_value="\n\n", newline="\n")
+
+        # Finalizer for flushing buffer to stdout.
+        # Will be called when self is deleted or when the interpreter exits
+        self._finalize = weakref.finalize(self, self.flush_output, self.output)
+
+    @staticmethod
+    def flush_output(output: io.StringIO, file: t.Optional[io.TextIOBase] = None) -> None:
+        """Write StringIO Buffer to file (or stdout).  Closes output buffer.
+
+        Args:
+            output (io.StringIO): StringIO obj containing output buffer
+            file (t.Optional[io.TextIOBase], optional): File to write butter to. Defaults to stdout.
+        """
+        # Delay setting referece to stdout so tests can capture it
+        if file is None:
+            file = sys.stdout
+        file.write(output.getvalue())
+        output.close()
+
+    def writeline(self: t.Self, line: str = "") -> None:
+        """write string to output buffer.  Adds newline if line does not end with one.
+
+        Args:
+            line (str, optional): string to write to output buffer. Defaults to "".
+        """
+        if not line.endswith("\n"):
+            line = line + "\n"
+        self.write(line)
+
+    def write(self: t.Self, line: str) -> None:
+        """Write string to output buffer.
+
+        Args:
+            line (str): string to write to output buffer
+        """
+        self.output.write(line)
+
+    def close(self: t.Self) -> None:
+        """Calls private finalizer for output buffer.  Finalizer will be closed and cannot be called again."""
+        self._finalize()
 
     def format_dataframe_output(self: t.Self, dataFrame: pd.DataFrame, os_name: t.Optional[str] = None) -> None:
         if dataFrame.index.nlevels == 2:
@@ -159,13 +203,13 @@ class CLIOutput:
             os_version = dataFrame["OS Version"].values
             count = dataFrame["Count"].values
 
-            print("")
-            print(os_name)
-            print("--------------")
-            print("OS Version\t\t\t Count")
+            self.writeline("")
+            self.writeline(os_name)
+            self.writeline("--------------")
+            self.writeline("OS Version\t\t\t Count")
 
             for version, count_value in zip(os_version, count):
-                print(f"{version.ljust(32)} {count_value}")
+                self.writeline(f"{version.ljust(32)} {count_value}")
 
     def generate_os_version_distribution(self: t.Self, analyzer: A, os_name: str) -> pd.DataFrame:
         filtered_df = analyzer.vm_data.df[(analyzer.vm_data.df["OS Name"] == os_name)]
@@ -211,23 +255,23 @@ class CLIOutput:
 
         temp_heading = ""
         if os_filter:
-            print(os_filter)
-            print("---------------------------------")
+            self.writeline(os_filter)
+            self.writeline("---------------------------------")
 
         for headings in list(col_widths.keys()):
             if temp_heading:
                 temp_heading += headings.ljust(11)
             else:
                 temp_heading += headings.ljust(39)
-        print(temp_heading)
-        print(formatted_df_str)
-        print()
+        self.writeline(temp_heading)
+        self.writeline(formatted_df_str)
+        self.writeline()
 
     def print_disk_space_ranges(self: t.Self, range_counts: dict[tuple[int, int], int]) -> None:
-        print("Disk Space Range (GB)\t\tCount")
+        self.writeline("Disk Space Range (GB)\t\tCount")
         for disk_range, count in range_counts.items():
             disk_range_str = f"{disk_range[0]}-{disk_range[1]}"
-            print(f"{disk_range_str.ljust(32)} {count}")
+            self.writeline(f"{disk_range_str.ljust(32)} {count}")
 
     def print_site_usage(self: t.Self, resource: str, dataFrame: pd.DataFrame) -> None:
         """
@@ -468,8 +512,8 @@ class Analyzer:
     def calculate_average_ram(self: t.Self, environment_type: str) -> None:
         os_values = self.vm_data.df["OS Name"].unique()
 
-        print("{:<20} {:<10}".format("OS", "Average RAM (GB)"))
-        print("-" * 30)
+        self.cli_output.writeline("{:<20} {:<10}".format("OS", "Average RAM (GB)"))
+        self.cli_output.writeline("-" * 30)
 
         for os in os_values:
             filtered_hosts = self.vm_data.df[
@@ -479,7 +523,7 @@ class Analyzer:
 
             if not filtered_hosts.empty:
                 avg_ram = filtered_hosts[self.column_headers["vmMemory"]].mean()
-                print("{:<20} {:<10.2f}".format(os, avg_ram))
+                self.cli_output.writeline("{:<20} {:<10.2f}".format(os, avg_ram))
 
     def calculate_disk_space_ranges(
         self: t.Self,
@@ -650,7 +694,7 @@ class Analyzer:
                 if not line.startswith("Name:") and not line.startswith("dtype")
             ]
         )
-        print(clean_output)
+        self.cli_output.writeline(clean_output)
 
         min_count = self.config.minimum_count if self.config.minimum_count else 500
 
@@ -717,7 +761,7 @@ class Analyzer:
                 if not line.startswith("Name:") and not line.startswith("dtype")
             ]
         )
-        print(clean_output)
+        self.cli_output.writeline(clean_output)
 
         return filtered_counts
 
@@ -739,7 +783,7 @@ class Analyzer:
             ]
         )
 
-        print(clean_output)
+        self.cli_output.writeline(clean_output)
 
         return unsupported_counts
 
@@ -932,6 +976,10 @@ def main(*args: t.Optional[str]) -> None:  # noqa: C901
 
     # Save results if necessary
     vm_data.save_to_csv("output.csv")
+
+    # close clioutput
+    analyzer.cli_output.close()
+    visualizer.cli_output.close()
 
 
 if __name__ == "__main__":
