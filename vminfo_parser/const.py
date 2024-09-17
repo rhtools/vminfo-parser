@@ -8,6 +8,7 @@ COLUMN_HEADERS = MappingProxyType(
                 "environment": "Environment",
                 "vmMemory": "VM MEM (GB)",
                 "vmDisk": "VM Provisioned (GB)",
+                "vCPU": "VM CPU",
             }
         ),
         "VERSION_2": MappingProxyType(
@@ -16,6 +17,7 @@ COLUMN_HEADERS = MappingProxyType(
                 "environment": "ent-env",
                 "vmMemory": "Memory",
                 "vmDisk": "Total disk capacity MiB",
+                "vCPU": "CPUs",
             }
         ),
     }
