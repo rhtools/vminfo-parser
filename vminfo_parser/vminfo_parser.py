@@ -94,10 +94,9 @@ class VMData:
         else:
             print("All columns already exist")
 
-
     def add_site_specific_columns(self: t.Self) -> pd.DataFrame:
         """
-        Adds site-specific columns to the DataFrame by aggregating resource usage metrics. 
+        Adds site-specific columns to the DataFrame by aggregating resource usage metrics.
         This function groups the data by site name and calculates the total memory, disk, and CPU usage for each site.
 
         Args:
@@ -109,7 +108,7 @@ class VMData:
         Examples:
             site_usage_df = add_site_specific_columns()
         """
-        site_columns = ['Site_RAM_Usage', 'Site_Disk_Usage', 'Site_CPU_Usage', 'Site_VM_Count']
+        site_columns = ["Site_RAM_Usage", "Site_Disk_Usage", "Site_CPU_Usage", "Site_VM_Count"]
 
         # Check if all site-specific columns already exist
         if all(col in self.df.columns for col in site_columns):
@@ -120,8 +119,8 @@ class VMData:
         memory_col = self.column_headers["vmMemory"]
         disk_col = self.column_headers["vmDisk"]
         cpu_col = self.column_headers["vCPU"]
-        unit_type =  self.column_headers['unitType']
-        
+        unit_type = self.column_headers["unitType"]
+
         if unit_type == "MB":
             # If the disk and ram are in MB, convert the memory to GiB
             # convert the disk to TiB
@@ -133,15 +132,15 @@ class VMData:
             self.df[disk_col] = np.ceil(self.df[disk_col] / 1024).astype(int)
         elif unit_type != "GB":
             raise ValueError(f"Unexpected unit type: {unit_type}")
-    
+
         # Group by Site Name and calculate sums
-        site_usage = self.df.groupby('Site Name')[[memory_col, disk_col, cpu_col]].sum().reset_index()
-        site_usage['Site_VM_Count'] = self.df.groupby('Site Name')['Site Name'].count().values
+        site_usage = self.df.groupby("Site Name")[[memory_col, disk_col, cpu_col]].sum().reset_index()
+        site_usage["Site_VM_Count"] = self.df.groupby("Site Name")["Site Name"].count().values
 
         # Rename columns to match the desired output
-        site_usage.columns = ['Site Name'] + site_columns
-        
-        return(site_usage)
+        site_usage.columns = ["Site Name"] + site_columns
+
+        return site_usage
 
     def save_to_csv(self: t.Self, path: str) -> None:
         self.df.to_csv(path, index=False)
@@ -231,7 +230,7 @@ class CLIOutput:
     def print_site_usage(self: t.Self, resource: str, dataFrame: pd.DataFrame) -> None:
         """
         Prints the site-wide usage of a specified resource, including Memory, CPU, Disk, or VM count.
-        
+
 
         Args:
             resource (str): The type of resource to summarize. Options include "Memory", "CPU", "Disk", or "VM".
@@ -257,13 +256,12 @@ class CLIOutput:
                 for index, row in dataFrame.iterrows():
                     print(f"{row['Site Name']}\t\t{disk_usage[index]:.0f} TB")
             elif resource == "VM":
-                vm_count = dataFrame['Site_VM_Count']
+                vm_count = dataFrame["Site_VM_Count"]
                 for index, row in dataFrame.iterrows():
                     print(f"{row['Site Name']}\t\t{vm_count[index]} VMs")
         else:
             print("No data available for the specified resource.")
         print("")
-
 
 
 class Visualizer:

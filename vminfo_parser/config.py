@@ -28,7 +28,7 @@ def _get_parser() -> argparse.ArgumentParser:
         "--sort-by-site",
         action="store_true",
         default=False,
-        help='Generate per-site stats.',
+        help="Generate per-site stats.",
     )
     parser.add_argument(
         "--prod-env-labels",
