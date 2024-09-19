@@ -50,6 +50,7 @@ def test_from_file(datafile: tuple[str, bool, str], capsys: pytest.CaptureFixtur
                     "Environment": ["Prod", "Dev", "Prod"],
                     "VM MEM (GB)": [8, 16, 32],
                     "VM Provisioned (GB)": [100, 200, 300],
+                    "VM CPU": [4, 8, 12],
                 }
             ),
             "GB",
@@ -66,6 +67,7 @@ def test_from_file(datafile: tuple[str, bool, str], capsys: pytest.CaptureFixtur
                     "ent-env": ["Prod", "Dev", "Prod"],
                     "Memory": [8, 16, 32],
                     "Total disk capacity MiB": [100, 200, 300],
+                    "CPUs": [4, 8, 12],
                 }
             ),
             "MB",
