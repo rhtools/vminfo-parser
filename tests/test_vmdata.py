@@ -61,9 +61,14 @@ def test_from_file(datafile: tuple[str, bool, str], caplog: pytest.LogCaptureFix
             pd.DataFrame(
                 {
                     "OS according to the configuration file": [
+                        "",
+                        "",
+                        "CentOS 7",
+                    ],
+                    "OS according to the VMware Tools": [
                         "Windows 10",
                         "Ubuntu 20.04",
-                        "CentOS 7",
+                        "",
                     ],
                     "ent-env": ["Prod", "Dev", "Prod"],
                     "Memory": [8, 16, 32],
