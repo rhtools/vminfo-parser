@@ -1,5 +1,6 @@
 TESTFILE_SHAPE = (55074, 7)
-
+TESTFILE_DIR = "files"
+DEFAULT_TESTFILE_NAME = "Test_Inventory_VMs.{}"
 
 SERVER_NAME_MATCHES = {
     "CentOS 4/5 (64-bit)": {"OS_Name": "CentOS", "OS_Version": "4/5 ", "Architecture": "64-bit"},

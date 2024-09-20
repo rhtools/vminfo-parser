@@ -2,6 +2,7 @@ import argparse
 import logging
 import sys
 import typing as t
+from pathlib import Path
 
 import yaml
 
@@ -17,7 +18,7 @@ def _get_parser() -> argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser(description="Process VM CSV file")
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--file", type=str, help="The file to parse")
+    group.add_argument("--file", type=Path, help="The file to parse")
     group.add_argument("--yaml", type=str, help="Path to YAML configuration file")
 
     parser.add_argument(
@@ -168,10 +169,11 @@ class Config:
                 # Convert dash-separated keys to underscore-separated keys
                 for key, value in config_dict.items():
                     new_key = key.replace("-", "_")
+                    new_value = Path(value) if new_key == "file" else value
                     if getattr(self, new_key, None):
                         LOGGER.warning(f"Ignoring {new_key} from yaml, already set.")
                     else:
-                        setattr(self, new_key, value)
+                        setattr(self, new_key, new_value)
             delattr(self, "yaml")
 
         except FileNotFoundError:

@@ -6,6 +6,7 @@ import re
 import sys
 import typing as t
 import weakref
+from pathlib import Path
 
 # 3rd party imports
 import magic
@@ -28,7 +29,7 @@ class VMData:
         self.column_headers: dict[str, str] = {}
 
     @classmethod
-    def get_file_type(cls: t.Self, file_path: str) -> str:
+    def get_file_type(cls: t.Self, filepath: Path) -> str:
         """
         Returns the MIME type of the file located at the specified file path.
 
@@ -41,16 +42,16 @@ class VMData:
         Raises:
             FileNotFoundError: If the file at the specified file path does not exist.
         """
-        mime_type = magic.from_file(file_path, mime=True)
+        mime_type = magic.from_file(filepath, mime=True)
         return mime_type
 
     @classmethod
-    def from_file(cls: t.Self, file_path: str) -> "VMData":
-        file_type = cls.get_file_type(file_path)
+    def from_file(cls: t.Self, filepath: Path) -> "VMData":
+        file_type = cls.get_file_type(filepath)
         if file_type == const.MIME.get("csv"):
-            df = pd.read_csv(file_path)
+            df = pd.read_csv(filepath)
         elif file_type in const.MIME.get("excel"):
-            df = pd.read_excel(file_path)
+            df = pd.read_excel(filepath)
         else:
             LOGGER.critical("File passed in was neither a CSV nor an Excel file")
             exit()

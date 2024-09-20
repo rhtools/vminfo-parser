@@ -1,6 +1,6 @@
 import re
 import typing as t
-from pathlib import Path
+from pathlib import Path, PosixPath
 
 import pytest
 import yaml
@@ -11,25 +11,48 @@ from vminfo_parser.vminfo_parser import VMData
 from . import const as test_const
 
 
+def yaml_path_representer(dumper: yaml.Dumper, path: Path) -> yaml.ScalarNode:
+    return dumper.represent_str(str(path))
+
+
+yaml.add_representer(PosixPath, yaml_path_representer)
+
+
 @pytest.fixture(params=["csv", "xlsx", "emptycsv", "emptyxlsx"])
-def datafile(tmp_path: Path, request: pytest.FixtureRequest) -> t.Generator[tuple[str, bool, str], None, None]:
-    datafile = tmp_path / "test"
-    suffix = request.param.removeprefix("empty")
-    datafile.with_suffix(f".{suffix}")
-    empty = True if "empty" in request.param else False
-    if empty:
-        datafile.touch()
+def datafile(tmp_path: Path, request: pytest.FixtureRequest) -> t.Generator[tuple[bool, Path], None, None]:
+    srcfile: Path = None
+    suffix: str
+    if request.param.startswith("empty"):
+        suffix = request.param.removeprefix("empty")
+    elif "." in request.param:
+        srcfile = Path(__file__).parent / test_const.TESTFILE_DIR / request.param
+        suffix = request.param.split(".")[-1]
     else:
-        with open(f"tests/files/Test_Inventory_VMs.{suffix}", "rb") as src:
+        srcfile = (
+            Path(__file__).parent / test_const.TESTFILE_DIR / test_const.DEFAULT_TESTFILE_NAME.format(request.param)
+        )
+        suffix = request.param
+    datafile = tmp_path / "test"
+    datafile = datafile.with_suffix(f".{suffix}")
+    if srcfile and srcfile.is_file():
+        with open(srcfile, "rb") as src:
             with open(datafile, "wb") as dst:
                 dst.writelines(src.readlines())
-    yield (suffix, empty, str(datafile))
+    else:
+        datafile.touch()
+    yield srcfile is None, datafile
 
 
 @pytest.fixture
-def vmdata(request: pytest.FixtureRequest) -> t.Generator[VMData, None, None]:
-    _, _, filename = request.getfixturevalue("datafile")
-    yield VMData.from_file(filename)
+def vmdata(datafile: tuple[bool, Path]) -> t.Generator[VMData, None, None]:
+    _, filepath = datafile
+    yield VMData.from_file(filepath)
+
+
+@pytest.fixture
+def vmdata_with_headers(vmdata: VMData) -> t.Generator[VMData, None, None]:
+    vmdata.set_column_headings()
+    yield vmdata
 
 
 @pytest.fixture(scope="session")
@@ -48,7 +71,7 @@ def extra_columns_regexs() -> t.Generator[dict[str, re.Pattern], None, None]:
 def config_dict(request: pytest.FixtureRequest) -> t.Generator[dict, None, None]:
     default_dict = {
         "breakdown-by-terabyte": False,
-        "file": "tests/files/Test_Inventory_VMs.xlsx",
+        "file": Path("tests/files/Test_Inventory_VMs.xlsx"),
         "generate-graphs": False,
         "get-disk-space-ranges": False,
         "get-os-counts": False,
