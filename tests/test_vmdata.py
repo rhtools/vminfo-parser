@@ -5,6 +5,7 @@ import typing as t
 from copy import deepcopy
 
 import pandas as pd
+import numpy as np
 import pytest
 
 import vminfo_parser.const as vm_const
@@ -228,7 +229,8 @@ def test_create_site_specific_dataframe(site_example_data):
     assert pytest.approx(total_ram_original) == total_ram_result
 
     # Check that the sum of Site_Disk_Usage matches the total Disk in the original DataFrame
-    total_disk_original = site_example_data.df["VM Provisioned (GB)"].sum()
+    total_disk_original = np.ceil(site_example_data.df["VM Provisioned (GB)"] / 1024).astype(int).sum()
+
     total_disk_result = result["Site_Disk_Usage"].sum()
 
     assert pytest.approx(total_disk_original) == total_disk_result
@@ -247,7 +249,9 @@ def test_create_site_specific_dataframe(site_example_data):
 
 
 def test_create_site_specific_dataframe_empty():
-    empty_df = pd.DataFrame(columns=["VM OS", "VM MEM (GB)", "VM CPU", "VM Provisioned (GB)", "Environment"])
+    empty_df = pd.DataFrame(
+        columns=["VM OS", "VM MEM (GB)", "VM CPU", "VM Provisioned (GB)", "Environment", "Site Name"]
+    )
     empty_vm_data = VMData(empty_df)
     empty_vm_data.set_column_headings()
 
