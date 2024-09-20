@@ -84,7 +84,7 @@ class VMData:
 
         if missing_headers:
             LOGGER.debug(f"Using VERSION_{best_match} as the closest match.")
-            LOGGER.critical(f"The following headers are missing:")
+            LOGGER.critical("The following headers are missing:")
             for header in missing_headers:
                 LOGGER.critical(f"- {header}")
             exit()
