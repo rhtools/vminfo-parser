@@ -2,6 +2,7 @@ import logging
 import re
 import typing as t
 from copy import deepcopy
+import os
 
 import pandas as pd
 import pytest
@@ -196,3 +197,59 @@ def test_extra_column_regex(
                 re_match.groupdict() == expected if name == "non_windows" else re_match is None
                 for name, re_match in re_matches.items()
             )
+
+
+@pytest.fixture(scope="module")
+def site_example_data():
+    # Get the path to the test data file
+    test_data_path = os.path.join(os.path.dirname(__file__), "files", "Site_example.xlsx")
+
+    # Load the data from the file
+    df = pd.read_excel(test_data_path)
+
+    # Create a VMData object with the loaded data
+    return VMData(df)
+
+
+def test_create_site_specific_dataframe(site_example_data):
+    result = site_example_data.create_site_specific_dataframe()
+
+    assert isinstance(result, pd.DataFrame)
+    assert not result.empty
+
+    expected_columns = ["Site Name", "Site_RAM_Usage", "Site_Disk_Usage", "Site_CPU_Usage", "Site_VM_Count"]
+    assert all(col in result.columns for col in expected_columns)
+
+    # Check that the sum of Site_RAM_Usage matches the total RAM in the original DataFrame
+    total_ram_original = site_example_data.df["VM MEM (GB)"].sum()
+    total_ram_result = result["Site_RAM_Usage"].sum()
+
+    assert pytest.approx(total_ram_original) == total_ram_result
+
+    # Check that the sum of Site_Disk_Usage matches the total Disk in the original DataFrame
+    total_disk_original = site_example_data.df["VM Provisioned (GB)"].sum()
+    total_disk_result = result["Site_Disk_Usage"].sum()
+
+    assert pytest.approx(total_disk_original) == total_disk_result
+
+    # Check that the sum of Site_CPU_Usage matches the total CPU in the original DataFrame
+    total_cpu_original = site_example_data.df["VM CPU"].sum()
+    total_cpu_result = result["Site_CPU_Usage"].sum()
+
+    assert pytest.approx(total_cpu_original) == total_cpu_result
+
+    # Check that the sum of Site_VM_Count matches the number of rows in the original DataFrame
+    total_vms_original = len(site_example_data.df)
+    total_vms_result = result["Site_VM_Count"].sum()
+
+    assert total_vms_original == total_vms_result
+
+
+def test_create_site_specific_dataframe_empty():
+    empty_df = pd.DataFrame(columns=["VM OS", "VM MEM (GB)", "VM CPU", "VM Provisioned (GB)"])
+    empty_vm_data = VMData(empty_df)
+
+    result = empty_vm_data.create_site_specific_dataframe()
+
+    assert isinstance(result, pd.DataFrame)
+    assert result.empty
