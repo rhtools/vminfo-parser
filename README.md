@@ -90,13 +90,67 @@ sort-by-env: both
 the script could be executed as
 
 ```sh
-vminfo-parse --yaml config.yaml
+vminfo-parser --yaml config.yaml
 ```
 
 or as
 
 ```sh
-vminfo-parse --file <filename> --get-supported-os --prod-env-labels "Prod-DC2,Prod-DC1" --sort-by-env "both"
+vminfo-parser --file <filename> --get-supported-os --prod-env-labels "Prod-DC2,Prod-DC1" --sort-by-env "both"
 ```
 
 and produce the same output.
+
+
+## Examples
+
+### Get OS Counts
+
+```sh
+vminfo-parser --file tests/files/Test_Inventory_VMs.csv --get-os-counts --generate-graphs
+
+OS Name
+Ubuntu Linux                16583
+Microsoft Windows Server    13732
+Oracle Linux                10589
+Microsoft Windows            7280
+SUSE Linux Enterprise        1991
+Red Hat Enterprise Linux     1150
+CentOS                        592
+```
+
+![plot](examples/Get_OS_Counts.png)
+
+### Get Supported OS
+```sh
+vminfo_parser --file tests/files/Test_Inventory_VMs.csv --generate-graphs  --sort-by-env "all" --prod-env-labels Prod-DC1,Prod-DC2 --get-supported-os     
+
+OS Name
+Microsoft Windows Server    13732
+Microsoft Windows            7280
+SUSE Linux Enterprise        1991
+Red Hat Enterprise Linux     1150
+```
+
+![plot](examples/Get_Supported_OS.png)
+
+### Get Disk Space Ranges
+
+```sh
+vminfo_parser --file tests/files/Test_Inventory_VMs.csv --generate-graphs  --get-disk-space-ranges --sort-by-env "all" --prod-env-labels Prod-DC1,Prod-DC2
+
+Count                                  
+Disk Space Range    Count            
+0-200 GB            7519             
+201-400 GB          19361            
+401-600 GB          8619             
+601-900 GB          8584             
+901-1500 GB         4620             
+1501-2000 GB        921              
+2001-3000 GB        2358             
+3001-5000 GB        1176             
+5001-9000 GB        1138             
+9001-114256 GB      773
+```
+
+![plot](examples/Get_Disk_Space_Ranges.png)
