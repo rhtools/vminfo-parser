@@ -310,6 +310,7 @@ class CLIOutput:
         print("")
 
 
+
 class Visualizer:
     def __init__(self: t.Self, analyzer: A) -> None:
         self.analyzer = analyzer
