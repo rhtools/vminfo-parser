@@ -313,7 +313,6 @@ class CLIOutput:
             self.writeline("")
 
 
-
 class Visualizer:
     def __init__(self: t.Self, analyzer: A) -> None:
         self.analyzer = analyzer

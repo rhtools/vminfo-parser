@@ -1,8 +1,8 @@
 import logging
+import os
 import re
 import typing as t
 from copy import deepcopy
-import os
 
 import pandas as pd
 import pytest
@@ -212,6 +212,7 @@ def site_example_data():
 
 
 def test_create_site_specific_dataframe(site_example_data):
+    site_example_data.set_column_headings()
     result = site_example_data.create_site_specific_dataframe()
 
     assert isinstance(result, pd.DataFrame)
@@ -246,8 +247,9 @@ def test_create_site_specific_dataframe(site_example_data):
 
 
 def test_create_site_specific_dataframe_empty():
-    empty_df = pd.DataFrame(columns=["VM OS", "VM MEM (GB)", "VM CPU", "VM Provisioned (GB)"])
+    empty_df = pd.DataFrame(columns=["VM OS", "VM MEM (GB)", "VM CPU", "VM Provisioned (GB)", "Environment"])
     empty_vm_data = VMData(empty_df)
+    empty_vm_data.set_column_headings()
 
     result = empty_vm_data.create_site_specific_dataframe()
 
