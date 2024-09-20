@@ -90,7 +90,10 @@ class VMData:
                 self.df[column] = self.df[const.EXTRA_WINDOWS_DESKTOP_COLUMNS[idx]].where(
                     self.df[column].isnull(), self.df[column]
                 )
-
+            self.df[const.EXTRA_COLUMNS_DEST[0]] = self.df[const.COLUMN_HEADERS.operatingSystemFromVMConfig].where(
+                self.df[const.COLUMN_HEADERS.operatingSystemFromVMTools].isnull(),
+                self.df[const.EXTRA_COLUMNS_DEST[0]],
+            )
             self.df.drop(
                 const.EXTRA_WINDOWS_SERVER_COLUMNS + const.EXTRA_WINDOWS_DESKTOP_COLUMNS,
                 axis=1,
