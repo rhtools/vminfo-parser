@@ -99,7 +99,7 @@ class VMData:
         else:
             LOGGER.info("All columns already exist")
 
-    def add_site_specific_columns(self: t.Self) -> pd.DataFrame:
+    def create_site_specific_dataframe(self: t.Self) -> pd.DataFrame:
         """
         Adds site-specific columns to the DataFrame by aggregating resource usage metrics.
         This function groups the data by site name and calculates the total memory, disk, and CPU usage for each site.
@@ -111,12 +111,12 @@ class VMData:
             pd.DataFrame: A DataFrame containing the aggregated resource usage for each site, with renamed columns for clarity.
 
         Examples:
-            site_usage_df = add_site_specific_columns()
+            site_usage_df = create_site_specific_dataframe()
         """
         site_columns = ["Site_RAM_Usage", "Site_Disk_Usage", "Site_CPU_Usage", "Site_VM_Count"]
-
+        new_site_df = self.df.copy()
         # Check if all site-specific columns already exist
-        if all(col in self.df.columns for col in site_columns):
+        if all(col in new_site_df.columns for col in site_columns):
             print("Site-specific columns already exist in the DataFrame.")
             return
 
@@ -129,18 +129,18 @@ class VMData:
         if unit_type == "MB":
             # If the disk and ram are in MB, convert the memory to GiB
             # convert the disk to TiB
-            self.df[memory_col] = np.ceil(self.df[memory_col] / 1024).astype(int)
-            self.df[disk_col] = np.ceil(self.df[disk_col] / 1024 / 1024).astype(int)
+            new_site_df[memory_col] = np.ceil(new_site_df[memory_col] / 1024).astype(int)
+            new_site_df[disk_col] = np.ceil(new_site_df[disk_col] / 1024 / 1024).astype(int)
         elif unit_type == "GB":
             # If the unit type is GB, we don't need to convert the ram
             # convert the disk to TiB
-            self.df[disk_col] = np.ceil(self.df[disk_col] / 1024).astype(int)
+            new_site_df[disk_col] = np.ceil(new_site_df[disk_col] / 1024).astype(int)
         elif unit_type != "GB":
             raise ValueError(f"Unexpected unit type: {unit_type}")
 
         # Group by Site Name and calculate sums
-        site_usage = self.df.groupby("Site Name")[[memory_col, disk_col, cpu_col]].sum().reset_index()
-        site_usage["Site_VM_Count"] = self.df.groupby("Site Name")["Site Name"].count().values
+        site_usage = new_site_df.groupby("Site Name")[[memory_col, disk_col, cpu_col]].sum().reset_index()
+        site_usage["Site_VM_Count"] = new_site_df.groupby("Site Name")["Site Name"].count().values
 
         # Rename columns to match the desired output
         site_usage.columns = ["Site Name"] + site_columns
@@ -273,7 +273,7 @@ class CLIOutput:
             disk_range_str = f"{disk_range[0]}-{disk_range[1]}"
             self.writeline(f"{disk_range_str.ljust(32)} {count}")
 
-    def print_site_usage(self: t.Self, resource: str, dataFrame: pd.DataFrame) -> None:
+    def print_site_usage(self: t.Self, resource_list: list, dataFrame: pd.DataFrame) -> None:
         """
         Prints the site-wide usage of a specified resource, including Memory, CPU, Disk, or VM count.
 
@@ -285,29 +285,29 @@ class CLIOutput:
         Returns:
             None: This function does not return a value; it prints the usage information directly to the console.
         """
-
-        print(f"Site Wide {resource} Usage")
-        print("-------------------")
-        if not dataFrame.empty:
-            if resource == "CPU":
-                cpu_usage = dataFrame["Site_CPU_Usage"].astype(int)
-                for index, row in dataFrame.iterrows():
-                    print(f"{row['Site Name']}\t\t{cpu_usage[index]} Cores")
-            if resource == "Memory":
-                memory_usage = dataFrame["Site_RAM_Usage"].round(0).astype(int)
-                for index, row in dataFrame.iterrows():
-                    print(f"{row['Site Name']}\t\t{memory_usage[index]} GB")
-            elif resource == "Disk":
-                disk_usage = dataFrame["Site_Disk_Usage"]
-                for index, row in dataFrame.iterrows():
-                    print(f"{row['Site Name']}\t\t{disk_usage[index]:.0f} TB")
-            elif resource == "VM":
-                vm_count = dataFrame["Site_VM_Count"]
-                for index, row in dataFrame.iterrows():
-                    print(f"{row['Site Name']}\t\t{vm_count[index]} VMs")
-        else:
-            print("No data available for the specified resource.")
-        print("")
+        for resource in resource_list:
+            print(f"Site Wide {resource} Usage")
+            print("-------------------")
+            if not dataFrame.empty:
+                if resource == "CPU":
+                    cpu_usage = dataFrame["Site_CPU_Usage"].astype(int)
+                    for index, row in dataFrame.iterrows():
+                        print(f"{row['Site Name']}\t\t{cpu_usage[index]} Cores")
+                if resource == "Memory":
+                    memory_usage = dataFrame["Site_RAM_Usage"].round(0).astype(int)
+                    for index, row in dataFrame.iterrows():
+                        print(f"{row['Site Name']}\t\t{memory_usage[index]} GB")
+                elif resource == "Disk":
+                    disk_usage = dataFrame["Site_Disk_Usage"]
+                    for index, row in dataFrame.iterrows():
+                        print(f"{row['Site Name']}\t\t{disk_usage[index]:.0f} TB")
+                elif resource == "VM":
+                    vm_count = dataFrame["Site_VM_Count"]
+                    for index, row in dataFrame.iterrows():
+                        print(f"{row['Site Name']}\t\t{vm_count[index]} VMs")
+            else:
+                print("No data available for the specified resource.")
+            print("")
 
 
 
@@ -849,11 +849,12 @@ def main(*args: t.Optional[str]) -> None:  # noqa: C901
         environments = config.prod_env_labels.split(",")
 
     if config.sort_by_site:
-        site_dataframe = vm_data.add_site_specific_columns()
-        analyzer.cli_output.print_site_usage("Memory", site_dataframe)
-        analyzer.cli_output.print_site_usage("CPU", site_dataframe)
-        analyzer.cli_output.print_site_usage("Disk", site_dataframe)
-        analyzer.cli_output.print_site_usage("VM", site_dataframe)
+        site_dataframe = vm_data.create_site_specific_dataframe()
+        analyzer.cli_output.print_site_usage(["Memory", "CPU","Disk","VM"], site_dataframe)
+        # analyzer.cli_output.print_site_usage("Memory", site_dataframe)
+        # analyzer.cli_output.print_site_usage("CPU", site_dataframe)
+        # analyzer.cli_output.print_site_usage("Disk", site_dataframe)
+        # analyzer.cli_output.print_site_usage("VM", site_dataframe)
 
     # Check if environments are defined for sorting
     if config.sort_by_env and not environments:
