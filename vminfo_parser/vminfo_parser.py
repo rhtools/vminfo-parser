@@ -99,11 +99,13 @@ class VMData:
         )
 
         if not all(col in self.df.columns for col in const.EXTRA_COLUMNS_DEST):
-            self.df[const.EXTRA_COLUMNS_DEST] = self.df[os_column].str.extract(const.EXTRA_COLUMNS_NON_WINDOWS_REGEX)
-            self.df[const.EXTRA_WINDOWS_SERVER_COLUMNS] = self.df[os_column].str.extract(
+            self.df[const.EXTRA_COLUMNS_DEST] = self.df[combined_os_column].str.extract(
+                const.EXTRA_COLUMNS_NON_WINDOWS_REGEX
+            )
+            self.df[const.EXTRA_WINDOWS_SERVER_COLUMNS] = self.df[combined_os_column].str.extract(
                 const.EXTRA_COLUMNS_WINDOWS_SERVER_REGEX
             )
-            self.df[const.EXTRA_WINDOWS_DESKTOP_COLUMNS] = self.df[os_column].str.extract(
+            self.df[const.EXTRA_WINDOWS_DESKTOP_COLUMNS] = self.df[combined_os_column].str.extract(
                 const.EXTRA_COLUMNS_WINDOWS_DESKTOP_REGEX, flags=re.IGNORECASE
             )
 
