@@ -58,19 +58,36 @@ class VMData:
         return cls(df)
 
     def set_column_headings(self: t.Self) -> None:
+        """
+        Sets the column headings based on the versions defined in const.COLUMN_HEADERS.
+        Raises:
+            ValueError: If no matching header set is found.
+        """
+        best_match = None
+        max_matches = 0
+
         for version, headers in const.COLUMN_HEADERS.items():
-            if all(col in self.df.columns for col in headers.values()):
-                self.column_headers = headers.copy()
-                self.column_headers["unitType"] = "GB" if version == "VERSION_1" else "MB"
-                break
-        else:
-            LOGGER.error(
-                "Missing column headers from either %s",
-                " or ".join(
-                    [str([header for header in version.values()]) for version in const.COLUMN_HEADERS.values()]
-                ),
-            )
-            raise ValueError("Headers don't match either of the versions expected")
+            matches = 0
+            for header in headers.values():
+                if header in self.df.columns:
+                    matches += 1
+            if matches > max_matches:
+                max_matches = matches
+                best_match = version
+
+        if best_match is None:
+            raise ValueError("No matching header set found")
+
+        self.column_headers = const.COLUMN_HEADERS[best_match].copy()
+        missing_headers = [header for header in self.column_headers.values() if header not in self.df.columns]
+        self.column_headers["unitType"] = "GB" if best_match == "VERSION_1" else "MB"
+
+        if missing_headers:
+            LOGGER.debug(f"Using VERSION_{best_match} as the closest match.")
+            LOGGER.critical(f"The following headers are missing:")
+            for header in missing_headers:
+                LOGGER.critical(f"- {header}")
+            exit()
 
     def add_extra_columns(self: t.Self) -> None:
         os_column = self.column_headers["operatingSystem"]
@@ -213,6 +230,8 @@ class CLIOutput:
                 self.writeline(f"{version.ljust(32)} {count_value}")
 
     def generate_os_version_distribution(self: t.Self, analyzer: A, os_name: str) -> pd.DataFrame:
+        ### Fix this
+
         filtered_df = analyzer.vm_data.df[(analyzer.vm_data.df["OS Name"] == os_name)]
         counts = filtered_df["OS Version"].fillna("unknown").value_counts().reset_index()
         counts.columns = ["OS Version", "Count"]
