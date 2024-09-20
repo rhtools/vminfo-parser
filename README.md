@@ -31,13 +31,12 @@ python3 -m vminfo_parser --help
 ## Usage
 
 ```
-usage: vminfo_parser [-h] (--file FILE | --yaml YAML) [--sort-by-env [SORT_BY_ENV]]
-                     [--prod-env-labels [PROD_ENV_LABELS]] [--generate-graphs]
-                     [--get-disk-space-ranges] [--show-disk-space-by-os]
-                     [--breakdown-by-terabyte] [--over-under-tb]
-                     [--output-os-by-version] [--get-os-counts] [--os-name OS_NAME] 
-                     [--minimum-count MINIMUM_COUNT] [--get-supported-os] 
-                     [--get-unsupported-os]
+usage: vminfo_parser [-h] (--file FILE | --yaml YAML) [--sort-by-env [SORT_BY_ENV]] 
+                  [--sort-by-site] [--prod-env-labels [PROD_ENV_LABELS]] 
+                  [--generate-graphs] [--get-disk-space-ranges] [--show-disk-space-by-os] 
+                  [--breakdown-by-terabyte] [--over-under-tb] [--output-os-by-version] 
+                  [--get-os-counts] [--os-name OS_NAME] [--minimum-count MINIMUM_COUNT] 
+                  [--get-supported-os] [--get-unsupported-os]
 
 Process VM CSV file
 
@@ -48,6 +47,7 @@ options:
   --sort-by-env [SORT_BY_ENV]
                         Sort disk by environment. Use "all" to get combine count,
                         "both" to show both non-prod and prod, or specify one.
+  --sort-by-site        Generate per-site stats.
   --prod-env-labels [PROD_ENV_LABELS]
                         The values in your data that represent prod environments. 
                         This is used to generate prod and non-prod stats. 

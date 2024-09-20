@@ -2,7 +2,9 @@ import logging
 import re
 import typing as t
 from copy import deepcopy
+from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -12,11 +14,10 @@ from vminfo_parser.vminfo_parser import VMData
 from . import const as test_const
 
 
-def test_get_file_type(datafile: tuple[str, bool, str]) -> None:
-    filename = datafile[2]
-    empty = datafile[1]
-    mime = vm_const.MIME.get(datafile[0])
-    result = VMData.get_file_type(filename)
+def test_get_file_type(datafile: tuple[bool, Path]) -> None:
+    empty, filepath = datafile
+    mime = vm_const.MIME.get(filepath.suffix.removeprefix("."))
+    result = VMData.get_file_type(filepath)
 
     if empty:
         assert result != mime
@@ -24,19 +25,18 @@ def test_get_file_type(datafile: tuple[str, bool, str]) -> None:
         assert result == mime
 
 
-def test_from_file(datafile: tuple[str, bool, str], caplog: pytest.LogCaptureFixture) -> None:
-    filename = datafile[2]
-    empty = datafile[1]
+def test_from_file(datafile: tuple[bool, Path], caplog: pytest.LogCaptureFixture) -> None:
+    empty, filepath = datafile
 
     if empty:
         with pytest.raises(SystemExit):
-            result = VMData.from_file(filename)
+            result = VMData.from_file(filepath)
             assert result is None
         assert caplog.record_tuples == [
             ("vminfo_parser.vminfo_parser", logging.CRITICAL, "File passed in was neither a CSV nor an Excel file")
         ]
     else:
-        result = VMData.from_file(filename)
+        result = VMData.from_file(filepath)
         assert isinstance(result, VMData)
         assert isinstance(result.df, pd.DataFrame)
         assert result.df.shape == test_const.TESTFILE_SHAPE
@@ -52,6 +52,7 @@ def test_from_file(datafile: tuple[str, bool, str], caplog: pytest.LogCaptureFix
                     "Environment": ["Prod", "Dev", "Prod"],
                     "VM MEM (GB)": [8, 16, 32],
                     "VM Provisioned (GB)": [100, 200, 300],
+                    "VM CPU": [4, 8, 12],
                 }
             ),
             "GB",
@@ -68,6 +69,7 @@ def test_from_file(datafile: tuple[str, bool, str], caplog: pytest.LogCaptureFix
                     "ent-env": ["Prod", "Dev", "Prod"],
                     "Memory": [8, 16, 32],
                     "Total disk capacity MiB": [100, 200, 300],
+                    "CPUs": [4, 8, 12],
                 }
             ),
             "MB",
@@ -105,56 +107,52 @@ def test_set_column_headings_invalid() -> None:
     assert vmdata.column_headers == {}
 
 
-@pytest.mark.usefixtures("datafile")
 @pytest.mark.parametrize("datafile", ["csv"], indirect=["datafile"])
-def test_add_extra_columns(vmdata: VMData) -> None:
-    vmdata.set_column_headings()
-    original_df = vmdata.df.copy()
+def test_add_extra_columns(vmdata_with_headers: VMData) -> None:
+    original_df = vmdata_with_headers.df.copy()
     unmodified_columns = list(set(original_df.columns).difference(set(vm_const.EXTRA_COLUMNS_DEST)))
 
-    vmdata.add_extra_columns()
+    vmdata_with_headers.add_extra_columns()
 
     # Validate that temporary columns are dropped
     assert (
         len(
             set(vm_const.EXTRA_WINDOWS_SERVER_COLUMNS + vm_const.EXTRA_WINDOWS_DESKTOP_COLUMNS).intersection(
-                set(vmdata.column_headers)
+                set(vmdata_with_headers.column_headers)
             )
         )
         == 0
     )
 
     # Validate that added columns exist
-    assert all(col in vmdata.df.columns for col in vm_const.EXTRA_COLUMNS_DEST)
+    assert all(col in vmdata_with_headers.df.columns for col in vm_const.EXTRA_COLUMNS_DEST)
 
     # Validate that no other columns were changed
-    assert original_df[unmodified_columns].equals(vmdata.df[unmodified_columns])
+    assert original_df[unmodified_columns].equals(vmdata_with_headers.df[unmodified_columns])
 
 
-@pytest.mark.usefixtures("datafile")
 @pytest.mark.parametrize("datafile", ["csv"], indirect=["datafile"])
-def test_add_extra_columns_bypass(vmdata: VMData, caplog: pytest.LogCaptureFixture) -> None:
-    vmdata.set_column_headings()
-    vmdata.add_extra_columns()
+def test_add_extra_columns_bypass(vmdata_with_headers: VMData, caplog: pytest.LogCaptureFixture) -> None:
+    vmdata_with_headers.add_extra_columns()
 
-    original_df = vmdata.df.copy()
-    vmdata.add_extra_columns()
+    original_df = vmdata_with_headers.df.copy()
+    vmdata_with_headers.add_extra_columns()
 
     # Validate that temporary columns do not exist
     assert (
         len(
             set(vm_const.EXTRA_WINDOWS_SERVER_COLUMNS + vm_const.EXTRA_WINDOWS_DESKTOP_COLUMNS).intersection(
-                set(vmdata.column_headers)
+                set(vmdata_with_headers.column_headers)
             )
         )
         == 0
     )
 
     # Validate that added columns exist
-    assert all(col in vmdata.df.columns for col in vm_const.EXTRA_COLUMNS_DEST)
+    assert all(col in vmdata_with_headers.df.columns for col in vm_const.EXTRA_COLUMNS_DEST)
 
     # Validate that no columns were changed
-    assert original_df.equals(vmdata.df)
+    assert original_df.equals(vmdata_with_headers.df)
 
     # Validate that log stmt from else block was executed
     assert caplog.record_tuples == [("vminfo_parser.vminfo_parser", logging.INFO, "All columns already exist")]
@@ -194,3 +192,57 @@ def test_extra_column_regex(
                 re_match.groupdict() == expected if name == "non_windows" else re_match is None
                 for name, re_match in re_matches.items()
             )
+
+
+@pytest.mark.parametrize("datafile", ["Site_example.xlsx"], indirect=["datafile"])
+def test_create_site_specific_dataframe(vmdata_with_headers: VMData) -> None:
+    result = vmdata_with_headers.create_site_specific_dataframe()
+
+    assert isinstance(result, pd.DataFrame)
+    assert not result.empty
+
+    expected_columns = ["Site Name", "Site_RAM_Usage", "Site_Disk_Usage", "Site_CPU_Usage", "Site_VM_Count"]
+    assert all(col in result.columns for col in expected_columns)
+
+    # Check that the sum of Site_RAM_Usage matches the total RAM in the original DataFrame
+    total_ram_original = vmdata_with_headers.df["VM MEM (GB)"].sum()
+    total_ram_result = result["Site_RAM_Usage"].sum()
+
+    assert pytest.approx(total_ram_original) == total_ram_result
+
+    # Check that the sum of Site_Disk_Usage matches the total Disk in the original DataFrame
+    total_disk_original = np.ceil(vmdata_with_headers.df["VM Provisioned (GB)"] / 1024).astype(int).sum()
+
+    total_disk_result = result["Site_Disk_Usage"].sum()
+
+    assert pytest.approx(total_disk_original) == total_disk_result
+
+    # Check that the sum of Site_CPU_Usage matches the total CPU in the original DataFrame
+    total_cpu_original = vmdata_with_headers.df["VM CPU"].sum()
+    total_cpu_result = result["Site_CPU_Usage"].sum()
+
+    assert pytest.approx(total_cpu_original) == total_cpu_result
+
+    # Check that the sum of Site_VM_Count matches the number of rows in the original DataFrame
+    total_vms_original = len(vmdata_with_headers.df)
+    total_vms_result = result["Site_VM_Count"].sum()
+
+    assert total_vms_original == total_vms_result
+
+
+@pytest.mark.parametrize(
+    "vmdata",
+    [
+        VMData(
+            df=pd.DataFrame(
+                columns=["VM OS", "VM MEM (GB)", "VM CPU", "VM Provisioned (GB)", "Environment", "Site Name"]
+            )
+        )
+    ],
+    ids=["empty"],
+)
+def test_create_site_specific_dataframe_empty(vmdata_with_headers: VMData) -> None:
+    result = vmdata_with_headers.create_site_specific_dataframe()
+
+    assert isinstance(result, pd.DataFrame)
+    assert result.empty
