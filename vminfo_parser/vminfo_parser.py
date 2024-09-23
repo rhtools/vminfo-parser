@@ -82,11 +82,10 @@ class VMData:
         missing_headers = [header for header in self.column_headers.values() if header not in self.df.columns]
         self.column_headers["unitType"] = "GB" if best_match == "VERSION_1" else "MB"
 
+        LOGGER.debug(f"Using VERSION_{best_match} as the closest match.")
+
         if missing_headers:
-            LOGGER.debug(f"Using VERSION_{best_match} as the closest match.")
-            LOGGER.critical("The following headers are missing:")
-            for header in missing_headers:
-                LOGGER.critical(f"- {header}")
+            LOGGER.critical("The following headers are missing: %s", missing_headers)
             exit()
 
     def add_extra_columns(self: t.Self) -> None:
