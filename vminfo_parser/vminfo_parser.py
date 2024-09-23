@@ -444,7 +444,7 @@ class Visualizer:
     def visualize_supported_os_distribution(
         self: t.Self,
         counts: pd.Series,
-        config,
+        config: Config,
         environment_filter: t.Optional[str] = None,
     ) -> None:
         if config.generate_graphs:
@@ -477,7 +477,7 @@ class Visualizer:
             plt.show(block=True)
             plt.close()
 
-    def visualize_os_version_distribution(self: t.Self, os_name: str, dataFrame: pd.DataFrame, config) -> None:
+    def visualize_os_version_distribution(self: t.Self, os_name: str, dataFrame: pd.DataFrame, config: Config) -> None:
         counts = self.cli_output.generate_os_version_distribution(dataFrame, os_name, config)
 
         if not counts.empty:
