@@ -231,24 +231,26 @@ class CLIOutput:
         else:
             os_version = dataFrame["OS Version"].values
             count = dataFrame["Count"].values
+            if count.size > 0:
+                self.writeline("")
+                self.writeline(os_name)
+                self.writeline("--------------")
+                self.writeline("OS Version\t\t\t Count")
 
-            self.writeline("")
-            self.writeline(os_name)
-            self.writeline("--------------")
-            self.writeline("OS Version\t\t\t Count")
+                for version, count_value in zip(os_version, count):
+                    self.writeline(f"{version.ljust(32)} {count_value}")
 
-            for version, count_value in zip(os_version, count):
-                self.writeline(f"{version.ljust(32)} {count_value}")
-
-    def generate_os_version_distribution(self: t.Self, dataFrame: pd.DataFrame, os_name: str, config) -> pd.DataFrame:
+    def generate_os_version_distribution(
+        self: t.Self, dataFrame: pd.DataFrame, os_name: str, minimum_count: int
+    ) -> pd.DataFrame:
         ### Fix this
 
         filtered_df = dataFrame[(dataFrame["OS Name"] == os_name)]
         counts = filtered_df["OS Version"].fillna("unknown").value_counts().reset_index()
         counts.columns = ["OS Version", "Count"]
 
-        if config.minimum_count is not None and config.minimum_count > 0:
-            counts = counts[counts["Count"] >= config.minimum_count]
+        if minimum_count is not None and minimum_count > 0:
+            counts = counts[counts["Count"] >= minimum_count]
 
         return counts
 
@@ -345,14 +347,8 @@ class CLIOutput:
 
 
 class Visualizer:
-    def __init__(
-        self: t.Self,
-        dataFrame: pd.DataFrame,
-        column_headers=None,
-    ) -> None:
+    def __init__(self: t.Self) -> None:
         self.cli_output = CLIOutput()
-        self.dataFrame = dataFrame
-        self.column_headers = column_headers
 
     @classmethod
     def visualize_disk_space(
@@ -458,52 +454,49 @@ class Visualizer:
         config: Config,
         environment_filter: t.Optional[str] = None,
     ) -> None:
-        if config.generate_graphs:
-            colors = [const.SUPPORTED_OS_COLORS[os] for os in counts.index]
+        colors = [const.SUPPORTED_OS_COLORS[os] for os in counts.index]
 
-            if environment_filter and environment_filter != "both":
-                counts.plot(kind="barh", rot=45, color=colors)
-            else:
-                counts.plot(kind="barh", rot=45)
+        if environment_filter and environment_filter != "both":
+            counts.plot(kind="barh", rot=45, color=colors)
+        else:
+            counts.plot(kind="barh", rot=45)
 
-            if environment_filter not in ["prod", "non-prod"]:
-                plt.title("Supported Operating Systems For All Environments")
-            else:
-                plt.title(f"Supported Operating Systems for {environment_filter.title()}")
+        if environment_filter not in ["prod", "non-prod"]:
+            plt.title("Supported Operating Systems For All Environments")
+        else:
+            plt.title(f"Supported Operating Systems for {environment_filter.title()}")
 
-            plt.ylabel("Operating Systems")
-            plt.xlabel("Count")
-            plt.xscale("log")
-            plt.gca().xaxis.set_major_formatter(ticker.ScalarFormatter())
+        plt.ylabel("Operating Systems")
+        plt.xlabel("Count")
+        plt.xscale("log")
+        plt.gca().xaxis.set_major_formatter(ticker.ScalarFormatter())
 
-            if environment_filter != "both":
-                plt.xticks(
-                    [
-                        counts.iloc[0] - (counts.iloc[0] % 100),
-                        counts.iloc[len(counts) // 2] - (counts.iloc[len(counts) // 2] % 100),
-                        counts.iloc[-1],
-                    ]
-                )
+        if environment_filter != "both":
+            plt.xticks(
+                [
+                    counts.iloc[0] - (counts.iloc[0] % 100),
+                    counts.iloc[len(counts) // 2] - (counts.iloc[len(counts) // 2] % 100),
+                    counts.iloc[-1],
+                ]
+            )
 
-            plt.show(block=True)
-            plt.close()
+        plt.show(block=True)
+        plt.close()
 
     def visualize_os_version_distribution(self: t.Self, os_name: str, dataFrame: pd.DataFrame, config: Config) -> None:
-        counts = self.cli_output.generate_os_version_distribution(dataFrame, os_name, config)
+        counts = self.cli_output.generate_os_version_distribution(dataFrame, os_name, config.minimum_count)
 
         if not counts.empty:
             ax = counts.plot(kind="barh", rot=45)
+            plt.title(f"Distribution of {os_name}")
+            plt.ylabel("OS Version")
+            plt.xlabel("Count")
 
-            if config.generate_graphs:
-                plt.title(f"Distribution of {os_name}")
-                plt.ylabel("OS Version")
-                plt.xlabel("Count")
+            plt.xticks(rotation=0)
+            ax.set_yticklabels(counts["OS Version"])
 
-                plt.xticks(rotation=0)
-                ax.set_yticklabels(counts["OS Version"])
-
-                plt.show(block=True)
-                plt.close()
+            plt.show(block=True)
+            plt.close()
 
         self.cli_output.format_dataframe_output(counts, os_name=os_name)
 
@@ -967,8 +960,10 @@ def main(*args: t.Optional[str]) -> None:  # noqa: C901
                 # visualizer.visualize_os_distribution()
 
     if config.output_os_by_version:
-        for os_name in vm_data.df["OS Name"].unique():
-            visualizer.visualize_os_version_distribution(os_name, vm_data.df, config)
+        if config.generate_graphs:
+            for os_name in vm_data.df["OS Name"].unique():
+                if os_name is not None and not pd.isna(os_name) and os_name != "":
+                    visualizer.visualize_os_version_distribution(os_name, vm_data.df, config)
 
     if config.get_supported_os:
         if config.prod_env_labels and config.sort_by_env:
@@ -976,14 +971,16 @@ def main(*args: t.Optional[str]) -> None:  # noqa: C901
                 *config.prod_env_labels.split(","),
                 environment_filter=config.sort_by_env,
             )
-            visualizer.visualize_supported_os_distribution(
-                supported_counts, config, environment_filter=config.sort_by_env
-            )
+            if config.generate_graphs:
+                visualizer.visualize_supported_os_distribution(
+                    supported_counts, config, environment_filter=config.sort_by_env
+                )
         else:
             supported_counts = analyzer.generate_supported_OS_counts(environment_filter=config.sort_by_env)
-            visualizer.visualize_supported_os_distribution(
-                supported_counts, config, environment_filter=config.sort_by_env
-            )
+            if config.generate_graphs:
+                visualizer.visualize_supported_os_distribution(
+                    supported_counts, config, environment_filter=config.sort_by_env
+                )
 
     if config.get_unsupported_os:
         unsupported_counts = analyzer.generate_unsupported_OS_counts()
