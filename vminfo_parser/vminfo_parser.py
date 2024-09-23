@@ -242,7 +242,6 @@ class CLIOutput:
     def generate_os_version_distribution(
         self: t.Self, dataFrame: pd.DataFrame, os_name: str, minimum_count: int
     ) -> pd.DataFrame:
-        ### Fix this
 
         filtered_df = dataFrame[(dataFrame["OS Name"] == os_name)]
         counts = filtered_df["OS Version"].fillna("unknown").value_counts().reset_index()
@@ -351,7 +350,10 @@ class Visualizer:
 
     @classmethod
     def visualize_disk_space(
-        cls, disk_space_ranges: t.Optional[list[tuple[int, int]]], dataFrame: pd.DataFrame, column_headers
+        cls: t.Self,
+        disk_space_ranges: t.Optional[list[tuple[int, int]]],
+        dataFrame: pd.DataFrame,
+        column_headers: t.Optional[dict[str, str]],
     ) -> None:
 
         # Count the number of VMs in each disk space range
