@@ -202,22 +202,26 @@ class CLIOutput:
         file.write(output.getvalue())
         output.close()
 
-    def writeline(self: t.Self, line: str = "") -> None:
+    def writeline(self: t.Self, line: t.Any = "") -> None:
         """write string to output buffer.  Adds newline if line does not end with one.
 
         Args:
             line (str, optional): string to write to output buffer. Defaults to "".
         """
+        if not isinstance(line, str):
+            line: str = str(line)
         if not line.endswith("\n"):
             line = line + "\n"
         self.write(line)
 
-    def write(self: t.Self, line: str) -> None:
+    def write(self: t.Self, line: t.Any) -> None:
         """Write string to output buffer.
 
         Args:
             line (str): string to write to output buffer
         """
+        if not isinstance(line, str):
+            line: str = str(line)
         self.output.write(line)
 
     def close(self: t.Self) -> None:
