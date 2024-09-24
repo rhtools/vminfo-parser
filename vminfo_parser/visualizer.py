@@ -12,7 +12,6 @@ import pandas as pd
 from . import const
 from .config import Config
 
-A = t.TypeVar("Analyzer", bound="Analyzer")
 LOGGER = logging.getLogger(__name__)
 
 
