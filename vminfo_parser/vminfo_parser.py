@@ -560,12 +560,12 @@ def main(*args: t.Optional[str]) -> None:  # noqa: C901
             # If the user specifies an OS, use that to filter out everything else
             if environments:
                 analyzer.sort_attribute_by_environment(
+                    *environments,
                     attribute="diskSpace",
                     os_filter=config.os_name,
                     environment_filter=config.sort_by_env,
                     over_under_tb=config.over_under_tb,
                     show_disk_in_tb=config.breakdown_by_terabyte,
-                    *environments,
                 )
             else:
                 analyzer.plot_disk_space_distribution(
@@ -578,11 +578,11 @@ def main(*args: t.Optional[str]) -> None:  # noqa: C901
                 if environments:
                     # analyzer.plot_disk_space_distribution(os_name=os_name, show_disk_in_tb=config.breakdown_by_terabyte)
                     analyzer.sort_attribute_by_environment(
+                        *environments,
                         attribute="diskSpace",
                         os_filter=os_name,
                         environment_filter=config.sort_by_env,
                         over_under_tb=config.over_under_tb,
-                        *environments,  # noqa: B026
                     )
 
                 else:
@@ -598,11 +598,11 @@ def main(*args: t.Optional[str]) -> None:  # noqa: C901
         if config.sort_by_env != "all":
             if environments:
                 analyzer.sort_attribute_by_environment(
+                    *environments,
                     attribute="diskSpace",
                     environment_filter=config.sort_by_env,
                     over_under_tb=config.over_under_tb,
                     show_disk_in_tb=config.breakdown_by_terabyte,
-                    *environments,  # noqa: B026
                 )
             else:
                 LOGGER.critical(
@@ -621,15 +621,15 @@ def main(*args: t.Optional[str]) -> None:  # noqa: C901
         if environments:
             if config.os_name:
                 analyzer.sort_attribute_by_environment(
+                    *environments,
                     attribute="operatingSystem",
                     os_filter=config.os_name,
-                    *environments,  # noqa: B026
                 )
                 # visualizer.visualize_os_distribution()
             elif config.sort_by_env:
                 analyzer.sort_attribute_by_environment(
+                    *environments,
                     attribute="operatingSystem",
-                    *environments,  # noqa: B026
                     environment_filter=config.sort_by_env,
                 )
                 # visualizer.visualize_os_distribution()
