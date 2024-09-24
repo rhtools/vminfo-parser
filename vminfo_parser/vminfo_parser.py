@@ -10,9 +10,6 @@ from pathlib import Path
 
 # 3rd party imports
 import magic
-import matplotlib.cm as cm
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
 
@@ -243,19 +240,6 @@ class CLIOutput:
 
                 for version, count_value in zip(os_version, count):
                     self.writeline(f"{version.ljust(32)} {count_value}")
-
-    def generate_os_version_distribution(
-        self: t.Self, dataFrame: pd.DataFrame, os_name: str, minimum_count: int
-    ) -> pd.DataFrame:
-
-        filtered_df = dataFrame[(dataFrame["OS Name"] == os_name)]
-        counts = filtered_df["OS Version"].fillna("unknown").value_counts().reset_index()
-        counts.columns = ["OS Version", "Count"]
-
-        if minimum_count is not None and minimum_count > 0:
-            counts = counts[counts["Count"] >= minimum_count]
-
-        return counts
 
     def print_formatted_disk_space(
         self: t.Self,
@@ -641,6 +625,19 @@ class Analyzer:
 
         return unsupported_counts
 
+    def generate_os_version_distribution(
+        self: t.Self, dataFrame: pd.DataFrame, os_name: str, minimum_count: int
+    ) -> pd.DataFrame:
+
+        filtered_df = dataFrame[(dataFrame["OS Name"] == os_name)]
+        counts = filtered_df["OS Version"].fillna("unknown").value_counts().reset_index()
+        counts.columns = ["OS Version", "Count"]
+
+        if minimum_count is not None and minimum_count > 0:
+            counts = counts[counts["Count"] >= minimum_count]
+
+        return counts
+
     def sort_attribute_by_environment(
         self: t.Self,
         *env_keywords: str,
@@ -811,7 +808,7 @@ def main(*args: t.Optional[str]) -> None:  # noqa: C901
         if config.generate_graphs:
             for os_name in vm_data.df["OS Name"].unique():
                 if os_name is not None and not pd.isna(os_name) and os_name != "":
-                    counts_dataframe = cli_output.generate_os_version_distribution(
+                    counts_dataframe = analyzer.generate_os_version_distribution(
                         vm_data.df, os_name, config.minimum_count
                     )
                     cli_output.format_dataframe_output(counts_dataframe, os_name=os_name)
