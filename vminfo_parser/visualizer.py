@@ -20,22 +20,12 @@ class Visualizer:
         pass
 
     @classmethod
-    def visualize_disk_space(
+    def visualize_disk_space_horizontal(
         cls: t.Self,
         disk_space_ranges: t.Optional[list[tuple[int, int]]],
         dataFrame: pd.DataFrame,
         column_headers: t.Optional[dict[str, str]],
     ) -> None:
-
-        # Count the number of VMs in each disk space range
-        range_counts = {range_: 0 for range_ in disk_space_ranges}
-        for lower, upper in disk_space_ranges:
-            mask = (dataFrame[column_headers["vmDisk"]] >= lower) & (dataFrame[column_headers["vmDisk"]] <= upper)
-            count = dataFrame.loc[mask].shape[0]
-            range_counts[(lower, upper)] = count
-
-        # Sort the counts and plot them as a horizontal bar chart
-        sorted_dict = dict(sorted(range_counts.items(), key=lambda x: x[1]))
 
         if dataFrame.empty:
             LOGGER.warning("No data to plot")
@@ -45,9 +35,10 @@ class Visualizer:
         fig, ax = plt.subplots()
 
         # Plot the sorted counts as a horizontal bar chart
-        for range_, count in sorted_dict.items():
-            ax.barh(f"{range_[0]}-{range_[1]} GB", count)
 
+        unique_ranges = dataFrame["Disk Space Range"].value_counts()
+        for range, count in unique_ranges.items():
+            ax.barh(f"{range}", count)
         # Set titles and labels for the plot
         ax.set_ylabel("Disk Space Range")
         ax.set_xlabel("Number of VMs")
@@ -55,13 +46,11 @@ class Visualizer:
 
         ax.set_title("Hard Drive Space Breakdown for Organization")
 
-        ax.set_xlim(right=max(range_counts.values()) + 1.5)
-
         # Display the plot
         plt.show(block=True)
         plt.close()
 
-    def visualize_disk_space_distribution(
+    def visualize_disk_space_verticle(
         self: t.Self,
         range_counts_by_environment: pd.DataFrame,
         environment_filter: str,
