@@ -2,7 +2,7 @@ import typing as t
 
 import pytest
 
-from vminfo_parser.vminfo_parser import CLIOutput
+from vminfo_parser.clioutput import CLIOutput
 
 
 @pytest.fixture
