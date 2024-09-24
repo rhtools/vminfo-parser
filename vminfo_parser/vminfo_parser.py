@@ -11,8 +11,8 @@ import numpy as np
 import pandas as pd
 
 from . import const
-from .config import Config
 from .clioutput import CLIOutput
+from .config import Config
 from .visualizer import Visualizer
 
 A = t.TypeVar("Analyzer", bound="Analyzer")
