@@ -1,6 +1,7 @@
 # Std lib imports
 import logging
 import typing as t
+from functools import wraps
 
 # 3rd party imports
 import matplotlib.cm as cm
@@ -9,24 +10,51 @@ import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
 
-from . import const
-from .config import Config
+from . import config, const
 
 LOGGER = logging.getLogger(__name__)
+
+V = t.TypeVar("Visualizer", bound="Visualizer")
+
+
+def plotter(func: t.Callable) -> t.Callable:
+    @wraps(func)
+    def plot_wrapper(
+        v: V,
+        data: t.Union[pd.DataFrame, pd.Series],
+        *args: t.Optional[str | int],
+        **kwargs: t.Optional[str | int],
+    ) -> t.Optional[plt.Figure]:
+        if data.empty:
+            LOGGER.warning("No data to graph")
+            return None
+        func(v, data, *args, **kwargs)
+        figure = plt.gcf()
+        if config._IS_TEST:
+            return figure
+
+        # TODO: add support for saving to file
+        plt.show(block=True)
+        plt.close()
+        return None
+
+    return plot_wrapper
 
 
 class Visualizer:
     def __init__(self: t.Self) -> None:
         pass
 
-    @classmethod
+    @plotter
     def visualize_disk_space_horizontal(
-        cls: t.Self,
-        disk_space_ranges: t.Optional[list[tuple[int, int]]],
+        self: t.Self,
         dataFrame: pd.DataFrame,
-        column_headers: t.Optional[dict[str, str]],
     ) -> None:
+        """Create horizontal bar chart for disk space
 
+        Args:
+            dataFrame (pd.DataFrame): dataframe with Disk Space Counts
+        """
         if dataFrame.empty:
             LOGGER.warning("No data to plot")
             return
@@ -46,33 +74,38 @@ class Visualizer:
 
         ax.set_title("Hard Drive Space Breakdown for Organization")
 
-        # Display the plot
-        plt.show(block=True)
-        plt.close()
-
-    def visualize_disk_space_verticle(
+    @plotter
+    def visualize_disk_space_vertical(
         self: t.Self,
         range_counts_by_environment: pd.DataFrame,
-        environment_filter: str,
         os_filter: t.Optional[str] = None,
     ) -> None:
+        """Create vertical bar chart for disk space
+
+        Args:
+            dataFrame (pd.DataFrame): dataframe with Disk Space Counts
+            os_filter (t.Optional[str], optional): Name of filter applied to dataFrame for use in plot title. Defaults to None.
+        """
         range_counts_by_environment.plot(kind="bar", stacked=False, figsize=(12, 8), rot=45)
 
         plt.xlabel("Disk Space Range")
         plt.ylabel("Number of VMs")
         plt.title(f'VM Disk Size Ranges Sorted by Environment {f"for {os_filter}" if os_filter else ""}')
 
-        plt.show(block=True)
-        plt.close()
-
+    @plotter
     def visualize_os_distribution(
         self: t.Self,
         counts: pd.Series,
         os_names: list[str],
-        dataFrame: pd.DataFrame,
-        environment_filter: t.Optional[str] = None,
         min_count: int = 500,
     ) -> None:
+        """Create horizontal bar chart of OS Counts
+
+        Args:
+            counts (pd.Series): series of counts per os
+            os_names (list[str]): names of oses in counts
+            min_count (int, optional): minimum count of oses graphed for title. Defaults to 500.
+        """
         # Define specific colors for identified OS names
         # Generate random colors for bars not in SUPPORTED_OS_COLORS
         random_colors = cm.rainbow(np.linspace(0, 1, len(counts)))
@@ -82,38 +115,42 @@ class Visualizer:
         # ax = counts.plot(kind="barh", rot=45, color=colors)
         counts.plot(kind="barh", rot=45, color=colors)
 
-        if dataFrame.empty:
-            LOGGER.warning("No data to plot")
-            return
-
         # Set titles and labels for the plot
         plt.title(f"OS Counts by Environment Type (>= {min_count})")
         plt.xlabel("Count")
         plt.ylabel("Operating Systems")
 
-        # Display the plot
-        plt.show(block=True)
-        plt.close()
+    @plotter
+    def visualize_unsupported_os_distribution(
+        self: t.Self,
+        counts: pd.Series,
+    ) -> None:
+        """Create pie chart of unsupported os counts
 
-    def visualize_unsupported_os_distribution(self: t.Self, unsupported_counts: pd.Series) -> None:
-
-        random_colors = cm.rainbow(np.linspace(0, 1, len(unsupported_counts)))
+        Args:
+            counts (pd.Series): series of counts per os
+        """
+        random_colors = cm.rainbow(np.linspace(0, 1, len(counts)))
         plt.pie(
-            unsupported_counts,
-            labels=unsupported_counts.index,
+            counts,
+            labels=counts.index,
             colors=random_colors,
             autopct="%1.1f%%",
         )
         plt.title("Unsupported Operating System Distribution")
 
-        plt.show(block=True)
-        plt.close()
-
+    @plotter
     def visualize_supported_os_distribution(
         self: t.Self,
         counts: pd.Series,
         environment_filter: t.Optional[str] = None,
     ) -> None:
+        """Create horizontal bar chart of supported os counts
+
+        Args:
+            counts (pd.Series): series of counts per os
+            environment_filter (t.Optional[str], optional): environment filter for title. Defaults to None.
+        """
         colors = [const.SUPPORTED_OS_COLORS[os] for os in counts.index]
 
         if environment_filter and environment_filter != "both":
@@ -140,20 +177,22 @@ class Visualizer:
                 ]
             )
 
-        plt.show(block=True)
-        plt.close()
-
+    @plotter
     def visualize_os_version_distribution(
-        self: t.Self, os_name: str, dataFrame: pd.DataFrame, config: Config, counts_dataframe: pd.DataFrame
+        self: t.Self,
+        dataFrame: pd.DataFrame,
+        os_name: str,
     ) -> None:
-        if not counts_dataframe.empty:
-            ax = counts_dataframe.plot(kind="barh", rot=45)
-            plt.title(f"Distribution of {os_name}")
-            plt.ylabel("OS Version")
-            plt.xlabel("Count")
+        """Create horizontal bar chart for os version counts
 
-            plt.xticks(rotation=0)
-            ax.set_yticklabels(counts_dataframe["OS Version"])
+        Args:
+            dataFrame (pd.DataFrame): dataframe of os version counts
+            os_name (str): name of os for title
+        """
+        ax = dataFrame.plot(kind="barh", rot=45)
+        plt.title(f"Distribution of {os_name}")
+        plt.ylabel("OS Version")
+        plt.xlabel("Count")
 
-            plt.show(block=True)
-            plt.close()
+        plt.xticks(rotation=0)
+        ax.set_yticklabels(dataFrame["OS Version"])

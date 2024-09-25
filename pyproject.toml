@@ -66,9 +66,12 @@ extend_skip = ["legacy"] # This is old code
 python_files = ["test_*.py", "*_test.py"]
 testpaths = "tests"
 log_level = 'DEBUG'
-addopts = "--capture=sys --cov --junitxml=.pytest.xml"
+addopts = "--capture=sys --cov --junitxml=.pytest.xml --mpl"
 filterwarnings = []
 markers = []
+mpl-baseline-path = "tests/images"
+mpl-hash-library = "tests/images/hashes.json"
+mpl-deterministic = true
 
 [tool.coverage.run]
 branch = true
