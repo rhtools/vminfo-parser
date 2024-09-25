@@ -174,6 +174,7 @@ class Analyzer:
                 .unstack(fill_value=0)
             )
 
+        # create an integer of the large end of range for sorting by size of range
         range_counts_by_environment["second_number"] = (
             range_counts_by_environment.index.str.split("-").str[1].str.split().str[0].astype(int)
         )
