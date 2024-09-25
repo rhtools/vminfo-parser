@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 
 import vminfo_parser.const as vm_const
-from vminfo_parser.vminfo_parser import VMData
+from vminfo_parser.vmdata import VMData
 
 from . import const as test_const
 
@@ -33,7 +33,7 @@ def test_from_file(datafile: tuple[bool, Path], caplog: pytest.LogCaptureFixture
             result = VMData.from_file(filepath)
             assert result is None
         assert caplog.record_tuples == [
-            ("vminfo_parser.vminfo_parser", logging.CRITICAL, "File passed in was neither a CSV nor an Excel file")
+            ("vminfo_parser.vmdata", logging.CRITICAL, "File passed in was neither a CSV nor an Excel file")
         ]
     else:
         result = VMData.from_file(filepath)
@@ -160,7 +160,7 @@ def test_add_extra_columns_bypass(vmdata_with_headers: VMData, caplog: pytest.Lo
     assert original_df.equals(vmdata_with_headers.df)
 
     # Validate that log stmt from else block was executed
-    assert caplog.record_tuples == [("vminfo_parser.vminfo_parser", logging.INFO, "All columns already exist")]
+    assert caplog.record_tuples == [("vminfo_parser.vmdata", logging.INFO, "All columns already exist")]
 
 
 @pytest.mark.parametrize(
