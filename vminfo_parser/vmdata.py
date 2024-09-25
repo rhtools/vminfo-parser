@@ -104,8 +104,8 @@ class VMData:
                 self.df[column] = self.df[const.EXTRA_WINDOWS_DESKTOP_COLUMNS[idx]].where(
                     self.df[column].isnull(), self.df[column]
                 )
-            self.df[const.EXTRA_COLUMNS_DEST[0]] = self.df[secondary_os_column].where(
-                self.df[primary_os_column].isnull(),
+            self.df[const.EXTRA_COLUMNS_DEST[0]] = self.df[combined_os_column].where(
+                self.df[const.EXTRA_COLUMNS_DEST[0]].isnull(),
                 self.df[const.EXTRA_COLUMNS_DEST[0]],
             )
             self.df.drop(
