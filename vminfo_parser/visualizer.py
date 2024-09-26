@@ -55,24 +55,24 @@ class Visualizer:
         Args:
             dataFrame (pd.DataFrame): dataframe with Disk Space Counts
         """
-        if dataFrame.empty:
-            LOGGER.warning("No data to plot")
-            return
-
         # Create a subplot for plotting
         fig, ax = plt.subplots()
 
+        df = dataFrame.copy()
+        if len(df.axes) == 2:
+            df = df.sum(axis=1)
+
         # Plot the sorted counts as a horizontal bar chart
 
-        unique_ranges = dataFrame["Disk Space Range"].value_counts()
-        for range, count in unique_ranges.items():
+        for range, count in df.items():
             ax.barh(f"{range}", count)
+
         # Set titles and labels for the plot
-        ax.set_ylabel("Disk Space Range")
-        ax.set_xlabel("Number of VMs")
+        plt.ylabel("Disk Space Range")
+        plt.xlabel("Number of VMs")
         ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
 
-        ax.set_title("Hard Drive Space Breakdown for Organization")
+        plt.title("Hard Drive Space Breakdown for Organization")
 
     @plotter
     def visualize_disk_space_vertical(

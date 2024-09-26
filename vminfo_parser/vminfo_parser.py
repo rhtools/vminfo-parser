@@ -25,7 +25,7 @@ class Analyzer:
     ) -> None:
         self.vm_data = vm_data
         self.config = config
-        self.column_headers = column_headers
+        self.column_headers = column_headers if column_headers else vm_data.column_headers
         self.visualizer = Visualizer()
         self.cli_output = CLIOutput()
 
@@ -192,7 +192,7 @@ class Analyzer:
         # Call the new visualize method
         if self.config.generate_graphs:
             if environment_filter == "all":
-                self.visualizer.visualize_disk_space_horizontal(dataFrame)
+                self.visualizer.visualize_disk_space_horizontal(sorted_range_counts_by_environment)
             else:
                 self.visualizer.visualize_disk_space_vertical(
                     sorted_range_counts_by_environment,
