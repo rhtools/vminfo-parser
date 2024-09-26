@@ -307,7 +307,7 @@ EXPECTED_CLI_OUTPUT = {
         "Ubuntu Linux    16583\n"
         "Oracle Linux    10589\n"
         "CentOS            592\n"
-        "Other             671"
+        "Other             676"
     ),
 }
 
