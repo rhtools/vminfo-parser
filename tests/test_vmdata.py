@@ -43,49 +43,13 @@ def test_from_file(datafile: tuple[bool, Path], caplog: pytest.LogCaptureFixture
 
 
 @pytest.mark.parametrize(
-    ["df", "units", "version"],
-    [
-        (
-            pd.DataFrame(
-                {
-                    "VM OS": ["Windows 10", "Ubuntu 20.04", "CentOS 7"],
-                    "Environment": ["Prod", "Dev", "Prod"],
-                    "VM MEM (GB)": [8, 16, 32],
-                    "VM Provisioned (GB)": [100, 200, 300],
-                    "VM CPU": [4, 8, 12],
-                }
-            ),
-            "GB",
-            1,
-        ),
-        (
-            pd.DataFrame(
-                {
-                    "OS according to the configuration file": [
-                        "",
-                        "",
-                        "CentOS 7",
-                    ],
-                    "OS according to the VMware Tools": [
-                        "Windows 10",
-                        "Ubuntu 20.04",
-                        "",
-                    ],
-                    "ent-env": ["Prod", "Dev", "Prod"],
-                    "Memory": [8, 16, 32],
-                    "Total disk capacity MiB": [100, 200, 300],
-                    "CPUs": [4, 8, 12],
-                }
-            ),
-            "MB",
-            2,
-        ),
-    ],
-    ids=["Version 1", "Version 2"],
+    test_const.TEST_DATAFRAMES[0].keys(),
+    [(pd.DataFrame(item["df"]), item["unit"], item["version"]) for item in test_const.TEST_DATAFRAMES],
+    ids=[f"Version {item['version']}" for item in test_const.TEST_DATAFRAMES],
 )
-def test_set_column_headings(df: pd.DataFrame, units: str, version: int) -> None:
+def test_set_column_headings(df: pd.DataFrame, unit: str, version: int) -> None:
     expected_headers = deepcopy(vm_const.COLUMN_HEADERS.get(f"VERSION_{version}").copy())
-    expected_headers["unitType"] = units
+    expected_headers["unitType"] = unit
 
     vmdata = VMData(df=df)
     vmdata.set_column_headings()
@@ -113,7 +77,7 @@ def test_set_column_headings_invalid() -> None:
 
 
 @pytest.mark.parametrize("datafile", ["csv"], indirect=["datafile"])
-def test_add_extra_columns(vmdata_with_headers: VMData) -> None:
+def test_add_extra_columns_from_datafile(vmdata_with_headers: VMData) -> None:
     original_df = vmdata_with_headers.df.copy()
     unmodified_columns = list(set(original_df.columns).difference(set(vm_const.EXTRA_COLUMNS_DEST)))
 
@@ -134,6 +98,18 @@ def test_add_extra_columns(vmdata_with_headers: VMData) -> None:
 
     # Validate that no other columns were changed
     assert original_df[unmodified_columns].equals(vmdata_with_headers.df[unmodified_columns])
+
+
+@pytest.mark.parametrize(
+    "vmdata",
+    [VMData(df=pd.DataFrame(item["df"])) for item in test_const.TEST_DATAFRAMES],
+    ids=[f"Version {item['version']}" for item in test_const.TEST_DATAFRAMES],
+)
+def test_add_extra_columns_from_df(vmdata: VMData) -> None:
+    vmdata.set_column_headings()
+    vmdata.add_extra_columns()
+
+    assert all(vmdata.df[vm_const.EXTRA_COLUMNS_DEST[0]].notnull())
 
 
 @pytest.mark.parametrize("datafile", ["csv"], indirect=["datafile"])

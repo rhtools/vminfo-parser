@@ -307,6 +307,41 @@ EXPECTED_CLI_OUTPUT = {
         "Ubuntu Linux    16583\n"
         "Oracle Linux    10589\n"
         "CentOS            592\n"
-        "Other             671"
+        "Other             676"
     ),
 }
+
+
+TEST_DATAFRAMES = [
+    {
+        "df": {
+            "VM OS": ["Windows 10", "Ubuntu 20.04", "CentOS 7"],
+            "Environment": ["Prod", "Dev", "Prod"],
+            "VM MEM (GB)": [8, 16, 32],
+            "VM Provisioned (GB)": [100, 200, 300],
+            "VM CPU": [4, 8, 12],
+        },
+        "unit": "GB",
+        "version": 1,
+    },
+    {
+        "df": {
+            "OS according to the configuration file": [
+                "",
+                "",
+                "CentOS 7",
+            ],
+            "OS according to the VMware Tools": [
+                "Windows 10",
+                "Ubuntu 20.04",
+                "",
+            ],
+            "ent-env": ["Prod", "Dev", "Prod"],
+            "Memory": [8, 16, 32],
+            "Total disk capacity MiB": [100, 200, 300],
+            "CPUs": [4, 8, 12],
+        },
+        "unit": "MB",
+        "version": 2,
+    },
+]
