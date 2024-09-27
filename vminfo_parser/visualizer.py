@@ -1,7 +1,6 @@
 # Std lib imports
 import logging
 import typing as t
-from functools import wraps
 
 # 3rd party imports
 import matplotlib.cm as cm
@@ -14,21 +13,49 @@ from . import config, const
 
 LOGGER = logging.getLogger(__name__)
 
-V = t.TypeVar("Visualizer", bound="Visualizer")
+
+# Parameter Specification for methods that use the plotter decorator
+# NOTE: VSCode Pylance extention does not properly display type hints for ParamSpec
+#       but it didnt handle functools.wraps properly either, so no loss by switching to new standard
+PlotterParam = t.ParamSpec("PlotterParam")
 
 
-def plotter(func: t.Callable) -> t.Callable:
-    @wraps(func)
+def plotter(func: t.Callable[PlotterParam, None]) -> t.Callable[PlotterParam, t.Optional[plt.Figure]]:
+    """Decorator for functions that use matplotlib.pyplot to create graphs.
+    Allows for different output methods depending on external variables.
+    Currently only implemented option is returning the figure in testing, and showing the figure interactively.
+
+    Args:
+        func (t.Callable[PlotterParam, None]): Function or Method being wrapped
+
+    Returns:
+        t.Callable[PlotterParam, t.Optional[plt.Figure]]: Wrapped Funciton or Method
+    """
+
     def plot_wrapper(
-        v: V,
-        data: t.Union[pd.DataFrame, pd.Series],
-        *args: t.Optional[str | int],
-        **kwargs: t.Optional[str | int],
+        *args: PlotterParam.args,
+        **kwargs: PlotterParam.kwargs,
     ) -> t.Optional[plt.Figure]:
-        if data.empty:
+        """wrapper for @plotter decorator.
+
+        Returns:
+            t.Optional[plt.Figure]: Figure from current matplotlib canvas if in testing. Defaults to None
+        """
+        data: pd.DataFrame | pd.Series = None
+        for arg in args:
+            if isinstance(arg, pd.DataFrame | pd.Series):
+                data = arg
+                break
+        else:
+            for value in kwargs.values():
+                if isinstance(value, pd.DataFrame | pd.Series):
+                    data = value
+                    break
+
+        if data is None or data.empty:
             LOGGER.warning("No data to graph")
             return None
-        func(v, data, *args, **kwargs)
+        func(*args, **kwargs)
         figure = plt.gcf()
         if config._IS_TEST:
             return figure
