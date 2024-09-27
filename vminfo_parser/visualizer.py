@@ -1,13 +1,15 @@
 # Std lib imports
 import logging
+import math
 import typing as t
 
-# 3rd party imports
 import matplotlib.cm as cm
+import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
+from matplotlib.typing import ColorType
 
 from . import config, const
 
@@ -133,14 +135,9 @@ class Visualizer:
             os_names (list[str]): names of oses in counts
             min_count (int, optional): minimum count of oses graphed for title. Defaults to 500.
         """
-        # Define specific colors for identified OS names
-        # Generate random colors for bars not in SUPPORTED_OS_COLORS
-        random_colors = cm.rainbow(np.linspace(0, 1, len(counts)))
-        colors = [const.SUPPORTED_OS_COLORS.get(os, random_colors[i]) for i, os in enumerate(os_names)]
-
         # Plot the counts as a horizontal bar chart with specified and random colors
         # ax = counts.plot(kind="barh", rot=45, color=colors)
-        counts.plot(kind="barh", rot=45, color=colors)
+        counts.plot(kind="barh", rot=45, color=_get_colors(os_names))
 
         # Set titles and labels for the plot
         plt.title(f"OS Counts by Environment Type (>= {min_count})")
@@ -180,7 +177,7 @@ class Visualizer:
         """
         colors = [const.SUPPORTED_OS_COLORS[os] for os in counts.index]
 
-        if environment_filter and environment_filter != "both":
+        if not environment_filter or environment_filter != "both":
             counts.plot(kind="barh", rot=45, color=colors)
         else:
             counts.plot(kind="barh", rot=45)
@@ -223,3 +220,42 @@ class Visualizer:
 
         plt.xticks(rotation=0)
         ax.set_yticklabels(dataFrame["OS Version"])
+
+
+def _get_colors(os_names: list[str]) -> list[ColorType]:
+    """Generate Colors for OS names of mixed support status
+    Uses np.linspace to generate equally spaced colors, then removes the colors closest
+    to the predefined supported os colors.  returns a list with predifined and generated colors ordered by os_names arg
+
+    Args:
+        os_names (list[str]): list of os names
+
+    Returns:
+        list[ColorType]: matplotlib colors for each os.
+    """
+    supported_os_names = list(set(os_names).intersection(const.SUPPORTED_OSES))
+    supported_os_colors: list[ColorType] = [
+        mcolors.to_rgba(const.SUPPORTED_OS_COLORS.get(os)) for os in supported_os_names
+    ]
+    raw_colors: list[ColorType] = cm.rainbow(np.linspace(0, 1, len(os_names))).tolist()
+    color_diff: list[float] = [4.0 for _ in raw_colors]
+
+    for idx, rawcolor in enumerate(raw_colors):
+        diff: float = 4.0  # Max possible value
+        for usedcolor in supported_os_colors:
+            new_diff = math.fsum([abs(a - b) for a, b in zip(usedcolor, rawcolor)])
+            diff = new_diff if new_diff < diff else diff
+        color_diff[idx] = diff
+
+    for _ in range(len(supported_os_colors)):
+        idx = color_diff.index(min(color_diff))
+        del raw_colors[idx]
+        del color_diff[idx]
+
+    chosen_colors: list[ColorType] = []
+    for os in os_names:
+        if os in supported_os_names:
+            chosen_colors.append(mcolors.to_rgba(const.SUPPORTED_OS_COLORS.get(os)))
+        else:
+            chosen_colors.append(raw_colors.pop())
+    return chosen_colors

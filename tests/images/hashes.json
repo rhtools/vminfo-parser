@@ -1,5 +1,8 @@
 {
   "tests.test_visualizer.test_plotter": "1212b5fc086568716f82253ae63484822da2962c0ac438f9865769faa00053ec",
   "tests.test_visualizer.test_visualize_disk_space_vertical": "bc478b269ee8115b5e526141d52a0aaf33470d11b0c2853fa1f591bd34fa78e8",
-  "tests.test_visualizer.test_visualize_disk_space_horizontal": "0aa5ce68f6534330629916c51912647bff3d3a81c53580850deba1534978117e"
+  "tests.test_visualizer.test_visualize_disk_space_horizontal": "0aa5ce68f6534330629916c51912647bff3d3a81c53580850deba1534978117e",
+  "tests.test_visualizer.test_visualize_os_distribution": "22655d7c262fb9d4386186646bfc32ba5d81772aff8caf1efde739fa352c3f57",
+  "tests.test_visualizer.test_visualize_unsupported_os_distribution": "cb4986b19c4893fe60766de3c1a2b307572d3b7e158f7ae7445f6f2487892bb5",
+  "tests.test_visualizer.test_visualize_supported_os_distribution": "b5a6a69d332e90bb314570b669f058b49fd322a3a095737c657bbba3f837957a"
 }
