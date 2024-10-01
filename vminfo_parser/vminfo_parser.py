@@ -134,7 +134,6 @@ class Analyzer:
         # This copy has a paired down version of the information and then environments have been changed to prod/non-prod
         diskHeading = self.column_headers["vmDisk"]
         envHeading = self.column_headers["environment"]
-        unit = self.column_headers["unitType"]
 
         disk_space_ranges = self.calculate_disk_space_ranges(
             dataFrame=dataFrame,
