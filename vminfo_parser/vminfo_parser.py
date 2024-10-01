@@ -55,7 +55,6 @@ class Analyzer:
             # default to the dataframe in the attribute unless overridden
             dataFrame = self.vm_data.df
         frameHeading = self.column_headers["vmDisk"]
-
         # sometimes the values in this column are interpreted as a string and have a comma inserted
         # we want to check and replace the comma
         for index, row in dataFrame.iterrows():
@@ -65,6 +64,9 @@ class Analyzer:
         dataFrame[frameHeading] = pd.to_numeric(dataFrame[frameHeading], errors="coerce")
         unit = self.column_headers["unitType"]
 
+        # Normalize the Disk Column to GiB before applying further analysis
+        if unit == "MB":
+            dataFrame[frameHeading] = dataFrame[frameHeading] / 1024
         min_disk_space = round(int(dataFrame[frameHeading].min()))
         max_disk_space = round(int(dataFrame[frameHeading].max()))
 
@@ -95,16 +97,10 @@ class Analyzer:
         disk_space_ranges_with_vms = []
         for range_start, range_end in disk_space_ranges:
             epsilon = 1
-            if unit == "MB":
-                vms_in_range = dataFrame[
-                    (dataFrame[frameHeading] / 1024 >= range_start - epsilon)
-                    & (dataFrame[frameHeading] / 1024 <= range_end + epsilon)
-                ]
-            else:
-                vms_in_range = dataFrame[
-                    (dataFrame[frameHeading] >= range_start - epsilon)
-                    & (dataFrame[frameHeading] <= range_end + epsilon)
-                ]
+
+            vms_in_range = dataFrame[
+                (dataFrame[frameHeading] >= range_start - epsilon) & (dataFrame[frameHeading] <= range_end + epsilon)
+            ]
 
             if not vms_in_range.empty:
                 disk_space_ranges_with_vms.append((range_start, range_end))
@@ -148,10 +144,7 @@ class Analyzer:
         )
 
         for lower, upper in disk_space_ranges:
-            if unit == "MB":
-                mask = (round(dataFrame[diskHeading] / 1024) >= lower) & (round(dataFrame[diskHeading] / 1024) <= upper)
-            else:
-                mask = (dataFrame[diskHeading] >= lower) & (dataFrame[diskHeading] <= upper)
+            mask = (dataFrame[diskHeading] >= lower) & (dataFrame[diskHeading] <= upper)
 
             dataFrame.loc[mask, "Disk Space Range"] = f"{lower}-{upper} GB"
 
@@ -335,7 +328,6 @@ class Analyzer:
     ) -> None:
         env_column = "Environment"
         data_cp = self.vm_data.df.copy()
-
         if env_column not in self.vm_data.df.columns:
             if "ent-env" in self.vm_data.df.columns:
                 env_column = "ent-env"
