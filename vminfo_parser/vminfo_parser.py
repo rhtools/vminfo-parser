@@ -25,7 +25,7 @@ class Analyzer:
     ) -> None:
         self.vm_data = vm_data
         self.config = config
-        self.column_headers = column_headers
+        self.column_headers = column_headers if column_headers else vm_data.column_headers
         self.visualizer = Visualizer()
         self.cli_output = CLIOutput()
 
@@ -165,55 +165,40 @@ class Analyzer:
                 .unstack(fill_value=0)
             )
 
+        # create an integer of the large end of range for sorting by size of range
         range_counts_by_environment["second_number"] = (
             range_counts_by_environment.index.str.split("-").str[1].str.split().str[0].astype(int)
         )
         sorted_range_counts_by_environment = range_counts_by_environment.sort_values(by="second_number", ascending=True)
         sorted_range_counts_by_environment.drop("second_number", axis=1, inplace=True)
 
-        if os_filter:
-            self.cli_output.print_formatted_disk_space(
-                sorted_range_counts_by_environment,
-                environment_filter,
-                env_keywords,
-                os_filter=os_filter,
-            )
-        else:
-            self.cli_output.print_formatted_disk_space(
-                sorted_range_counts_by_environment,
-                environment_filter,
-                env_keywords,
-            )
+        # Print CLI output
+        self.cli_output.print_formatted_disk_space(
+            sorted_range_counts_by_environment,
+            environment_filter,
+            env_keywords,
+            os_filter=os_filter,
+        )
 
         # Call the new visualize method
-        if environment_filter == "all":
-            self.visualizer.visualize_disk_space_horizontal(
-                sorted_range_counts_by_environment, dataFrame, self.column_headers
-            )
-        else:
-            if self.config.generate_graphs:
-                self.visualizer.visualize_disk_space_verticle(
+        if self.config.generate_graphs:
+            if environment_filter == "all":
+                self.visualizer.visualize_disk_space_horizontal(sorted_range_counts_by_environment)
+            else:
+                self.visualizer.visualize_disk_space_vertical(
                     sorted_range_counts_by_environment,
-                    environment_filter,
                     os_filter=os_filter,
                 )
 
     def handle_operating_system_counts(self: t.Self, environment_filter: str, dataFrame: pd.DataFrame = None) -> None:
         counts, os_names = self._calculate_os_counts(environment_filter, dataFrame)
 
-        clean_output = "\n".join(
-            [
-                line.strip()
-                for line in str(counts).split("\n")
-                if not line.startswith("Name:") and not line.startswith("dtype")
-            ]
-        )
-        self.cli_output.writeline(clean_output)
+        self.cli_output.format_series_output(counts)
 
         min_count = self.config.minimum_count if self.config.minimum_count else 500
 
         if self.config.generate_graphs:
-            self.visualizer.visualize_os_distribution(counts, os_names, dataFrame, environment_filter, min_count)
+            self.visualizer.visualize_os_distribution(counts, os_names, min_count)
 
     def _calculate_os_counts(
         self: t.Self, environment_filter: str, dataFrame: pd.DataFrame = None
@@ -239,7 +224,7 @@ class Analyzer:
 
         return counts, os_names
 
-    def generate_supported_OS_counts(
+    def generate_supported_os_counts(
         self: t.Self,
         *env_keywords: str,
         environment_filter: t.Optional[str] = None,
@@ -267,19 +252,9 @@ class Analyzer:
         filtered_counts = filtered_counts[filtered_counts.index.isin(const.SUPPORTED_OSES)]
         filtered_counts = filtered_counts.astype(int)
 
-        # This removes unwanted lines from the output that Pandas generates
-        clean_output = "\n".join(
-            [
-                line.strip()
-                for line in str(filtered_counts).split("\n")
-                if not line.startswith("Name:") and not line.startswith("dtype")
-            ]
-        )
-        self.cli_output.writeline(clean_output)
-
         return filtered_counts
 
-    def generate_unsupported_OS_counts(self: t.Self) -> pd.Series:
+    def generate_unsupported_os_counts(self: t.Self) -> pd.Series:
         counts = self.vm_data.df["OS Name"].value_counts()
 
         unsupported_counts = counts[~counts.index.isin(const.SUPPORTED_OSES)]
@@ -288,16 +263,6 @@ class Analyzer:
         other_total = other_counts.sum()
         unsupported_counts = unsupported_counts[unsupported_counts > 500]
         unsupported_counts["Other"] = other_total
-
-        clean_output = "\n".join(
-            [
-                line.strip()
-                for line in str(unsupported_counts).split("\n")
-                if not line.startswith("Name:") and not line.startswith("dtype")
-            ]
-        )
-
-        self.cli_output.writeline(clean_output)
 
         return unsupported_counts
 
@@ -456,51 +421,45 @@ def main(*args: t.Optional[str]) -> None:  # noqa: C901
                     attribute="operatingSystem",
                     os_filter=config.os_name,
                 )
-                # visualizer.visualize_os_distribution()
             elif config.sort_by_env:
                 analyzer.sort_attribute_by_environment(
                     *environments,
                     attribute="operatingSystem",
                     environment_filter=config.sort_by_env,
                 )
-                # visualizer.visualize_os_distribution()
             else:
-                analyzer.sort_attribute_by_environment(attribute="operatingSystem", *environments)  # noqa: B026
-                # visualizer.visualize_os_distribution()
+                analyzer.sort_attribute_by_environment(*environments, attribute="operatingSystem")
         else:
             if config.os_name:
                 analyzer.sort_attribute_by_environment(attribute="operatingSystem", os_filter=config.os_name)
-                # visualizer.visualize_os_distribution()
             else:
                 analyzer.sort_attribute_by_environment(attribute="operatingSystem")
-                ###
-                # visualizer.visualize_os_distribution()
 
     if config.output_os_by_version:
-        if config.generate_graphs:
-            for os_name in vm_data.df["OS Name"].unique():
-                if os_name is not None and not pd.isna(os_name) and os_name != "":
-                    counts_dataframe = analyzer.generate_os_version_distribution(
-                        vm_data.df, os_name, config.minimum_count
-                    )
-                    cli_output.format_dataframe_output(counts_dataframe, os_name=os_name)
-                    visualizer.visualize_os_version_distribution(os_name, vm_data.df, config, counts_dataframe)
+        for os_name in vm_data.df["OS Name"].unique():
+            if os_name is not None and not pd.isna(os_name) and os_name != "":
+                counts_dataframe = analyzer.generate_os_version_distribution(vm_data.df, os_name, config.minimum_count)
+                cli_output.format_dataframe_output(counts_dataframe, os_name=os_name)
+                if config.generate_graphs:
+                    visualizer.visualize_os_version_distribution(counts_dataframe, os_name)
 
     if config.get_supported_os:
+        supported_counts: pd.Series
         if config.prod_env_labels and config.sort_by_env:
-            supported_counts = analyzer.generate_supported_OS_counts(
+            supported_counts = analyzer.generate_supported_os_counts(
                 *config.prod_env_labels.split(","),
                 environment_filter=config.sort_by_env,
             )
-            if config.generate_graphs:
-                visualizer.visualize_supported_os_distribution(supported_counts, environment_filter=config.sort_by_env)
         else:
-            supported_counts = analyzer.generate_supported_OS_counts(environment_filter=config.sort_by_env)
-            if config.generate_graphs:
-                visualizer.visualize_supported_os_distribution(supported_counts, environment_filter=config.sort_by_env)
+            supported_counts = analyzer.generate_supported_os_counts(environment_filter=config.sort_by_env)
+
+        cli_output.format_series_output(supported_counts)
+        if config.generate_graphs:
+            visualizer.visualize_supported_os_distribution(supported_counts, environment_filter=config.sort_by_env)
 
     if config.get_unsupported_os:
-        unsupported_counts = analyzer.generate_unsupported_OS_counts()
+        unsupported_counts = analyzer.generate_unsupported_os_counts()
+        cli_output.format_series_output(unsupported_counts)
         if config.generate_graphs:
             visualizer.visualize_unsupported_os_distribution(unsupported_counts)
 

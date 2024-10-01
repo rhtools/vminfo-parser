@@ -7,6 +7,7 @@ from pathlib import Path
 import yaml
 
 LOGGER = logging.getLogger(__name__)
+_IS_TEST: bool = False
 
 
 def _get_parser() -> argparse.ArgumentParser:

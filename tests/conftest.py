@@ -5,10 +5,20 @@ from pathlib import Path, PosixPath
 import pytest
 import yaml
 
+import vminfo_parser.config as vm_config
 from vminfo_parser import const as vm_const
+from vminfo_parser.visualizer import Visualizer
 from vminfo_parser.vminfo_parser import VMData
 
 from . import const as test_const
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    vm_config._IS_TEST = True
+
+
+def pytest_unconfigure(config: pytest.Config) -> None:
+    vm_config._IS_TEST = False
 
 
 def yaml_path_representer(dumper: yaml.Dumper, path: Path) -> yaml.ScalarNode:
@@ -113,3 +123,8 @@ def cli_args(config_dict: dict) -> t.Generator[list[str], None, None]:
                 args.append(f"--{key}")
                 args.append(str(value))
     yield args
+
+
+@pytest.fixture
+def visualizer() -> t.Generator[Visualizer, None, None]:
+    yield Visualizer()
