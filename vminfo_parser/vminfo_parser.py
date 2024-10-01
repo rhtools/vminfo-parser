@@ -199,7 +199,22 @@ class Analyzer:
                 )
 
     def handle_operating_system_counts(self: t.Self, environment_filter: str, dataFrame: pd.DataFrame = None) -> None:
-        counts, os_names = self._calculate_os_counts(environment_filter, dataFrame)
+        """Handles the counting of operating systems based on the provided environment filter.
+
+        This function calculates the counts of operating systems and outputs the results.
+        It also visualizes the distribution of operating systems if the configuration allows for it.
+
+        Args:
+            environment_filter (str): A filter to apply when counting operating systems.
+            dataFrame (pd.DataFrame, optional): A DataFrame containing relevant data. Defaults to None.
+
+        Returns:
+            None
+        """
+        # Set the minimum count to what the user inputs
+        # If that is empty set the minmum to None
+        min_count = getattr(self.config, "minimum_count", None)
+        counts, os_names = self._calculate_os_counts(environment_filter, dataFrame, min_count)
 
         clean_output = "\n".join(
             [
@@ -210,18 +225,27 @@ class Analyzer:
         )
         self.cli_output.writeline(clean_output)
 
-        min_count = self.config.minimum_count if self.config.minimum_count else 500
-
         if self.config.generate_graphs:
             self.visualizer.visualize_os_distribution(counts, os_names, dataFrame, environment_filter, min_count)
 
     def _calculate_os_counts(
-        self: t.Self, environment_filter: str, dataFrame: pd.DataFrame = None
+        self: t.Self, environment_filter: str, dataFrame: pd.DataFrame = None, min_count: int = None
     ) -> tuple[pd.Series, list[str]]:
+        """Calculates the counts of operating systems based on the provided environment filter.
+
+        This function analyzes the DataFrame to count occurrences of operating systems, applying filters as necessary.
+        It returns the counts and the corresponding operating system names, allowing for further processing or visualization.
+
+        Args:
+            environment_filter (str): The filter to apply when counting operating systems.
+            dataFrame (pd.DataFrame, optional): The DataFrame containing the data to analyze. Defaults to None.
+            min_count (int, optional): The minimum count threshold for including operating systems. Defaults to None.
+
+        Returns:
+            tuple[pd.Series, list[str]]: A tuple containing a Series of counts and a list of operating system names.
+        """
         if dataFrame is None:
             dataFrame = self.vm_data.df
-
-        min_count = self.config.minimum_count if self.config.minimum_count else 500
 
         if not environment_filter or environment_filter == "all":
             counts = dataFrame["OS Name"].value_counts()
