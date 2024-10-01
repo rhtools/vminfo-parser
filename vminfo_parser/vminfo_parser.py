@@ -62,10 +62,9 @@ class Analyzer:
                 dataFrame.at[index, frameHeading] = row[frameHeading].replace(",", "")
 
         dataFrame[frameHeading] = pd.to_numeric(dataFrame[frameHeading], errors="coerce")
-        unit = self.column_headers["unitType"]
 
         # Normalize the Disk Column to GiB before applying further analysis
-        if unit == "MB":
+        if self.column_headers["unitType"] == "MB":
             dataFrame[frameHeading] = dataFrame[frameHeading] / 1024
         min_disk_space = round(int(dataFrame[frameHeading].min()))
         max_disk_space = round(int(dataFrame[frameHeading].max()))
