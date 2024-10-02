@@ -23,8 +23,6 @@ def main(*args: t.Optional[str]) -> None:  # noqa: C901
     vm_data.set_column_headings()
     vm_data.add_extra_columns()
 
-    # analyzer = Analyzer(vm_data, config, column_headers=vm_data.column_headers)
-
     visualizer = Visualizer()
     cli_output = CLIOutput()
     analyzer = Analyzer(vm_data, config, column_headers=vm_data.column_headers)
