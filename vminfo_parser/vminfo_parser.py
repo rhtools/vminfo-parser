@@ -6,11 +6,11 @@ import typing as t
 # 3rd party imports
 import pandas as pd
 
+from .analyzer import Analyzer
 from .clioutput import CLIOutput
 from .config import Config
 from .visualizer import Visualizer
 from .vmdata import VMData
-from .analyzer import Analyzer
 
 LOGGER = logging.getLogger(__name__)
 

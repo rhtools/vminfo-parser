@@ -11,7 +11,6 @@ from .config import Config
 from .visualizer import Visualizer
 from .vmdata import VMData
 
-
 LOGGER = logging.getLogger(__name__)
 
 
