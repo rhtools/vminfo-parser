@@ -119,6 +119,56 @@ class Analyzer:
 
         return "non-prod"
 
+    def convert_to_tb(self, value):
+        """
+        Convert a given storage value in GB to TB if applicable.
+        This function processes a string representing a range of storage values and converts them to terabytes
+        when the values exceed 999 GB.
+
+        Args:
+            value (str): A string representing a storage value, expected in the format "X-Y GB".
+
+        Returns:
+            str: The converted storage value in TB or the original value if conversion is not applicable.
+
+        Examples:
+            >>> convert_to_tb("500-1500 GB")
+            '500 GB - 1 TB'
+        """
+
+        parts = value.split(" ")
+        if len(parts) == 2 and parts[1] == "GB":
+            lower, upper = map(int, parts[0].split("-"))
+
+            if lower > 999:
+                lower = round(lower / 1000, 1)
+                lower_unit = "TB"
+            else:
+                lower_unit = "GB"
+
+            if upper > 999:
+                upper = round(upper / 1000, 1)
+                upper_unit = "TB"
+            else:
+                upper_unit = "GB"
+
+            # Format the numbers getting rid of decimal point if its 0
+            lower = f"{lower:.0f}" if isinstance(lower, int) or lower % 1 == 0 else f"{lower:.1f}"
+            upper = f"{upper:.0f}" if isinstance(upper, int) or upper % 1 == 0 else f"{upper:.1f}"
+
+            # If the lower and upper unit are the same, no special unit handling
+            if lower_unit == upper_unit:
+                return f"{lower} - {upper} {lower_unit}"
+            elif lower_unit == "GB" and upper_unit == "TB":
+                # If the first digit is a 0, it does not need a unit
+                if int(lower) == 0:
+                    return f"{lower} - {upper} TB"
+                else:
+                    return f"{lower} GB - {upper} TB"
+            else:
+                return f"{lower} {lower_unit} - {upper} {upper_unit}"
+        return value
+
     def handle_disk_space(
         self: t.Self,
         dataFrame: pd.DataFrame,
@@ -129,7 +179,8 @@ class Analyzer:
         over_under_tb: bool = False,
     ) -> None:
         # NOTE: I am taking in the dataFrame as it is a mutated copy of the original dataFrame stored in self.vmdata.df
-        # This copy has a paired down version of the information and then environments have been changed to prod/non-prod
+        # This copy has a paired down version of the information and then environments have been changed to
+        # prod/non-prod
         diskHeading = self.column_headers["vmDisk"]
         envHeading = self.column_headers["environment"]
 
@@ -170,7 +221,10 @@ class Analyzer:
         sorted_range_counts_by_environment = range_counts_by_environment.sort_values(by="second_number", ascending=True)
         sorted_range_counts_by_environment.drop("second_number", axis=1, inplace=True)
 
-        # Print CLI output
+        # Apply the conversion to the index
+        sorted_range_counts_by_environment.index = sorted_range_counts_by_environment.index.map(self.convert_to_tb)
+
+        # Now call the print_formatted_disk_space method
         self.cli_output.print_formatted_disk_space(
             sorted_range_counts_by_environment,
             environment_filter,
@@ -217,7 +271,8 @@ class Analyzer:
         """Calculates the counts of operating systems based on the provided environment filter.
 
         This function analyzes the DataFrame to count occurrences of operating systems, applying filters as necessary.
-        It returns the counts and the corresponding operating system names, allowing for further processing or visualization.
+        It returns the counts and the corresponding operating system names, allowing for further processing
+        or visualization.
 
         Args:
             environment_filter (str): The filter to apply when counting operating systems.
