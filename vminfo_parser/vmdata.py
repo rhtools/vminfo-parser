@@ -125,7 +125,8 @@ class VMData:
             None: This method does not take any arguments.
 
         Returns:
-            pd.DataFrame: A DataFrame containing the aggregated resource usage for each site, with renamed columns for clarity.
+            pd.DataFrame: A DataFrame containing the aggregated resource usage for each site, with renamed
+                          columns for clarity.
 
         Examples:
             site_usage_df = create_site_specific_dataframe()
