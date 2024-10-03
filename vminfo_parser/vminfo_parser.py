@@ -94,7 +94,7 @@ def main(*args: t.Optional[str]) -> None:  # noqa: C901
                 )
             else:
                 LOGGER.critical(
-                    """Failed to determine prod from non-prod environments... 
+                    """Failed to determine prod from non-prod environments...
                     Perhaps you did not pass in the --prod-env-labels ?"""
                 )
                 exit()
