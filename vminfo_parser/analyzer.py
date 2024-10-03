@@ -119,7 +119,7 @@ class Analyzer:
 
         return "non-prod"
 
-    def convert_to_tb(self, value):
+    def convert_to_tb(self: t.Self, value: str) -> str:
         """
         Convert a given storage value in GB to TB if applicable.
         This function processes a string representing a range of storage values and converts them to terabytes
