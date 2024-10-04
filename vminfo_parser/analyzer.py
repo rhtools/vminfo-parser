@@ -43,12 +43,109 @@ class Analyzer:
                 avg_ram = filtered_hosts[self.column_headers["vmMemory"]].mean()
                 self.cli_output.writeline("{:<20} {:<10.2f}".format(os, avg_ram))
 
+    def generate_dynamic_ranges(
+        self: t.Self, max_disk_space: int, show_disk_in_tb: bool = False, over_under_tb: bool = False
+    ) -> list[tuple[int, int]]:
+        """
+        Generate dynamic disk space ranges based on the maximum disk space and specified display options.
+        This function returns a list of tuples representing the ranges of disk space in either terabytes or gigabytes.
+
+        Args:
+            max_disk_space (int): The maximum disk space to consider for generating ranges.
+            show_disk_in_tb (bool, optional): If True, the ranges will be in terabytes. Defaults to False.
+            over_under_tb (bool, optional): If True, generates a simplified range for over/under thresholds.
+                Defaults to False.
+
+        Returns:
+            list: A list of tuples representing the dynamic disk space ranges.
+
+        Examples:
+            >>> generate_dynamic_ranges(150000, show_disk_in_tb=True)
+            [(0, 2000), (2001, 10000), (10001, 20000), (20001, 50000), (50001, 150000)]
+        """
+        disk_space_ranges_dict = {
+            "tb": [
+                (0, 2000),
+                (2001, 10000),
+                (10001, 20000),
+                (20001, 50000),
+                (50001, 100000),
+                (100001, max_disk_space),
+            ],
+            "gb": [
+                (0, 200),
+                (201, 400),
+                (401, 600),
+                (601, 800),
+                (801, 1000),
+                (1001, 2000),
+                (2001, 3000),
+                (3001, 5000),
+                (5001, 10000),
+                (10001, 20000),
+                (20001, 50000),
+                (50001, 100000),
+                (100001, max_disk_space),
+            ],
+        }
+        disk_space_ranges = []
+        # In this section we are dynamically removing unneeded ranges
+        # from the total list of ranges based on the dataframe
+        if show_disk_in_tb:
+            ranges = disk_space_ranges_dict["tb"]
+            if max_disk_space > 100000:
+                disk_space_ranges = ranges
+            # If the largest disk is greater than 50000 but less than 100000 remove the last 2
+            # entries and then add the new one
+            elif max_disk_space > 50000:
+                disk_space_ranges = ranges[:-2] + [(50000, max_disk_space)]
+            # If we are greater than 20000 but less than 50000 take the first 3 entries
+            # and add on our custom one
+            elif max_disk_space > 20000:
+                disk_space_ranges = ranges[:3] + [(20001, max_disk_space)]
+        elif over_under_tb:
+            disk_space_ranges = [(0, 1000), (1001, max_disk_space)]
+        # The Same logic applies to the 'gb' items as to the 'tb' items
+        # however, given that this is more fine-grained, there are more ranges to add
+        else:
+            ranges = disk_space_ranges_dict["gb"]
+            if max_disk_space > 100000:
+                disk_space_ranges = ranges
+            elif max_disk_space > 50000:
+                disk_space_ranges = ranges[:-2] + [(50001, max_disk_space)]
+            elif max_disk_space > 20000:
+                disk_space_ranges = ranges[:10] + [(20001, max_disk_space)]
+            elif max_disk_space > 10000:
+                disk_space_ranges = ranges[:9] + [(10001, max_disk_space)]
+            else:
+                disk_space_ranges = ranges[:8] + [(5001, max_disk_space)]
+
+        return disk_space_ranges
+
     def calculate_disk_space_ranges(
         self: t.Self,
         dataFrame: t.Optional[pd.DataFrame] = None,
         show_disk_in_tb: bool = False,
         over_under_tb: bool = False,
     ) -> list[tuple[int, int]]:
+        """
+        Calculate the ranges of disk space based on the provided DataFrame and specified display options.
+        This function processes the DataFrame to determine which disk space ranges contain virtual machines.
+
+        Args:
+            dataFrame (Optional[pd.DataFrame], optional): The DataFrame containing disk space data.
+                If None, the default DataFrame from the instance will be used. Defaults to None.
+            show_disk_in_tb (bool, optional): If True, the ranges will be calculated in terabytes. Defaults to False.
+            over_under_tb (bool, optional): If True, generates a simplified range for over/under thresholds.
+                Defaults to False.
+
+        Returns:
+            list[tuple[int, int]]: A list of tuples representing the disk space ranges that contain virtual machines.
+
+        Examples:
+            >>> calculate_disk_space_ranges(dataFrame=my_dataframe, show_disk_in_tb=True)
+            [(0, 2000), (2001, 10000)]
+        """
         if dataFrame is None:
             # default to the dataframe in the attribute unless overridden
             dataFrame = self.vm_data.df
@@ -64,33 +161,8 @@ class Analyzer:
         # Normalize the Disk Column to GiB before applying further analysis
         if self.column_headers["unitType"] == "MB":
             dataFrame[frameHeading] = dataFrame[frameHeading] / 1024
-        min_disk_space = round(int(dataFrame[frameHeading].min()))
         max_disk_space = round(int(dataFrame[frameHeading].max()))
-
-        final_range = (9001, max_disk_space) if max_disk_space > 9000 else (10001, 15000)
-
-        if show_disk_in_tb:
-            disk_space_ranges = [
-                (min_disk_space, 2000),
-                (2001, 9000),
-                final_range,
-            ]
-        elif over_under_tb:
-            disk_space_ranges = [(min_disk_space, 1000), (1001, max_disk_space)]
-        else:
-            disk_space_ranges = [
-                (min_disk_space, 200),
-                (201, 400),
-                (401, 600),
-                (601, 900),
-                (901, 1500),
-                (1501, 2000),
-                (2001, 3000),
-                (3001, 5000),
-                (5001, 9000),
-                final_range,
-            ]
-
+        disk_space_ranges = self.generate_dynamic_ranges(max_disk_space, show_disk_in_tb, over_under_tb)
         disk_space_ranges_with_vms = []
         for range_start, range_end in disk_space_ranges:
             epsilon = 1
@@ -119,6 +191,56 @@ class Analyzer:
 
         return "non-prod"
 
+    def convert_to_tb(self: t.Self, value: str) -> str:
+        """
+        Convert a given storage value in GB to TB if applicable.
+        This function processes a string representing a range of storage values and converts them to terabytes
+        when the values exceed 999 GB.
+
+        Args:
+            value (str): A string representing a storage value, expected in the format "X-Y GB".
+
+        Returns:
+            str: The converted storage value in TB or the original value if conversion is not applicable.
+
+        Examples:
+            >>> convert_to_tb("500-1500 GB")
+            '500 GB - 1 TB'
+        """
+
+        parts = value.split(" ")
+        if len(parts) == 2 and parts[1] == "GB":
+            lower, upper = map(int, parts[0].split("-"))
+
+            if lower > 999:
+                lower = round(lower / 1000, 1)
+                lower_unit = "TB"
+            else:
+                lower_unit = "GB"
+
+            if upper > 999:
+                upper = round(upper / 1000, 1)
+                upper_unit = "TB"
+            else:
+                upper_unit = "GB"
+
+            # Format the numbers getting rid of decimal point if its 0
+            lower = f"{lower:.0f}" if isinstance(lower, int) or lower % 1 == 0 else f"{lower:.1f}"
+            upper = f"{upper:.0f}" if isinstance(upper, int) or upper % 1 == 0 else f"{upper:.1f}"
+
+            # If the lower and upper unit are the same, no special unit handling
+            if lower_unit == upper_unit:
+                return f"{lower} - {upper} {lower_unit}"
+            elif lower_unit == "GB" and upper_unit == "TB":
+                # If the first digit is a 0, it does not need a unit
+                if int(lower) == 0:
+                    return f"{lower} - {upper} TB"
+                else:
+                    return f"{lower} GB - {upper} TB"
+            else:
+                return f"{lower} {lower_unit} - {upper} {upper_unit}"
+        return value
+
     def handle_disk_space(
         self: t.Self,
         dataFrame: pd.DataFrame,
@@ -129,7 +251,8 @@ class Analyzer:
         over_under_tb: bool = False,
     ) -> None:
         # NOTE: I am taking in the dataFrame as it is a mutated copy of the original dataFrame stored in self.vmdata.df
-        # This copy has a paired down version of the information and then environments have been changed to prod/non-prod
+        # This copy has a paired down version of the information and then environments have been changed to
+        # prod/non-prod
         diskHeading = self.column_headers["vmDisk"]
         envHeading = self.column_headers["environment"]
 
@@ -170,7 +293,10 @@ class Analyzer:
         sorted_range_counts_by_environment = range_counts_by_environment.sort_values(by="second_number", ascending=True)
         sorted_range_counts_by_environment.drop("second_number", axis=1, inplace=True)
 
-        # Print CLI output
+        # Apply the conversion to the index
+        sorted_range_counts_by_environment.index = sorted_range_counts_by_environment.index.map(self.convert_to_tb)
+
+        # Now call the print_formatted_disk_space method
         self.cli_output.print_formatted_disk_space(
             sorted_range_counts_by_environment,
             environment_filter,
@@ -217,7 +343,8 @@ class Analyzer:
         """Calculates the counts of operating systems based on the provided environment filter.
 
         This function analyzes the DataFrame to count occurrences of operating systems, applying filters as necessary.
-        It returns the counts and the corresponding operating system names, allowing for further processing or visualization.
+        It returns the counts and the corresponding operating system names, allowing for further processing
+        or visualization.
 
         Args:
             environment_filter (str): The filter to apply when counting operating systems.

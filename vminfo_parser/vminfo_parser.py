@@ -65,7 +65,6 @@ def main(*args: t.Optional[str]) -> None:  # noqa: C901
             # If the user has not specified an OS name, assume they want them all
             for os_name in vm_data.df["OS Name"].unique():
                 if environments:
-                    # analyzer.plot_disk_space_distribution(os_name=os_name, show_disk_in_tb=config.breakdown_by_terabyte)
                     analyzer.sort_attribute_by_environment(
                         *environments,
                         attribute="diskSpace",
@@ -95,7 +94,8 @@ def main(*args: t.Optional[str]) -> None:  # noqa: C901
                 )
             else:
                 LOGGER.critical(
-                    "Failed to determine prod from non-prod environments... Perhaps you did not pass in the --prod-env-labels ?"
+                    """Failed to determine prod from non-prod environments...
+                    Perhaps you did not pass in the --prod-env-labels ?"""
                 )
                 exit()
         else:
