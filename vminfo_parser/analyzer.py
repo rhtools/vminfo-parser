@@ -43,12 +43,109 @@ class Analyzer:
                 avg_ram = filtered_hosts[self.column_headers["vmMemory"]].mean()
                 self.cli_output.writeline("{:<20} {:<10.2f}".format(os, avg_ram))
 
+    def generate_dynamic_ranges(
+        self: t.Self, max_disk_space: int, show_disk_in_tb: bool = False, over_under_tb: bool = False
+    ) -> list[tuple[int, int]]:
+        """
+        Generate dynamic disk space ranges based on the maximum disk space and specified display options.
+        This function returns a list of tuples representing the ranges of disk space in either terabytes or gigabytes.
+
+        Args:
+            max_disk_space (int): The maximum disk space to consider for generating ranges.
+            show_disk_in_tb (bool, optional): If True, the ranges will be in terabytes. Defaults to False.
+            over_under_tb (bool, optional): If True, generates a simplified range for over/under thresholds.
+                Defaults to False.
+
+        Returns:
+            list: A list of tuples representing the dynamic disk space ranges.
+
+        Examples:
+            >>> generate_dynamic_ranges(150000, show_disk_in_tb=True)
+            [(0, 2000), (2001, 10000), (10001, 20000), (20001, 50000), (50001, 150000)]
+        """
+        disk_space_ranges_dict = {
+            "tb": [
+                (0, 2000),
+                (2001, 10000),
+                (10001, 20000),
+                (20001, 50000),
+                (50001, 100000),
+                (100001, max_disk_space),
+            ],
+            "gb": [
+                (0, 200),
+                (201, 400),
+                (401, 600),
+                (601, 800),
+                (801, 1000),
+                (1001, 2000),
+                (2001, 3000),
+                (3001, 5000),
+                (5001, 10000),
+                (10001, 20000),
+                (20001, 50000),
+                (50001, 100000),
+                (100001, max_disk_space),
+            ],
+        }
+        disk_space_ranges = []
+        # In this section we are dynamically removing unneeded ranges
+        # from the total list of ranges based on the dataframe
+        if show_disk_in_tb:
+            ranges = disk_space_ranges_dict["tb"]
+            if max_disk_space > 100000:
+                disk_space_ranges = ranges
+            # If the largest disk is greater than 50000 but less than 100000 remove the last 2
+            # entries and then add the new one
+            elif max_disk_space > 50000:
+                disk_space_ranges = ranges[:-2] + [(50000, max_disk_space)]
+            # If we are greater than 20000 but less than 50000 take the first 3 entries
+            # and add on our custom one
+            elif max_disk_space > 20000:
+                disk_space_ranges = ranges[:3] + [(20001, max_disk_space)]
+        elif over_under_tb:
+            disk_space_ranges = [(0, 1000), (1001, max_disk_space)]
+        # The Same logic applies to the 'gb' items as to the 'tb' items
+        # however, given that this is more fine-grained, there are more ranges to add
+        else:
+            ranges = disk_space_ranges_dict["gb"]
+            if max_disk_space > 100000:
+                disk_space_ranges = ranges
+            elif max_disk_space > 50000:
+                disk_space_ranges = ranges[:-2] + [(50001, max_disk_space)]
+            elif max_disk_space > 20000:
+                disk_space_ranges = ranges[:10] + [(20001, max_disk_space)]
+            elif max_disk_space > 10000:
+                disk_space_ranges = ranges[:9] + [(10001, max_disk_space)]
+            else:
+                disk_space_ranges = ranges[:8] + [(5001, max_disk_space)]
+
+        return disk_space_ranges
+
     def calculate_disk_space_ranges(
         self: t.Self,
         dataFrame: t.Optional[pd.DataFrame] = None,
         show_disk_in_tb: bool = False,
         over_under_tb: bool = False,
     ) -> list[tuple[int, int]]:
+        """
+        Calculate the ranges of disk space based on the provided DataFrame and specified display options.
+        This function processes the DataFrame to determine which disk space ranges contain virtual machines.
+
+        Args:
+            dataFrame (Optional[pd.DataFrame], optional): The DataFrame containing disk space data.
+                If None, the default DataFrame from the instance will be used. Defaults to None.
+            show_disk_in_tb (bool, optional): If True, the ranges will be calculated in terabytes. Defaults to False.
+            over_under_tb (bool, optional): If True, generates a simplified range for over/under thresholds.
+                Defaults to False.
+
+        Returns:
+            list[tuple[int, int]]: A list of tuples representing the disk space ranges that contain virtual machines.
+
+        Examples:
+            >>> calculate_disk_space_ranges(dataFrame=my_dataframe, show_disk_in_tb=True)
+            [(0, 2000), (2001, 10000)]
+        """
         if dataFrame is None:
             # default to the dataframe in the attribute unless overridden
             dataFrame = self.vm_data.df
@@ -64,33 +161,8 @@ class Analyzer:
         # Normalize the Disk Column to GiB before applying further analysis
         if self.column_headers["unitType"] == "MB":
             dataFrame[frameHeading] = dataFrame[frameHeading] / 1024
-        min_disk_space = round(int(dataFrame[frameHeading].min()))
         max_disk_space = round(int(dataFrame[frameHeading].max()))
-
-        final_range = (9001, max_disk_space) if max_disk_space > 9000 else (10001, 15000)
-
-        if show_disk_in_tb:
-            disk_space_ranges = [
-                (min_disk_space, 2000),
-                (2001, 9000),
-                final_range,
-            ]
-        elif over_under_tb:
-            disk_space_ranges = [(min_disk_space, 1000), (1001, max_disk_space)]
-        else:
-            disk_space_ranges = [
-                (min_disk_space, 200),
-                (201, 400),
-                (401, 600),
-                (601, 900),
-                (901, 1500),
-                (1501, 2000),
-                (2001, 3000),
-                (3001, 5000),
-                (5001, 9000),
-                final_range,
-            ]
-
+        disk_space_ranges = self.generate_dynamic_ranges(max_disk_space, show_disk_in_tb, over_under_tb)
         disk_space_ranges_with_vms = []
         for range_start, range_end in disk_space_ranges:
             epsilon = 1
