@@ -71,6 +71,7 @@ def main(*args: t.Optional[str]) -> None:  # noqa: C901
                         os_filter=os_name,
                         environment_filter=config.sort_by_env,
                         over_under_tb=config.over_under_tb,
+                        granular_disk_space_by_os=config.disk_space_by_granular_os,
                     )
 
                 else:

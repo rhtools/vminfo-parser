@@ -86,30 +86,14 @@ class CLIOutput:
             if not line.startswith("Name:") and not line.startswith("dtype"):
                 self.writeline(line.strip())
 
-    def print_formatted_disk_space(
+    def format_rows(
         self: t.Self,
-        sorted_range_counts_by_environment: pd.DataFrame,
-        environment_filter: str,
-        env_keywords: list[str],
-        os_filter: t.Optional[str] = None,
-    ) -> None:
-        col_widths = (
-            {
-                "Environment": 22,
-                **{env: 10 for env in sorted_range_counts_by_environment.columns},
-            }
-            if env_keywords and environment_filter != "all"
-            else {**{env: 17 for env in sorted_range_counts_by_environment.columns}}
-        )
-        formatted_rows = []
-
-        if environment_filter == "all":
-            formatted_rows.append("Disk Space Range".ljust(20) + "Count".ljust(col_widths["Count"]))
-            justification = 19
-        else:
-            justification = 15
-
-        for index, row in sorted_range_counts_by_environment.iterrows():
+        dataFrame: pd.DataFrame,
+        formatted_rows: list,
+        justification: int,
+        col_widths: dict,
+    ):
+        for index, row in dataFrame.iterrows():
             formatted_row = [str(index).ljust(justification)]
             for col_name, width in col_widths.items():
                 value = str(row[col_name]) if col_name in row.index else ""
@@ -118,16 +102,75 @@ class CLIOutput:
 
         formatted_df_str = "\n".join(formatted_rows)
 
+        return formatted_df_str
+
+    def set_column_width(
+        self: t.Self,
+        dataFame: pd.DataFrame,
+        index_column_padding: int,
+        remaining_column_padding: int,
+        index_column_name: str = None,
+    ) -> dict:
+        """
+        Set the widths for the columns in a DataFrame based on specified parameters.
+        This function returns a dictionary mapping column names to their respective widths for formatting purposes.
+
+        Args:
+            dataFame (pd.DataFrame): The DataFrame for which column widths are to be set.
+            index_column_width (int): The width to be assigned to the index column.
+            remaining_column_widths (int): The width to be assigned to the remaining columns.
+            index_column_name (str, optional): The name of the index column. If provided, it will be assigned the
+                specified width. Defaults to None.
+
+        Returns:
+            dict: A dictionary mapping each column name to its corresponding width.
+
+        Examples:
+            >>> set_column_width(dataFame=my_dataframe, index_column_width=20, remaining_column_widths=10,
+                index_column_name="Environment")
+            {'Environment': 20, 'Column1': max(10, len('Column1')), 'Column2': max(10, len('Column2'))}
+        """
+        if index_column_name:
+            col_widths = {
+                index_column_name: index_column_padding,
+                **{env: max(remaining_column_padding, len(env)) for env in dataFame.columns},
+            }
+        else:
+            col_widths = {env: max(index_column_padding, len(env)) for env in dataFame.columns}
+
+        return col_widths
+
+    def print_formatted_disk_space(
+        self: t.Self,
+        col_widths: dict,
+        formatted_df_str: str,
+        os_filter: t.Optional[str] = None,
+        display_header: bool = True,
+        index_heading_justification: int = 39,
+        other_headings_justification: int = 11,
+    ) -> None:
+        """
+        Print the formatted disk space information to the output.
+        This function displays a header and the formatted data, optionally filtered by the operating system.
+
+        Args:
+            col_widths (dict): A dictionary containing the widths for each column in the output.
+            formatted_df_str (str): A string representation of the formatted disk space data.
+            os_filter (Optional[str]): An optional filter to display specific operating system information.
+
+        Returns:
+            None
+        """
         temp_heading = ""
         if os_filter:
             self.writeline(os_filter)
             self.writeline("---------------------------------")
-
-        for headings in list(col_widths.keys()):
-            if temp_heading:
-                temp_heading += headings.ljust(11)
-            else:
-                temp_heading += headings.ljust(39)
+        if display_header:
+            for headings in list(col_widths.keys()):
+                if temp_heading:
+                    temp_heading += headings.ljust(other_headings_justification)
+                else:
+                    temp_heading += headings.ljust(index_heading_justification)
         self.writeline(temp_heading)
         self.writeline(formatted_df_str)
         self.writeline()
@@ -145,7 +188,8 @@ class CLIOutput:
 
         Args:
             resource_list (list): The type of resource to summarize. Options include "Memory", "CPU", "Disk", or "VM".
-            dataFrame (pd.DataFrame): A DataFrame containing the relevant data for the site, including resource usage metrics.
+            dataFrame (pd.DataFrame): A DataFrame containing the relevant data for the site, including
+                                      resource usage metrics.
 
         Returns:
             None: This function does not return a value; it prints the usage information directly to the console.
