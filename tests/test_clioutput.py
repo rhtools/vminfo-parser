@@ -113,3 +113,72 @@ def test_set_column_width(
     df = df.set_index(f"{current_index_column_name}")
     result = cli_output.set_column_width(df, index_column_padding, remaining_column_padding, new_index_column_name)
     assert result == expected
+
+
+@pytest.mark.parametrize(
+    "col_widths, formatted_df_str, os_filter, display_header, index_heading_justification, "
+    "other_headings_justification, expected_output",
+    [
+        (
+            {"Environment": 22, "non-prod": 10, "prod": 10},
+            "0 - 200 GB                             31         247       "
+            "201 - 400 GB                           26         34        ",
+            None,
+            True,
+            39,
+            11,
+            "Environment                            non-prod   prod       \n"
+            "0 - 200 GB                             31         247       "
+            "201 - 400 GB                           26         34        \n\n",
+        ),
+        (
+            {"Count": 17},
+            "Disk Space Range    Count            \n"
+            "0 - 200 GB          278              \n"
+            "201 - 400 GB        60               ",
+            None,
+            True,
+            39,
+            11,
+            "\nDisk Space Range    Count            \n"
+            "0 - 200 GB          278              \n"
+            "201 - 400 GB        60               \n\n",
+        ),
+        (
+            {"OS Version Number": 0, "Disk Space Range": 19, "Count": 19},
+            "7                        0 - 200 GB          50                 \n"
+            "8                        401 - 600 GB        52                 \n"
+            "9                        20 - 36.3 TB        2                  ",
+            "Red Hat Enterprise Linux",
+            True,
+            25,
+            20,
+            "Red Hat Enterprise Linux\n"
+            "---------------------------------\n"
+            "OS Version Number        Disk Space Range    Count               \n"
+            "7                        0 - 200 GB          50                 \n"
+            "8                        401 - 600 GB        52                 \n"
+            "9                        20 - 36.3 TB        2                  \n\n",
+        ),
+    ],
+)
+def test_print_formatted_disk_space(
+    cli_output: CLIOutput,
+    col_widths: dict,
+    formatted_df_str: str,
+    os_filter: str,
+    display_header: bool,
+    index_heading_justification: int,
+    other_headings_justification: int,
+    expected_output: str,
+):
+    cli_output.print_formatted_disk_space(
+        col_widths,
+        formatted_df_str,
+        os_filter=os_filter,
+        display_header=display_header,
+        index_heading_justification=index_heading_justification,
+        other_headings_justification=other_headings_justification,
+    )
+    result = cli_output.output.getvalue()
+    assert result == expected_output

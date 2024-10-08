@@ -182,20 +182,15 @@ class CLIOutput:
             self.writeline(os_filter)
             self.writeline("---------------------------------")
         if display_header:
-            for headings in list(col_widths.keys()):
-                if temp_heading:
-                    temp_heading += headings.ljust(other_headings_justification)
-                else:
-                    temp_heading += headings.ljust(index_heading_justification)
+            if len(col_widths) > 1:
+                for headings in list(col_widths.keys()):
+                    if temp_heading:
+                        temp_heading += headings.ljust(other_headings_justification)
+                    else:
+                        temp_heading += headings.ljust(index_heading_justification)
         self.writeline(temp_heading)
         self.writeline(formatted_df_str)
         self.writeline()
-
-    def print_disk_space_ranges(self: t.Self, range_counts: dict[tuple[int, int], int]) -> None:
-        self.writeline("Disk Space Range (GB)\t\tCount")
-        for disk_range, count in range_counts.items():
-            disk_range_str = f"{disk_range[0]}-{disk_range[1]}"
-            self.writeline(f"{disk_range_str.ljust(32)} {count}")
 
     def print_site_usage(self: t.Self, resource_list: list, dataFrame: pd.DataFrame) -> None:
         """
