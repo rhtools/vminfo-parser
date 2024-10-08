@@ -182,3 +182,42 @@ def test_print_formatted_disk_space(
     )
     result = cli_output.output.getvalue()
     assert result == expected_output
+
+
+@pytest.mark.parametrize(
+    "resource_list, df, expected",
+    [
+        (
+            ["Memory", "CPU", "Disk", "VM"],
+            pd.DataFrame(
+                {
+                    "Site Name": ["Site1", "Site2"],
+                    "Site_RAM_Usage": [533, 764],
+                    "Site_Disk_Usage": [779, 247],
+                    "Site_CPU_Usage": [2594, 970],
+                    "Site_VM_Count": [428, 177],
+                }
+            ),
+            "Site Wide Memory Usage\n"
+            "-------------------\n"
+            "Site1		533 GB\n"
+            "Site2		764 GB\n\n"
+            "Site Wide CPU Usage\n"
+            "-------------------\n"
+            "Site1		2594 Cores\n"
+            "Site2		970 Cores\n\n"
+            "Site Wide Disk Usage\n"
+            "-------------------\n"
+            "Site1		779 TB\n"
+            "Site2		247 TB\n\n"
+            "Site Wide VM Usage\n"
+            "-------------------\n"
+            "Site1		428 VMs\n"
+            "Site2		177 VMs\n\n",
+        ),
+    ],
+)
+def test_print_site_usage(cli_output: CLIOutput, resource_list: list, df: pd.DataFrame, expected):
+    cli_output.print_site_usage(resource_list, df)
+    result = cli_output.output.getvalue()
+    assert result == expected
