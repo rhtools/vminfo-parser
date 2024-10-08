@@ -93,6 +93,22 @@ class CLIOutput:
         justification: int,
         col_widths: dict,
     ):
+        """
+        Format the rows of a DataFrame into a string representation with specified widths.
+
+        This function iterates over each row in the provided DataFrame, formats the row values according to
+        the specified column widths, and appends the formatted rows to the provided list. The resulting string
+        representation of the formatted rows is returned.
+
+        Args:
+            dataFrame (pd.DataFrame): The DataFrame containing the data to format.
+            formatted_rows (list): A list to which the formatted row strings will be appended.
+            justification (int): The width for left-justifying the index values.
+            col_widths (dict): A dictionary mapping column names to their respective widths.
+
+        Returns:
+            str: A string representation of the formatted rows, joined by newline characters.
+        """
         for index, row in dataFrame.iterrows():
             formatted_row = [str(index).ljust(justification)]
             for col_name, width in col_widths.items():
