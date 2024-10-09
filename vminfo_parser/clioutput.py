@@ -92,7 +92,7 @@ class CLIOutput:
         formatted_rows: list,
         justification: int,
         col_widths: dict,
-    ):
+    ) -> str:
         """
         Format the rows of a DataFrame into a string representation with specified widths.
 
