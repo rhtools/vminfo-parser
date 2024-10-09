@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+      - workflow-updates # adding for testings,  will remove before pr is marked ready
     paths:
       - "vminfo_parser/*"
       - "pyproject.toml"
