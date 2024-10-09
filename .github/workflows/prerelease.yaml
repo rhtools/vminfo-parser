@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-      - workflow-updates # adding for testings,  will remove before pr is marked ready
     paths:
       - "vminfo_parser/*"
       - "pyproject.toml"
@@ -42,4 +41,4 @@ jobs:
       - name: Release Upload Assets
         uses: jaywcjlove/github-action-upload-assets@main
         with:
-          asset-path: '[".dist/*"]'
+          asset-path: '["dist/*"]'
