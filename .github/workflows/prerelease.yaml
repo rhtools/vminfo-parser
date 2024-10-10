@@ -1,0 +1,44 @@
+name: Build and Release
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "vminfo_parser/*"
+      - "pyproject.toml"
+      - "MANIFEST.in"
+      - "requirements.txt"
+
+permissions:
+  checks: write
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Semantic Release
+        id: release_version
+        uses: go-semantic-release/action@v1.21.0
+        with:
+          github-token: ${{ github.token }}
+          allow-initial-development-versions: true
+          force-bump-patch-version: true
+          prerelease: true
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+          git fetch --depth=1
+      - name: Python Build
+        id: build
+        run: |
+          python -m build
+      - name: Release Upload Assets
+        uses: jaywcjlove/github-action-upload-assets@main
+        with:
+          asset-path: '["dist/*"]'

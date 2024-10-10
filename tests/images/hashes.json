@@ -1,8 +1,8 @@
 {
-  "tests.test_visualizer.test_plotter": "1212b5fc086568716f82253ae63484822da2962c0ac438f9865769faa00053ec",
-  "tests.test_visualizer.test_visualize_disk_space_vertical": "bc478b269ee8115b5e526141d52a0aaf33470d11b0c2853fa1f591bd34fa78e8",
-  "tests.test_visualizer.test_visualize_disk_space_horizontal": "0aa5ce68f6534330629916c51912647bff3d3a81c53580850deba1534978117e",
-  "tests.test_visualizer.test_visualize_os_distribution": "22655d7c262fb9d4386186646bfc32ba5d81772aff8caf1efde739fa352c3f57",
-  "tests.test_visualizer.test_visualize_unsupported_os_distribution": "cb4986b19c4893fe60766de3c1a2b307572d3b7e158f7ae7445f6f2487892bb5",
-  "tests.test_visualizer.test_visualize_supported_os_distribution": "b5a6a69d332e90bb314570b669f058b49fd322a3a095737c657bbba3f837957a"
+  "tests.test_visualizer.test_plotter": "753894f64e07de0327098da5843ed6edc74dcfd19daccd1cb3f7a7930e1176e0",
+  "tests.test_visualizer.test_visualize_disk_space_vertical": "3555e99b34968db77cf254418a2b2b01b25cdf6337f2c1c03206924feaf64b5d",
+  "tests.test_visualizer.test_visualize_disk_space_horizontal": "fd6a468a99f1fc0b05d2a1374aa8ecbc0c3a1e2a9715de5d2ece31b4f3e41339",
+  "tests.test_visualizer.test_visualize_os_distribution": "05771c9a57544958c586f9da2532705d4b17f4a30398177c269989f751dd74b8",
+  "tests.test_visualizer.test_visualize_unsupported_os_distribution": "dbce66230324aa4664b037ae19b0f8d40488b0c33f89d668f032711f0a86e6ee",
+  "tests.test_visualizer.test_visualize_supported_os_distribution": "f3f3fa81961e577c110a135b14447ff6bb3358902d273adafeababdc1654d650"
 }

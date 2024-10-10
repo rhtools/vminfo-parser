@@ -80,15 +80,7 @@ source = ["vminfo_parser"]
 [tool.coverage.report]
 show_missing = true
 skip_empty = true
-fail_under = 10
-# exclude_also = [
-#     "pass",
-#     "def __str__",
-#     "def __repr__",
-#     "debug",
-#     "logger.debug",
-#     "if t.TYPE_CHECKING",
-# ]
+fail_under = 60
 
 [tool.coverage.lcov]
 output = 'coverage.lcov'

@@ -66,7 +66,7 @@ def all_os_count_series(supported_os_count_series: pd.Series, unsupported_os_cou
     return pd.concat([supported_os_count_series, unsupported_os_count_series])
 
 
-@pytest.mark.mpl_image_compare
+@pytest.mark.mpl_image_compare(savefig_kwargs={"bbox_inches": "tight"})
 def test_plotter(visualizer: Visualizer) -> plt.Figure:
     @plotter
     def simpleplot(self: Visualizer, dataframe: pd.DataFrame) -> None:
@@ -88,17 +88,17 @@ def test_plotter_empty(visualizer: Visualizer, caplog: pytest.LogCaptureFixture)
     assert caplog.record_tuples == [("vminfo_parser.visualizer", logging.WARNING, "No data to graph")]
 
 
-@pytest.mark.mpl_image_compare
+@pytest.mark.mpl_image_compare(savefig_kwargs={"bbox_inches": "tight"})
 def test_visualize_disk_space_vertical(visualizer: Visualizer, disk_range_counts_df: pd.DataFrame) -> plt.Figure:
     return visualizer.visualize_disk_space_vertical(disk_range_counts_df)
 
 
-@pytest.mark.mpl_image_compare
+@pytest.mark.mpl_image_compare(savefig_kwargs={"bbox_inches": "tight"})
 def test_visualize_disk_space_horizontal(visualizer: Visualizer, disk_range_counts_df: pd.DataFrame) -> plt.Figure:
     return visualizer.visualize_disk_space_horizontal(disk_range_counts_df)
 
 
-@pytest.mark.mpl_image_compare
+@pytest.mark.mpl_image_compare(savefig_kwargs={"bbox_inches": "tight"})
 def test_visualize_os_distribution(visualizer: Visualizer, all_os_count_series: pd.Series) -> plt.Figure:
     sorted_series = all_os_count_series[all_os_count_series >= 100].sort_values(ascending=False)
     return visualizer.visualize_os_distribution(
@@ -108,14 +108,14 @@ def test_visualize_os_distribution(visualizer: Visualizer, all_os_count_series: 
     )
 
 
-@pytest.mark.mpl_image_compare
+@pytest.mark.mpl_image_compare(savefig_kwargs={"bbox_inches": "tight"})
 def test_visualize_unsupported_os_distribution(
     visualizer: Visualizer, unsupported_os_count_series: pd.Series
 ) -> plt.Figure:
     return visualizer.visualize_unsupported_os_distribution(unsupported_os_count_series)
 
 
-@pytest.mark.mpl_image_compare
+@pytest.mark.mpl_image_compare(savefig_kwargs={"bbox_inches": "tight"})
 def test_visualize_supported_os_distribution(
     visualizer: Visualizer, supported_os_count_series: pd.Series
 ) -> plt.Figure:
