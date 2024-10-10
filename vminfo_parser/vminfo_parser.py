@@ -44,6 +44,8 @@ def main(*args: t.Optional[str]) -> None:  # noqa: C901
         )
         exit()
 
+    if config.generate_yaml:
+        config.generate_yaml_from_parser()
     if config.show_disk_space_by_os:
         if config.os_name:
             # If the user specifies an OS, use that to filter out everything else

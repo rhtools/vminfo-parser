@@ -21,7 +21,12 @@ def _get_parser() -> argparse.ArgumentParser:
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--file", type=Path, help="The file to parse")
     group.add_argument("--yaml", type=str, help="Path to YAML configuration file")
-
+    group.add_argument(
+        "--generate-yaml",
+        action="store_true",
+        default=False,
+        help="Writes a Yaml file of all the current options available",
+    )
     parser.add_argument(
         "--sort-by-env",
         type=str,
@@ -159,9 +164,13 @@ class Config:
             if any(getattr(config, arg) for arg in vars(config) if arg != "yaml"):
                 _parse_fail("When using --yaml, no other arguments should be provided.")
             config._load_yaml()
+        elif config.generate_yaml:
+            if any(getattr(config, arg) for arg in vars(config) if arg != "generate_yaml"):
+                _parse_fail("When using --generate-yaml, no other arguments should be provided.")
+            config.generate_yaml_from_parser()
         elif not config.file:
             # this is likely never reachable because argparse forces it.
-            _parse_fail("--file is required when --yaml is not used.")
+            _parse_fail("--file is required when --yaml or --generate-yaml are not used.")
 
         config._validate()
         return config
@@ -202,3 +211,42 @@ class Config:
         if not hasattr(self, "file"):
             LOGGER.critical("File not specified in yaml or command line")
             exit(1)
+
+    @classmethod
+    def generate_yaml_from_parser(cls: t.Self) -> None:
+        """
+        Generate a YAML file containing all arguments from the given ArgumentParser.
+
+        This method creates a YAML file named "parser_arguments.yaml" in the current directory,
+        containing all the arguments defined in the parser, excluding the --generate-yaml option,
+        in a format compatible with _load_yaml.
+        """
+        parser = _get_parser()
+
+        args_dict = {}
+        for action in parser._actions:
+            if isinstance(action, argparse._HelpAction):
+                continue  # Skip the help action
+
+            arg_name = action.dest
+            if arg_name in ["generate_yaml", "yaml", "file"]:
+                continue  # Skip the --generate-yaml option itself
+
+            args_dict[arg_name] = {"value": action.default, "help": action.help}
+
+            if isinstance(action, argparse._StoreAction):
+                args_dict[arg_name] = "<String>"
+            elif isinstance(action, argparse._CountAction):
+                args_dict[arg_name] = "int"
+            elif isinstance(action, argparse._StoreTrueAction):
+                args_dict[arg_name] = False
+
+            if action.choices:
+                args_dict[arg_name]["choices"] = action.choices
+
+        sorted_args_dict = dict(sorted(args_dict.items()))
+
+        # Write to YAML file
+        with open("parser_arguments.yaml", "w") as f:
+            yaml.dump(sorted_args_dict, f, indent=2, sort_keys=False)
+            exit()
