@@ -229,7 +229,7 @@ class Config:
                 continue  # Skip the help action
 
             arg_name = action.dest
-            if arg_name in ["generate_yaml", "yaml", "file"]:
+            if arg_name in ["generate_yaml", "yaml"]:
                 continue  # Skip the --generate-yaml option itself
 
             args_dict[arg_name] = action.default
