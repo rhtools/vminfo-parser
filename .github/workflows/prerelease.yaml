@@ -27,7 +27,6 @@ jobs:
         with:
           github-token: ${{ github.token }}
           allow-initial-development-versions: true
-          force-bump-patch-version: true
           prerelease: true
       - name: Install dependencies
         run: |
@@ -42,3 +41,4 @@ jobs:
         uses: jaywcjlove/github-action-upload-assets@main
         with:
           asset-path: '["dist/*"]'
+          tag: "v${{steps.release_version.outputs.version}}"
