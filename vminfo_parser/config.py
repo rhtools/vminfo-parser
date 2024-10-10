@@ -232,17 +232,7 @@ class Config:
             if arg_name in ["generate_yaml", "yaml", "file"]:
                 continue  # Skip the --generate-yaml option itself
 
-            args_dict[arg_name] = {"value": action.default, "help": action.help}
-
-            if isinstance(action, argparse._StoreAction):
-                args_dict[arg_name] = "<String>"
-            elif isinstance(action, argparse._CountAction):
-                args_dict[arg_name] = "int"
-            elif isinstance(action, argparse._StoreTrueAction):
-                args_dict[arg_name] = False
-
-            if action.choices:
-                args_dict[arg_name]["choices"] = action.choices
+            args_dict[arg_name] = action.default
 
         sorted_args_dict = dict(sorted(args_dict.items()))
 
