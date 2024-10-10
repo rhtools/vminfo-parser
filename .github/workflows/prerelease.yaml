@@ -38,7 +38,6 @@ jobs:
         run: |
           python -m build
       - name: Release Upload Assets
-        uses: jaywcjlove/github-action-upload-assets@main
-        with:
-          asset-path: '["dist/*"]'
-          tag: "v${{steps.release_version.outputs.version}}"
+        env:
+          TAG: "v${{steps.release_version.outputs.version}}"
+        run: gh release upload ${TAG} dist/*
