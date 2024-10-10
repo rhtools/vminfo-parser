@@ -66,6 +66,12 @@ def _get_parser() -> argparse.ArgumentParser:
         help="Show disk space by OS",
     )
     parser.add_argument(
+        "--disk-space-by-granular-os",
+        action="store_true",
+        default=False,
+        help="When getting disk space by os, this breaks those results more granularly",
+    )
+    parser.add_argument(
         "--breakdown-by-terabyte",
         action="store_true",
         default=False,
