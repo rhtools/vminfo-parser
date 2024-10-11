@@ -1,10 +1,13 @@
 import logging
 import pathlib
 import sys
+from tempfile import NamedTemporaryFile
+import yaml
 
 import pytest
 
 from vminfo_parser.config import Config
+from . import const as test_const
 
 
 def test_yaml_load(config_dict: dict, yaml_config: str) -> None:
@@ -69,7 +72,7 @@ def test_cli_yaml_and_args(capsys: pytest.CaptureFixture, caplog: pytest.LogCapt
         ("vminfo_parser.config", logging.ERROR, "When using --yaml, no other arguments should be provided.")
     ]
     assert "usage:" in output.err
-    assert "[-h] (--file FILE | --yaml YAML)" in output.err
+    assert "[-h] [--file FILE | --yaml YAML]" in output.err
 
 
 def test_yaml_from_args(config_dict: dict, yaml_config: str) -> None:
@@ -94,3 +97,13 @@ def test_from_sys_argv(config_dict: dict, cli_args: list, monkeypatch: pytest.Mo
 def assert_config_correct(config_dict: dict, config_obj: Config) -> None:
     for key, item in config_dict.items():
         assert getattr(config_obj, key.replace("-", "_")) == item
+
+
+def test_generate_yaml_from_parser() -> None:
+    config_obj = Config.from_args("--generate-yaml", "--file", "testfile.yaml")
+    tmp_file = NamedTemporaryFile().name
+    config_obj.generate_yaml_from_parser(config_obj, tmp_file)
+
+    with open(tmp_file, "r") as generated_file:
+        generated_yaml = yaml.safe_load(generated_file)
+    assert generated_yaml == test_const.EXPECTED_ARGPARSE_TO_YAML

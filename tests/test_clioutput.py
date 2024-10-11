@@ -59,7 +59,7 @@ def test_format_rows(
     col_widths: dict,
     index_column_name: str,
     expected: str,
-):
+) -> None:
     # Depending on what is being formatted, the index of the dataframe is different
     df = df.set_index(f"{index_column_name}")
     result = cli_output.format_rows(df, formatted_rows, justification, col_widths)
@@ -107,7 +107,7 @@ def test_set_column_width(
     current_index_column_name: str,
     new_index_column_name: str,
     expected: dict,
-):
+) -> None:
     # There is some manipulation of the df that is required in order to mock real data
     # the index needs to be set, but the index column heading is sometimes changed for clarity
     df = df.set_index(f"{current_index_column_name}")
@@ -171,7 +171,7 @@ def test_print_formatted_disk_space(
     index_heading_justification: int,
     other_headings_justification: int,
     expected_output: str,
-):
+) -> None:
     cli_output.print_formatted_disk_space(
         col_widths,
         formatted_df_str,
@@ -217,7 +217,7 @@ def test_print_formatted_disk_space(
         ),
     ],
 )
-def test_print_site_usage(cli_output: CLIOutput, resource_list: list, df: pd.DataFrame, expected):
+def test_print_site_usage(cli_output: CLIOutput, resource_list: list, df: pd.DataFrame, expected) -> None:
     cli_output.print_site_usage(resource_list, df)
     result = cli_output.output.getvalue()
     assert result == expected
