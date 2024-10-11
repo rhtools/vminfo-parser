@@ -55,6 +55,8 @@ jobs:
           TAG: ${{env.TAG}}
       - name: handle release
         if: ${{steps.checkout_tag.conclusion}} == "success"
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           if "$(gh release view ${TAG})" == ""; then
             cmd="gh release create --tag ${TAG}"

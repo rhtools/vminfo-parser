@@ -26,7 +26,6 @@ jobs:
         uses: go-semantic-release/action@v1.21.0
         with:
           github-token: ${{ github.token }}
-          allow-initial-development-versions: true
           prerelease: true
       - name: Install dependencies
         run: |
@@ -40,4 +39,5 @@ jobs:
       - name: Release Upload Assets
         env:
           TAG: "v${{steps.release_version.outputs.version}}"
+          GH_TOKEN: ${{ github.token }}
         run: gh release upload ${TAG} dist/*
