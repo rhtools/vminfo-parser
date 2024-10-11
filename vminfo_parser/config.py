@@ -18,7 +18,7 @@ def _get_parser() -> argparse.ArgumentParser:
         argparse.ArgumentParser: ArgumentParser object configured for all cli options.
     """
     parser = argparse.ArgumentParser(description="Process VM CSV file")
-    group = parser.add_mutually_exclusive_group(required=True)
+    group = parser.add_mutually_exclusive_group()
     group.add_argument("--file", type=Path, help="The file to parse")
     group.add_argument("--yaml", type=str, help="Path to YAML configuration file")
 
@@ -119,7 +119,12 @@ def _get_parser() -> argparse.ArgumentParser:
         default=False,
         help="Display a graph of the unsupported operating systems for OpenShift Virt",
     )
-
+    parser.add_argument(
+        "--generate-yaml",
+        action="store_true",
+        default=False,
+        help="Writes a Yaml file of all the current options available",
+    )
     return parser
 
 
@@ -159,9 +164,9 @@ class Config:
             if any(getattr(config, arg) for arg in vars(config) if arg != "yaml"):
                 _parse_fail("When using --yaml, no other arguments should be provided.")
             config._load_yaml()
-        elif not config.file:
+        elif not config.file and not config.generate_yaml:
             # this is likely never reachable because argparse forces it.
-            _parse_fail("--file is required when --yaml is not used.")
+            _parse_fail("--file is required when --yaml or --generate-yaml are not used.")
 
         config._validate()
         return config
@@ -202,3 +207,27 @@ class Config:
         if not hasattr(self, "file"):
             LOGGER.critical("File not specified in yaml or command line")
             exit(1)
+
+    def generate_yaml_from_parser(self: t.Self, file_path: str = None) -> None:
+        """
+        Generate a YAML file containing all arguments from the given ArgumentParser.
+
+        This method creates a YAML file named "parser_arguments.yaml" in the current directory,
+        containing all the arguments defined in the parser, excluding the --generate-yaml option,
+        in a format compatible with _load_yaml.
+        """
+        if file_path is None:
+            file_path = "parser_arguments.yaml"
+        config_data_attributes = {}
+        for attr_name in dir(self):
+            if not attr_name.startswith("__") and not callable(getattr(self, attr_name)):
+                if attr_name == "file":
+                    config_data_attributes[attr_name] = str(getattr(self, attr_name))
+                elif attr_name in ["yaml", "generate_yaml"]:
+                    continue
+                else:
+                    config_data_attributes[attr_name] = getattr(self, attr_name)
+
+        # Write to YAML file
+        with open(file_path, "w") as f:
+            yaml.dump(config_data_attributes, f, indent=2, sort_keys=False)

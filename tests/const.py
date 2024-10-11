@@ -22,7 +22,7 @@ SERVER_NAME_MATCHES = {
         "OS_Version": None,
         "Architecture": "64-bit",
     },
-    "Linux 4.18.0-477.27.2.el8_8.x86_64 AlmaLinux 8.8 (Sapphire Caracal) 8.8 AlmaLinux 8.8 (Sapphire Caracal) cpe:/o:almalinux:almalinux:8::baseos": None,
+    "Linux 4.18.0-477.27.2.el8_8.x86_64 AlmaLinux 8.8 (Sapphire Caracal) 8.8 AlmaLinux 8.8 (Sapphire Caracal) cpe:/o:almalinux:almalinux:8::baseos": None,  # noqa
     "Linux 6.1.11 Other Linux 6.x and later kernel": None,
     "Oracle Linux 4/5 (64-bit)": {"OS_Name": "Oracle Linux", "OS_Version": "4/5 ", "Architecture": "64-bit"},
     "Oracle Linux 4/5/6 (64-bit)": {"OS_Name": "Oracle Linux", "OS_Version": "4/5/6 ", "Architecture": "64-bit"},
@@ -320,7 +320,24 @@ EXPECTED_CLI_OUTPUT = {
     ),
 }
 
-
+EXPECTED_ARGPARSE_TO_YAML = {
+    "breakdown_by_terabyte": False,
+    "disk_space_by_granular_os": False,
+    "file": "testfile.yaml",
+    "generate_graphs": False,
+    "get_disk_space_ranges": False,
+    "get_os_counts": False,
+    "get_supported_os": False,
+    "get_unsupported_os": False,
+    "minimum_count": 0,
+    "os_name": None,
+    "output_os_by_version": False,
+    "over_under_tb": False,
+    "prod_env_labels": None,
+    "show_disk_space_by_os": False,
+    "sort_by_env": None,
+    "sort_by_site": False,
+}
 TEST_DATAFRAMES = [
     {
         "df": {

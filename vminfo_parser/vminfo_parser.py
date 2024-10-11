@@ -18,7 +18,9 @@ LOGGER = logging.getLogger(__name__)
 def main(*args: t.Optional[str]) -> None:  # noqa: C901
     config = Config()
     config = Config.from_args(*args)
-
+    if config.generate_yaml:
+        config.generate_yaml_from_parser()
+        exit()
     vm_data = VMData.from_file(config.file)
     vm_data.set_column_headings()
     vm_data.add_extra_columns()
