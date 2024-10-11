@@ -208,7 +208,7 @@ class Config:
             LOGGER.critical("File not specified in yaml or command line")
             exit(1)
 
-    def generate_yaml_from_parser(self: t.Self, config: t.Self, file_path: str = None) -> None:
+    def generate_yaml_from_parser(self: t.Self, file_path: str = None) -> None:
         """
         Generate a YAML file containing all arguments from the given ArgumentParser.
 
@@ -219,14 +219,14 @@ class Config:
         if file_path is None:
             file_path = "parser_arguments.yaml"
         config_data_attributes = {}
-        for attr_name in dir(config):
-            if not attr_name.startswith("__") and not callable(getattr(config, attr_name)):
+        for attr_name in dir(self):
+            if not attr_name.startswith("__") and not callable(getattr(self, attr_name)):
                 if attr_name == "file":
-                    config_data_attributes[attr_name] = str(getattr(config, attr_name))
+                    config_data_attributes[attr_name] = str(getattr(self, attr_name))
                 elif attr_name in ["yaml", "generate_yaml"]:
                     continue
                 else:
-                    config_data_attributes[attr_name] = getattr(config, attr_name)
+                    config_data_attributes[attr_name] = getattr(self, attr_name)
 
         # Write to YAML file
         with open(file_path, "w") as f:

@@ -102,7 +102,7 @@ def assert_config_correct(config_dict: dict, config_obj: Config) -> None:
 def test_generate_yaml_from_parser(tmp_path: pathlib.Path) -> None:
     config_obj = Config.from_args("--generate-yaml", "--file", "testfile.yaml")
     tmp_file = tmp_path / "config.yaml"
-    config_obj.generate_yaml_from_parser(config_obj, tmp_file)
+    config_obj.generate_yaml_from_parser(tmp_file)
 
     with open(tmp_file, "r") as generated_file:
         generated_yaml = yaml.safe_load(generated_file)
