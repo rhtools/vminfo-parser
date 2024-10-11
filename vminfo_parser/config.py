@@ -208,8 +208,7 @@ class Config:
             LOGGER.critical("File not specified in yaml or command line")
             exit(1)
 
-    @classmethod
-    def generate_yaml_from_parser(cls: t.Self, config: t.Self, file_path: str = None) -> None:
+    def generate_yaml_from_parser(self: t.Self, config: t.Self, file_path: str = None) -> None:
         """
         Generate a YAML file containing all arguments from the given ArgumentParser.
 
