@@ -18,6 +18,14 @@ pip3 install git+https://github.com/rhtools/vminfo-parser.git
 vminfo-parser --help
 ```
 
+### pip - versioned
+
+```
+pip3 install git+https://github.com/rhtools/vminfo-parser.git@v1.0.0
+
+vminfo-parser --help
+```
+
 ### git repo
 
 ```
