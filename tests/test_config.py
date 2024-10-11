@@ -1,8 +1,6 @@
 import logging
-import os
 import pathlib
 import sys
-from tempfile import NamedTemporaryFile
 
 import pytest
 import yaml
@@ -101,16 +99,11 @@ def assert_config_correct(config_dict: dict, config_obj: Config) -> None:
         assert getattr(config_obj, key.replace("-", "_")) == item
 
 
-@pytest.fixture
-def temp_yaml_config_file():
+def test_generate_yaml_from_parser(tmp_path: pathlib.Path) -> None:
     config_obj = Config.from_args("--generate-yaml", "--file", "testfile.yaml")
-    tmp_file = NamedTemporaryFile().name
+    tmp_file = tmp_path / "config.yaml"
     config_obj.generate_yaml_from_parser(config_obj, tmp_file)
-    yield (tmp_file)
-    os.unlink(tmp_file)
 
-
-def test_generate_yaml_from_parser(temp_yaml_config_file) -> None:
-    with open(temp_yaml_config_file, "r") as generated_file:
+    with open(tmp_file, "r") as generated_file:
         generated_yaml = yaml.safe_load(generated_file)
     assert generated_yaml == test_const.EXPECTED_ARGPARSE_TO_YAML
