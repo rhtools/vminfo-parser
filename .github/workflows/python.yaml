@@ -88,7 +88,7 @@ jobs:
           fetch-depth: 0
       - name: Python Semantic Release - build
         id: build
-        uses: ./
+        uses: python-semantic-release/python-semantic-release@v9
         with:
           github_token: ${{ github.token }}
           changelog: false
