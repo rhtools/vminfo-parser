@@ -95,6 +95,10 @@ jobs:
       - name: Setup | Force correct release branch on workflow sha
         run: |
           git checkout -B ${{ github.base_ref }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
       - name: Python Semantic Release - build
         id: build
         uses: python-semantic-release/python-semantic-release@v9
