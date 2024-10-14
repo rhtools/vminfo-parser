@@ -14,7 +14,7 @@ permissions:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    name: Run flake8
+    name: Lint Module (black, flake8, isort)
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python 3.12
