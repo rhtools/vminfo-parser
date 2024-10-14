@@ -1,78 +1,32 @@
-name: Release
+name: Build and Release
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        required: false
-        description: "Version Tag to Release"
-        default: ""
-        type: string
-      prerelease:
-        required: false
-        default: false
-        type: boolean
-        description: "Mark as Prerelease"
-      draft:
-        required: false
-        default: true
-        type: boolean
-        description: "Mark as Draft"
+  push:
+    branches:
+      - dev
+      - main
+    paths:
+      - "vminfo_parser/*"
+      - "pyproject.toml"
+      - "MANIFEST.in"
+      - "requirements.txt"
 
-env:
-  TAG: ${{inputs.tag}}
+permissions:
+  checks: write
+  contents: write
+  packages: write
 
 jobs:
-  comment:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: set release tag
-        if: ${{env.tag}} == ''
-        run: |
-          TAG=$(git -P tag --points-at HEAD)
-          if ${TAG} != ''; then
-              echo "TAG=${TAG}" >> "$GITHUB_ENV"
-          fi
-      - name: Semantic Release
-        if: ${{env.tag}} == ''
-        id: release_version
-        uses: go-semantic-release/action@v1.21.0
+      - name: Python Semantic Release
+        id: release
+        uses: ./
         with:
-          github-token: ${{ github.token }}
-          prerelease: ${{inputs.prerelease}}
-      - name: set tag from semantic release
-        if: ${{steps.release_version.conclusion}} == "success"
-        run: echo "TAG=${TAG}" >> "$GITHUB_ENV"
-        env:
-          TAG: "v${{steps.release_version.outputs.version}}"
-      - name: checkout tag
-        id: checkout_tag
-        if: ${{steps.release_version.conclusion}} == "skipped"
-        run: git checkout ${TAG}
-        env:
-          TAG: ${{env.TAG}}
-      - name: handle release
-        if: ${{steps.checkout_tag.conclusion}} == "success"
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if "$(gh release view ${TAG})" == ""; then
-            cmd="gh release create --tag ${TAG}"
-            if "${{inputs.prerelease}}" == "true"; then
-              cmd="${cmd} --prerelease" 
-            fi
-            if "${{inputs.draft}}" == "true"; then
-              cmd="${cmd} --draft" 
-            fi
-          else:
-            if "$(gh release view ${TAG} --json isPrerelease -q '.isPrerelease')" != "${{inputs.prerelease}}": then
-              gh release edit ${TAG} --prerelease=${{inputs.prerelease}}
-            fi
-            if "$(gh release view ${TAG} --json isDraft -q '.isDraft')" != "${{inputs.draft}}"; then
-              gh release edit ${TAG} --draft=${{inputs.draft}}
-          fi
-          if "${{inputs.draft}}" == "false" && "${{inputs.prerelease}}" == "false"; then
-            gh release edit ${TAG} --latest
-          fi
+          github_token: ${{ github.token }}
+          changelog: false
+          prerelease: ${{ github.ref_name != 'main' }}
+          commit: ${{ github.ref_name == 'main' }}

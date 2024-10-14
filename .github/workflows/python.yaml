@@ -12,7 +12,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  flake8:
+  lint:
     runs-on: ubuntu-latest
     name: Run flake8
     steps:
@@ -29,9 +29,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r dev-requirements.txt
-          pip install -r tests/requirements.txt
+          pip isntall -e ".[ci]"
       - uses: psf/black@stable
         with:
           options: --check --verbose --color
@@ -66,9 +64,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r dev-requirements.txt
-          pip install -r tests/requirements.txt
+          pip isntall -e ".[ci]"
           pip install pytest-github-actions-annotate-failures
       - name: Tests
         id: pytest
@@ -90,24 +86,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: "pip"
-          cache-dependency-path: |
-            requirements.txt
-            tests/requirements.txt
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install build
-      - name: Python Build
+      - name: Python Semantic Release - build
         id: build
-        run: |
-          python -m build
-          pip install setuptools-scm
-          echo "version=$(python -m setuptools_scm)" >> "$GITHUB_OUTPUT"
+        uses: ./
+        with:
+          github_token: ${{ github.token }}
+          changelog: false
+          prerelease: true
+          commit: false
+          tag: false
+          push: false
+          build_metadata: "pr${{github.event.number}}.${{github.run_number}}"
       - uses: actions/upload-artifact@v4
         with:
           name: build ${{steps.build.outputs.version}}
