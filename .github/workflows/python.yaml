@@ -29,7 +29,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip isntall -e ".[ci]"
+          pip install -e ".[ci]"
       - uses: psf/black@stable
         with:
           options: --check --verbose --color
@@ -64,7 +64,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip isntall -e ".[ci]"
+          pip install -e ".[ci]"
           pip install pytest-github-actions-annotate-failures
       - name: Tests
         id: pytest
