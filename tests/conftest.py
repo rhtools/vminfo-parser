@@ -8,7 +8,7 @@ import yaml
 import vminfo_parser.config as vm_config
 from vminfo_parser import const as vm_const
 from vminfo_parser.visualizer import Visualizer
-from vminfo_parser.vminfo_parser import VMData
+from vminfo_parser.vmdata import VMData
 
 from . import const as test_const
 
