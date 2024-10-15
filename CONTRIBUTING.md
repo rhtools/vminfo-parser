@@ -22,6 +22,8 @@ While not explicityly required for individual commits that will be squash merged
 All Pull requests should be opened against the `dev` branch.
 All PRs titles must conform to the conventional commit standards.
 All Merges into `dev` should be accomplished with squash merges,  with the PR title as the commit message.
+Because of this, All PRs should cover a single change.
+Shoehorning other changes into a PR will make this disappear from the release notes and make them difficult to revert.  
 
 When PRs are merged into `dev` a prerelease will be built with with the appropriate semantic version based on the commit message along with a `-dev` tag.
 
