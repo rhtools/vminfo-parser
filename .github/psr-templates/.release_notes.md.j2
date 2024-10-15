@@ -1,0 +1,17 @@
+## What's Changed
+{%    for type_, commits in release["elements"] | dictsort
+%}{%-   if type_ != "unknown"
+%}{{
+          "### %s" | format(type_ | title)
+
+}}{%      for commit in commits
+%}{{
+            "* %s (%s)" | format(
+              commit.descriptions[0] | capitalize,
+              commit.short_hash,
+            )
+
+}}{%-     endfor
+%}{%    endif
+%}{%  endfor
+%}

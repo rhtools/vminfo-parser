@@ -4,6 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vminfo-parser"
+version = "1.0.0"
 authors = [
     { name = "Steve Ovens", email = "steve.ovens@x86innovations.com" },
     { name = "Jason Ross", email = "jaross@redhat.com" },
@@ -11,12 +12,13 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.11"
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
     "Operating System :: OS Independent",
-    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
 ]
-dynamic = ["version", "dependencies", "optional-dependencies"]
+dynamic = ["dependencies", "optional-dependencies"]
 
 [project.urls]
 "Homepage" = "https://github.com/rhtools/vminfo-parser"
@@ -37,9 +39,8 @@ file = ["tests/requirements.txt"]
 [tool.setuptools.dynamic.optional-dependencies.dev]
 file = ["dev-requirements.txt"]
 
-[tool.setuptools_scm]
-version_scheme = "python-simplified-semver"
-local_scheme = "no-local-version"
+[tool.setuptools.dynamic.optional-dependencies.ci]
+file = ["dev-requirements.txt", "tests/requirements.txt"]
 
 [tool.flake8]
 max-line-length = 120
@@ -87,3 +88,47 @@ output = 'coverage.lcov'
 
 [tool.coverage.xml]
 output = 'coverage.xml'
+
+[tool.semantic_release]
+commit_parser = 'angular'
+build_command = """
+pip install build
+python -m build .
+"""
+version_variables = ["vminfo_parser/_version.py:__version__"]
+version_toml = ["pyproject.toml:project.version"]
+
+
+[tool.semantic_release.commit_parser_options]
+allowed_types = [
+    "chore",
+    "ci",
+    "docs",
+    "feat",
+    "fix",
+    "perf",
+    "style",
+    "refactor",
+    "test",
+]
+minor_types = ["feat"]
+patch_types = ["fix", "perf"]
+
+[tool.semantic_release.branches.main]
+match = "(main|master)"
+prerelease = false
+
+[tool.semantic_release.branches.dev]
+match = "(dev)"
+prerelease = true
+prerelease_token = "dev"
+
+[tool.semantic_release.branches.other]
+match = "(.*)"
+prerelease = true
+prerelease_token = "dev"
+
+[tool.semantic_release.changelog]
+exclude_commit_patterns = ['''(chore|doc|style|test)(?:\([^)]*?\))?: .+''']
+template_dir = ".github/psr-templates"
+mode = "update"
