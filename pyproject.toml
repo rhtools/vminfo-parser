@@ -90,7 +90,10 @@ output = 'coverage.xml'
 
 [tool.semantic_release]
 commit_parser = 'angular'
-build_command = 'python -m build'
+build_command = """
+pip install build
+python -m build .
+"""
 version_variables = ["vminfo_parser/_version.py:__version__"]
 version_toml = ["pyproject.toml:project.version"]
 
