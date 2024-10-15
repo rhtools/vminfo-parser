@@ -2,6 +2,7 @@ import argparse
 import logging
 import sys
 import typing as t
+from functools import cached_property
 from pathlib import Path
 
 import yaml
@@ -208,6 +209,13 @@ class Config:
             LOGGER.critical("File not specified in yaml or command line")
             exit(1)
 
+        if self.sort_by_env and not self.environments:
+            LOGGER.critical(
+                "You specified you wanted to sort by environment but "
+                "did not provide a definition of what categorizes a Prod environment... exiting"
+            )
+            exit(1)
+
     def generate_yaml_from_parser(self: t.Self, file_path: str = None) -> None:
         """
         Generate a YAML file containing all arguments from the given ArgumentParser.
@@ -219,15 +227,20 @@ class Config:
         if file_path is None:
             file_path = "parser_arguments.yaml"
         config_data_attributes = {}
-        for attr_name in dir(self):
-            if not attr_name.startswith("__") and not callable(getattr(self, attr_name)):
-                if attr_name == "file":
-                    config_data_attributes[attr_name] = str(getattr(self, attr_name))
-                elif attr_name in ["yaml", "generate_yaml"]:
-                    continue
-                else:
-                    config_data_attributes[attr_name] = getattr(self, attr_name)
+        for attr, value in self.__dict__.items():
+            if attr == "file":
+                config_data_attributes[attr] = str(value)
+            elif attr in ["yaml", "generate_yaml"]:
+                continue
+            else:
+                config_data_attributes[attr] = value
 
         # Write to YAML file
         with open(file_path, "w") as f:
             yaml.dump(config_data_attributes, f, indent=2, sort_keys=False)
+
+    @cached_property
+    def environments(self: t.Self) -> list[str]:
+        if self.prod_env_labels:
+            return self.prod_env_labels.split(",")
+        return []
