@@ -12,9 +12,61 @@ permissions:
   pull-requests: write
 
 jobs:
+  eval-changes:
+    name: Evaluate changes
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Evaluate | Check specific file types for changes
+        id: changed-files
+        uses: tj-actions/changed-files@v45.0.2
+        with:
+          files_yaml: |
+            build:
+              - MANIFEST.in
+              - README.md
+              - LICENSE
+            ci:
+              - .github/workflows/*
+            docs:
+              - CONTRIBUTING.md
+              - README.md
+              - LICENSE
+            src:
+              - vminfo_parser/**
+              - pyproject.toml
+              - requirements.txt
+            tests:
+              - tests/**
+              - dev-requirements.txt
+
+      - name: Evaluate | Detect if any of the combinations of file sets have changed
+        id: all-changes
+        run: |
+          printf '%s\n' "any_changed=false" >> $GITHUB_OUTPUT
+          if [ "${{ steps.changed-files.outputs.build_any_changed }}" == "true" ] || \
+             [ "${{ steps.changed-files.outputs.ci_any_changed }}" == "true" ] || \
+             [ "${{ steps.changed-files.outputs.docs_any_changed }}" == "true" ] || \
+             [ "${{ steps.changed-files.outputs.src_any_changed }}" == "true" ] || \
+             [ "${{ steps.changed-files.outputs.tests_any_changed }}" == "true" ]; then
+             printf '%s\n' "any_changed=true" >> $GITHUB_OUTPUT
+          fi
+
+    outputs:
+      any-file-changes: ${{ steps.all-changes.outputs.any_changed }}
+      build-changes: ${{ steps.changed-files.outputs.build_any_changed }}
+      ci-changes: ${{ steps.changed-files.outputs.ci_any_changed }}
+      doc-changes: ${{ steps.changed-files.outputs.docs_any_changed }}
+      src-changes: ${{ steps.changed-files.outputs.src_any_changed }}
+      test-changes: ${{ steps.changed-files.outputs.tests_any_changed }}
+
   lint:
     runs-on: ubuntu-latest
     name: Lint Module (black, flake8, isort)
+    needs: eval-changes
+    if: ${{ needs.eval-changes.outputs.src-changes == 'true' || needs.eval-changes.outputs.test-changes == 'true' || needs.eval-changes.outputs.ci-changes == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python 3.12
@@ -46,6 +98,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     name: Run pytest and report test coverage
+    needs: eval-changes
+    if: ${{ needs.eval-changes.outputs.src-changes == 'true' || needs.eval-changes.outputs.test-changes == 'true' || needs.eval-changes.outputs.ci-changes == 'true' }}
     permissions:
       checks: write
       contents: read
@@ -81,7 +135,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     name: Test Build
-    needs: test
+    needs: eval-changes
+    if: ${{ needs.eval-changes.outputs.src-changes == 'true' || needs.eval-changes.outputs.build-changes == 'true' || needs.eval-changes.outputs.ci-changes == 'true' }}
     steps:
       # Note: we need to checkout the repository at the workflow sha in case during the workflow
       # the branch was updated. To keep PSR working with the configured release branches,
