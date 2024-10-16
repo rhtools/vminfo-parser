@@ -10,7 +10,7 @@ import pytest
 import vminfo_parser.const as vm_const
 from vminfo_parser.vmdata import VMData
 
-from . import const as test_const
+from .. import const as test_const
 
 
 def test_get_file_type(datafile: tuple[bool, Path]) -> None:
