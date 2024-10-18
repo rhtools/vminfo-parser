@@ -241,10 +241,7 @@ class Analyzer:
 
     def sort_by_disk_space_range(
         self: t.Self,
-        dataFrame: pd.DataFrame,
-        drop_columns: list,
-        os_breakdown: bool,
-        environment_filter: str,
+        dataFrame: pd.DataFrame
     ) -> pd.DataFrame:
         """
         Sorts the provided DataFrame by disk space range, optionally breaking down by operating system.
@@ -255,14 +252,11 @@ class Analyzer:
 
         Args:
             dataFrame (pd.DataFrame): The DataFrame containing disk space data to be sorted.
-            drop_columns (list): A list of column names to be dropped from the resulting DataFrame.
-            os_breakdown (bool): A flag indicating whether to break down the data by operating system.
-            environment_filter (str): A filter to specify which environments to include in the results.
 
         Returns:
             pd.DataFrame: A sorted dataFrame object based on the disk space range in the dataFrame
         """
-        if os_breakdown:
+        if self.config.disk_space_by_granular_os:
 
             dataFrame = (
                 dataFrame.groupby(["OS Name", "OS Version", "Disk Space Range"]).size().reset_index(name="Count")
@@ -279,21 +273,22 @@ class Analyzer:
                 "Disk Space Range"
             ].map(self.convert_to_tb)
             sorted_range_counts_by_environment = sorted_range_counts_by_environment.set_index("OS Version")
+            sorted_range_counts_by_environment.drop("OS Name", axis=1, inplace=True)
 
         else:
             envHeading = self.vm_data.column_headers["environment"]
 
-            if environment_filter == "both":
+            if self.config.environment_filter == "both":
                 range_counts_by_environment = (
                     dataFrame.groupby(["Disk Space Range", envHeading]).size().unstack(fill_value=0)
                 )
-            elif environment_filter == "all":
+            elif self.config.environment_filter == "all":
                 range_counts_by_environment = dataFrame["Disk Space Range"].value_counts().reset_index()
                 range_counts_by_environment.columns = ["Disk Space Range", "Count"]
                 range_counts_by_environment.set_index("Disk Space Range", inplace=True)
             else:
                 range_counts_by_environment = (
-                    dataFrame[dataFrame[envHeading] == environment_filter]
+                    dataFrame[dataFrame[envHeading] == self.config.environment_filter]
                     .groupby(["Disk Space Range", envHeading])
                     .size()
                     .unstack(fill_value=0)
@@ -307,85 +302,53 @@ class Analyzer:
 
             # Apply the conversion to the index
             sorted_range_counts_by_environment.index = sorted_range_counts_by_environment.index.map(self.convert_to_tb)
-        for column_to_drop in drop_columns:
-            sorted_range_counts_by_environment.drop(column_to_drop, axis=1, inplace=True)
+
+        sorted_range_counts_by_environment.drop("second_number", axis=1, inplace=True)
 
         return sorted_range_counts_by_environment
 
-    def handle_disk_space(
+    def get_disk_space(
         self: t.Self,
-        dataFrame: pd.DataFrame,
-        environment_filter: str,
-        os_filter: t.Optional[str] = None,
-        show_disk_in_tb: bool = False,
-        over_under_tb: bool = False,
-        granular_disk_space_by_os: bool = False,
-    ) -> None:
+        os_filter: str
+    ) -> pd.DataFrame:
         """
         Processes and formats disk space data from the provided DataFrame based on specified filters.
 
-        This function calculates disk space ranges, groups the data by environment or operating system,
-        and formats the output for display. It also handles visualization if configured to do so.
+        This function calculates disk space ranges, groups the data by environment or operating system
 
         Args:
-            dataFrame (pd.DataFrame): The DataFrame containing disk space data to be processed.
-            environment_filter (str): A filter to specify which environments to include in the results.
-            os_filter (t.Optional[str], optional): An optional filter for the operating system. Defaults to None.
-            show_disk_in_tb (bool, optional): A flag indicating whether to display disk space in terabytes.
-                                              Defaults to False.
-            over_under_tb (bool, optional): A flag indicating whether to show over/under thresholds in terabytes.
-                                            Defaults to False.
-            granular_disk_space_by_os (bool, optional): A flag indicating whether to break down the data by
-                                                        operating system. Defaults to False.
-
-        Returns:
             None
+        Returns:
+            pd.DataFrame: A DataFrame containing counts of disk space ranges, optionally sorted by environment
         """
+        df = self.vm_data.create_environment_filtered_dataframe(self.config.environments, self.config.environment_filter)
+
+        if os_filter:
+            df = df[df["OS Name"] == os_filter]
+
         diskHeading = self.vm_data.column_headers["vmDisk"]
         disk_space_ranges = self.calculate_disk_space_ranges(
-            dataFrame=dataFrame,
-            show_disk_in_tb=show_disk_in_tb,
-            over_under_tb=over_under_tb,
+            dataFrame=df,
+            show_disk_in_tb=self.config.breakdown_by_terabyte,
+            over_under_tb=self.config.over_under_tb,
         )
 
         for lower, upper in disk_space_ranges:
-            mask = (dataFrame[diskHeading] >= lower) & (dataFrame[diskHeading] <= upper)
-            dataFrame.loc[mask, "Disk Space Range"] = f"{lower}-{upper} GB"
+            mask = (df[diskHeading] >= lower) & (df[diskHeading] <= upper)
+            df.loc[mask, "Disk Space Range"] = f"{lower}-{upper} GB"
 
-        if environment_filter is None:
-            environment_filter = "all"
+        return self.sort_by_disk_space_range(df)
 
-        if granular_disk_space_by_os:
-            sorted_range_counts_by_environment = self.sort_by_disk_space_range(
-                dataFrame,
-                drop_columns=["second_number", "OS Name"],
-                os_breakdown=True,
-                environment_filter=environment_filter,
-            )
-        else:
-            sorted_range_counts_by_environment = self.sort_by_disk_space_range(
-                dataFrame,
-                drop_columns=["second_number"],
-                os_breakdown=False,
-                environment_filter=environment_filter,
-            )
+    def get_unique_os_names(self: t.Self) -> list[str]:
+        """Returns unique os names from vmdata
 
-        if not sorted_range_counts_by_environment.empty:
-            # Now call the print_formatted_disk_space method
-            self.cli_output.print_formatted_disk_space(
-                sorted_range_counts_by_environment,
-                os_filter=os_filter,
-            )
+        Args:
+            None
 
-        # Call the new visualize method
-        if self.config.generate_graphs:
-            if environment_filter == "all":
-                self.visualizer.visualize_disk_space_horizontal(sorted_range_counts_by_environment)
-            else:
-                self.visualizer.visualize_disk_space_vertical(
-                    sorted_range_counts_by_environment,
-                    os_filter=os_filter,
-                )
+        Returns:
+            list[str]: list of unique OS Names
+        """
+        return list(self.vm_data.df["OS Name"].unique())
 
     def get_operating_system_counts(self: t.Self) -> pd.Series:
         """Returns the counts of operating systems based on the configured environment filter.
@@ -496,43 +459,3 @@ class Analyzer:
                     counts = counts[counts["Count"] >= self.config.minimum_count]
 
                 yield os_name, counts
-
-    def sort_attribute_by_environment(
-        self: t.Self,
-        *env_keywords: str,
-        attribute: str = "operatingSystem",
-        os_filter: t.Optional[str] = None,
-        environment_filter: t.Optional[str] = None,
-        show_disk_in_tb: bool = False,
-        over_under_tb: bool = False,
-        granular_disk_space_by_os: bool = False,
-    ) -> None:
-        env_column = "Environment"
-        data_cp = self.vm_data.df.copy()
-        if env_column not in self.vm_data.df.columns:
-            if "ent-env" in self.vm_data.df.columns:
-                env_column = "ent-env"
-            else:
-                raise ValueError("Neither 'Environment' nor 'ent-env' found in DataFrame columns.")
-
-        data_cp[env_column] = self.vm_data.df[env_column].apply(self.categorize_environment, args=env_keywords)
-
-        if os_filter:
-            data_cp = data_cp[data_cp["OS Name"] == os_filter]
-
-        if environment_filter and environment_filter not in ["all", "both"]:
-            data_cp = data_cp[data_cp[env_column] == environment_filter]
-
-        if data_cp.empty:
-            LOGGER.warning("None found in %s", environment_filter)
-            return
-
-        if attribute == "diskSpace":
-            self.handle_disk_space(
-                data_cp,
-                environment_filter,
-                os_filter,
-                show_disk_in_tb=show_disk_in_tb,
-                over_under_tb=over_under_tb,
-                granular_disk_space_by_os=granular_disk_space_by_os,
-            )
