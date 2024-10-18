@@ -56,18 +56,22 @@ def get_os_counts(
         visualizer.visualize_os_distribution(counts, config.minimum_count)
 
 
-def get_disk_space_ranges(config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: t.Optional[Visualizer]) -> None:
+def get_disk_space_ranges(
+    config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: t.Optional[Visualizer]
+) -> None:
     disk_space_df = analyzer.get_disk_space(os_filter=config.os_name)
     if not disk_space_df.empty:
         cli_output.print_formatted_disk_space(disk_space_df, os_filter=config.os_name)
         if visualizer:
-            if config.environment_filter == 'all':
+            if config.environment_filter == "all":
                 visualizer.visualize_disk_space_horizontal(disk_space_df)
             else:
                 visualizer.visualize_disk_space_vertical(disk_space_df, os_filter=config.os_name)
 
 
-def show_disk_space_by_os(config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: t.Optional[Visualizer]) -> None:
+def show_disk_space_by_os(
+    config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: t.Optional[Visualizer]
+) -> None:
     os_names: list[str]
     if config.os_name:
         os_names = [config.os_name]
@@ -79,7 +83,7 @@ def show_disk_space_by_os(config: Config, analyzer: Analyzer, cli_output: CLIOut
         if not disk_space_df.empty:
             cli_output.print_formatted_disk_space(disk_space_df, os_filter=os_name)
             if visualizer:
-                if config.environment_filter == 'all':
+                if config.environment_filter == "all":
                     visualizer.visualize_disk_space_horizontal(disk_space_df)
                 else:
                     visualizer.visualize_disk_space_vertical(disk_space_df, os_filter=os_name)
