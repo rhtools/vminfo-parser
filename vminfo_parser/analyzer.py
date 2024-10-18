@@ -247,7 +247,7 @@ class Analyzer:
         drop_columns: list,
         os_breakdown: bool,
         environment_filter: str,
-    ) -> tuple[dict, pd.DataFrame]:
+    ) -> pd.DataFrame:
         """
         Sorts the provided DataFrame by disk space range, optionally breaking down by operating system.
 
@@ -262,7 +262,7 @@ class Analyzer:
             environment_filter (str): A filter to specify which environments to include in the results.
 
         Returns:
-            pd.DataFrame: A tuple containing the column padding configuration and the sorted DataFrame.
+            pd.DataFrame: A sorted dataFrame object based on the disk space range in the dataFrame
         """
         if os_breakdown:
 
@@ -270,6 +270,7 @@ class Analyzer:
                 dataFrame.groupby(["OS Name", "OS Version", "Disk Space Range"]).size().reset_index(name="Count")
             )
             # create an integer of the large end of range for sorting by size of range
+            # if the string said '201 - 400 GB' this will grab '400' and use that to sort
             dataFrame["second_number"] = (
                 dataFrame["Disk Space Range"].str.split("-").str[1].str.split().str[0].astype(int)
             )

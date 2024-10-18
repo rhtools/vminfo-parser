@@ -97,7 +97,7 @@ class CLIOutput:
         This function displays a header and the formatted data, optionally filtered by the operating system.
 
         Args:
-            formatted_df_str (str): A string representation of the formatted disk space data.
+            dataFrame (pd.DataFrame): A pandas DataFrame, likely sorted by disk space range but not necessarily
             os_filter (Optional[str]): An optional filter to display specific operating system information.
 
         Returns:
