@@ -25,18 +25,11 @@ def get_unsupported_os(analyzer: Analyzer, cli_output: CLIOutput, visualizer: t.
 def get_supported_os(
     config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: t.Optional[Visualizer]
 ) -> None:
-    supported_counts: pd.Series
-    if config.prod_env_labels and config.sort_by_env:
-        supported_counts = analyzer.generate_supported_os_counts(
-            *config.prod_env_labels.split(","),
-            environment_filter=config.sort_by_env,
-        )
-    else:
-        supported_counts = analyzer.generate_supported_os_counts(environment_filter=config.sort_by_env)
+    supported_counts: pd.Series = analyzer.get_supported_os_counts()
 
     cli_output.format_series_output(supported_counts)
     if visualizer is not None:
-        visualizer.visualize_supported_os_distribution(supported_counts, environment_filter=config.sort_by_env)
+        visualizer.visualize_supported_os_distribution(supported_counts, environment_filter=config.environment_filter)
 
 
 def output_os_by_version(analyzer: Analyzer, cli_output: CLIOutput, visualizer: t.Optional[Visualizer]) -> None:
