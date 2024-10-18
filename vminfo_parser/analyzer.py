@@ -247,7 +247,7 @@ class Analyzer:
         drop_columns: list,
         os_breakdown: bool,
         environment_filter: str,
-    ) -> tuple[dict, pd.DataFrame]:
+    ) -> pd.DataFrame:
         """
         Sorts the provided DataFrame by disk space range, optionally breaking down by operating system.
 
@@ -262,18 +262,15 @@ class Analyzer:
             environment_filter (str): A filter to specify which environments to include in the results.
 
         Returns:
-            pd.DataFrame: A tuple containing the column padding configuration and the sorted DataFrame.
+            pd.DataFrame: A sorted dataFrame object based on the disk space range in the dataFrame
         """
         if os_breakdown:
-            column_padding = {
-                "index_heading_justification": 25,
-                "other_headings_justification": 20,
-                "justification": 23,
-            }
+
             dataFrame = (
                 dataFrame.groupby(["OS Name", "OS Version", "Disk Space Range"]).size().reset_index(name="Count")
             )
             # create an integer of the large end of range for sorting by size of range
+            # if the string said '201 - 400 GB' this will grab '400' and use that to sort
             dataFrame["second_number"] = (
                 dataFrame["Disk Space Range"].str.split("-").str[1].str.split().str[0].astype(int)
             )
@@ -288,11 +285,6 @@ class Analyzer:
         else:
             envHeading = self.column_headers["environment"]
 
-            column_padding = {
-                "index_heading_justification": 39,
-                "other_headings_justification": 11,
-                "justification": 15,
-            }
             if environment_filter == "both":
                 range_counts_by_environment = (
                     dataFrame.groupby(["Disk Space Range", envHeading]).size().unstack(fill_value=0)
@@ -320,13 +312,12 @@ class Analyzer:
         for column_to_drop in drop_columns:
             sorted_range_counts_by_environment.drop(column_to_drop, axis=1, inplace=True)
 
-        return column_padding, sorted_range_counts_by_environment
+        return sorted_range_counts_by_environment
 
     def handle_disk_space(
         self: t.Self,
         dataFrame: pd.DataFrame,
         environment_filter: str,
-        env_keywords: list[str],
         os_filter: t.Optional[str] = None,
         show_disk_in_tb: bool = False,
         over_under_tb: bool = False,
@@ -341,7 +332,6 @@ class Analyzer:
         Args:
             dataFrame (pd.DataFrame): The DataFrame containing disk space data to be processed.
             environment_filter (str): A filter to specify which environments to include in the results.
-            env_keywords (list[str]): A list of keywords related to the environments.
             os_filter (t.Optional[str], optional): An optional filter for the operating system. Defaults to None.
             show_disk_in_tb (bool, optional): A flag indicating whether to display disk space in terabytes.
                                               Defaults to False.
@@ -368,57 +358,26 @@ class Analyzer:
             environment_filter = "all"
 
         if granular_disk_space_by_os:
-            column_padding, sorted_range_counts_by_environment = self.sort_by_disk_space_range(
+            sorted_range_counts_by_environment = self.sort_by_disk_space_range(
                 dataFrame,
                 drop_columns=["second_number", "OS Name"],
                 os_breakdown=True,
                 environment_filter=environment_filter,
             )
         else:
-            column_padding, sorted_range_counts_by_environment = self.sort_by_disk_space_range(
+            sorted_range_counts_by_environment = self.sort_by_disk_space_range(
                 dataFrame,
                 drop_columns=["second_number"],
                 os_breakdown=False,
                 environment_filter=environment_filter,
             )
 
-        if env_keywords and environment_filter != "all":
-            if granular_disk_space_by_os:
-                col_widths = self.cli_output.set_column_width(
-                    sorted_range_counts_by_environment,
-                    index_column_padding=0,
-                    remaining_column_padding=19,
-                    index_column_name="OS Version Number",
-                )
-            else:
-                col_widths = self.cli_output.set_column_width(
-                    sorted_range_counts_by_environment,
-                    index_column_padding=22,
-                    remaining_column_padding=10,
-                    index_column_name="Environment",
-                )
-        else:
-            col_widths = self.cli_output.set_column_width(
-                sorted_range_counts_by_environment, index_column_padding=17, remaining_column_padding=17
+        if not sorted_range_counts_by_environment.empty:
+            # Now call the print_formatted_disk_space method
+            self.cli_output.print_formatted_disk_space(
+                sorted_range_counts_by_environment,
+                os_filter=os_filter,
             )
-
-        formatted_rows = []
-
-        if environment_filter == "all":
-            formatted_rows.append("Disk Space Range".ljust(20) + "Count".ljust(col_widths["Count"]))
-            column_padding["justification"] = 19
-
-        formatted_df_str = self.cli_output.format_rows(
-            sorted_range_counts_by_environment, formatted_rows, column_padding["justification"], col_widths
-        )
-        # Now call the print_formatted_disk_space method
-        self.cli_output.print_formatted_disk_space(
-            col_widths,
-            formatted_df_str,
-            os_filter=os_filter,
-            index_heading_justification=column_padding["index_heading_justification"],
-            other_headings_justification=column_padding["other_headings_justification"],
-        )
 
         # Call the new visualize method
         if self.config.generate_graphs:
@@ -578,7 +537,6 @@ class Analyzer:
             self.handle_disk_space(
                 data_cp,
                 environment_filter,
-                env_keywords,
                 os_filter,
                 show_disk_in_tb=show_disk_in_tb,
                 over_under_tb=over_under_tb,

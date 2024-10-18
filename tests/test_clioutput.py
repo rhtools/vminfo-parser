@@ -27,158 +27,56 @@ def test_writeline(cli_output: CLIOutput, arg: t.Any) -> None:
 
 
 @pytest.mark.parametrize(
-    "df, formatted_rows, justification, col_widths, index_column_name, expected",
-    [
-        (
-            pd.DataFrame({"Disk Space Range": ["0 - 200 GB", "1 - 2 TB"], "non-prod": [3, 4], "prod": [5, 6]}),
-            [],
-            15,
-            {"Disk Space Range": 22, "non-prod": 10, "prod": 10},
-            "Disk Space Range",
-            "0 - 200 GB                             3          5         \n"
-            "1 - 2 TB                               4          6         ",
-        ),
-        (
-            pd.DataFrame(
-                {"OS Version": ["7", "9"], "Disk Space Range": ["10 - 20 TB", "801 GB - 1 TB"], "Count": [15, 26]}
-            ),
-            [],
-            15,
-            {"OS Version": 0, "Disk Space Range": 19, "Count": 19},
-            "OS Version",
-            "7                10 - 20 TB          15                 \n"
-            "9                801 GB - 1 TB       26                 ",
-        ),
-    ],
-)
-def test_format_rows(
-    cli_output: CLIOutput,
-    df: pd.DataFrame,
-    formatted_rows: list,
-    justification: int,
-    col_widths: dict,
-    index_column_name: str,
-    expected: str,
-) -> None:
-    # Depending on what is being formatted, the index of the dataframe is different
-    df = df.set_index(f"{index_column_name}")
-    result = cli_output.format_rows(df, formatted_rows, justification, col_widths)
-    assert result == expected
-
-
-@pytest.mark.parametrize(
-    "df, index_column_padding, remaining_column_padding, current_index_column_name, new_index_column_name, expected",
+    "dataFrame, os_filter, expected_output",
     [
         (
             pd.DataFrame(
-                pd.DataFrame({"Disk Space Range": ["0 - 200 GB", "1 - 2 TB"], "non-prod": [3, 4], "prod": [5, 6]})
+                {"Disk Space Range": ["0 -200 GB", "201 - 400 GB"], "non-prod": [31, 26], "prod": [247, 34]}
+            ).set_index("Disk Space Range"),
+            None,
+            "\nDisk Space Range     non-prod    prod\n"
+            "------------------  ----------  ------\n"
+            "0 -200 GB               31       247\n"
+            "201 - 400 GB            26        34\n\n",
+        ),
+        (
+            pd.DataFrame({"Disk Space Range": ["0 -200 GB", "201 - 400 GB"], "Count": [278, 60]}).set_index(
+                "Disk Space Range"
             ),
-            22,
-            10,
-            "Disk Space Range",
-            "Environment",
-            {"Environment": 22, "non-prod": 10, "prod": 10},
+            None,
+            "\nDisk Space Range     Count\n"
+            "------------------  -------\n"
+            "0 -200 GB             278\n"
+            "201 - 400 GB          60\n\n",
         ),
         (
             pd.DataFrame(
-                {"OS Version": ["7", "9"], "Disk Space Range": ["10 - 20 TB", "801 GB - 1 TB"], "Count": [15, 26]}
-            ),
-            0,
-            19,
-            "OS Version",
-            "OS Version Number",
-            {"OS Version Number": 0, "Disk Space Range": 19, "Count": 19},
-        ),
-        (
-            pd.DataFrame({"Disk Space Range": ["20 - 50 TB", "801 GB - 1 TB"], "Count": [335, 2006]}),
-            17,
-            17,
-            "Disk Space Range",
-            None,
-            {"Count": 17},
-        ),
-    ],
-)
-def test_set_column_width(
-    cli_output: CLIOutput,
-    df: pd.DataFrame,
-    index_column_padding: int,
-    remaining_column_padding: int,
-    current_index_column_name: str,
-    new_index_column_name: str,
-    expected: dict,
-) -> None:
-    # There is some manipulation of the df that is required in order to mock real data
-    # the index needs to be set, but the index column heading is sometimes changed for clarity
-    df = df.set_index(f"{current_index_column_name}")
-    result = cli_output.set_column_width(df, index_column_padding, remaining_column_padding, new_index_column_name)
-    assert result == expected
-
-
-@pytest.mark.parametrize(
-    "col_widths, formatted_df_str, os_filter, display_header, index_heading_justification, "
-    "other_headings_justification, expected_output",
-    [
-        (
-            {"Environment": 22, "non-prod": 10, "prod": 10},
-            "0 - 200 GB                             31         247       "
-            "201 - 400 GB                           26         34        ",
-            None,
-            True,
-            39,
-            11,
-            "Environment                            non-prod   prod       \n"
-            "0 - 200 GB                             31         247       "
-            "201 - 400 GB                           26         34        \n\n",
-        ),
-        (
-            {"Count": 17},
-            "Disk Space Range    Count            \n"
-            "0 - 200 GB          278              \n"
-            "201 - 400 GB        60               ",
-            None,
-            True,
-            39,
-            11,
-            "\nDisk Space Range    Count            \n"
-            "0 - 200 GB          278              \n"
-            "201 - 400 GB        60               \n\n",
-        ),
-        (
-            {"OS Version Number": 0, "Disk Space Range": 19, "Count": 19},
-            "7                        0 - 200 GB          50                 \n"
-            "8                        401 - 600 GB        52                 \n"
-            "9                        20 - 36.3 TB        2                  ",
+                {
+                    "OS Version": [7, 8, 9],
+                    "Disk Space Range": ["0 -200 GB", "401 - 600 GB", "20 - 36.3 TB"],
+                    "Count": [50, 52, 2],
+                }
+            ).set_index("OS Version"),
             "Red Hat Enterprise Linux",
-            True,
-            25,
-            20,
-            "Red Hat Enterprise Linux\n"
-            "---------------------------------\n"
-            "OS Version Number        Disk Space Range    Count               \n"
-            "7                        0 - 200 GB          50                 \n"
-            "8                        401 - 600 GB        52                 \n"
-            "9                        20 - 36.3 TB        2                  \n\n",
+            "\nRed Hat Enterprise Linux\n"
+            "========================\n"
+            "OS Version    Disk Space Range     Count\n"
+            "------------  ------------------  -------\n"
+            "7             0 -200 GB             50\n"
+            "8             401 - 600 GB          52\n"
+            "9             20 - 36.3 TB           2\n\n",
         ),
     ],
 )
 def test_print_formatted_disk_space(
     cli_output: CLIOutput,
-    col_widths: dict,
-    formatted_df_str: str,
+    dataFrame: pd.DataFrame,
     os_filter: str,
-    display_header: bool,
-    index_heading_justification: int,
-    other_headings_justification: int,
     expected_output: str,
 ) -> None:
     cli_output.print_formatted_disk_space(
-        col_widths,
-        formatted_df_str,
+        dataFrame,
         os_filter=os_filter,
-        display_header=display_header,
-        index_heading_justification=index_heading_justification,
-        other_headings_justification=other_headings_justification,
     )
     result = cli_output.output.getvalue()
     assert result == expected_output
@@ -198,26 +96,96 @@ def test_print_formatted_disk_space(
                     "Site_VM_Count": [428, 177],
                 }
             ),
-            "Site Wide Memory Usage\n"
-            "-------------------\n"
-            "Site1		533 GB\n"
-            "Site2		764 GB\n\n"
-            "Site Wide CPU Usage\n"
-            "-------------------\n"
-            "Site1		2594 Cores\n"
-            "Site2		970 Cores\n\n"
-            "Site Wide Disk Usage\n"
-            "-------------------\n"
-            "Site1		779 TB\n"
-            "Site2		247 TB\n\n"
-            "Site Wide VM Usage\n"
-            "-------------------\n"
-            "Site1		428 VMs\n"
-            "Site2		177 VMs\n\n",
+            "\nSite Name     Memory Capacity (GB)\n"
+            "-----------  ----------------------\n"
+            "Site1                 533\n"
+            "Site2                 764\n"
+            "\nSite Name     Core Count\n"
+            "-----------  ------------\n"
+            "Site1            2594\n"
+            "Site2            970\n"
+            "\nSite Name     Disk Capacity (TB)\n"
+            "-----------  --------------------\n"
+            "Site1                779\n"
+            "Site2                247\n"
+            "\nSite Name     VM Count\n"
+            "-----------  ----------\n"
+            "Site1           428\n"
+            "Site2           177\n\n",
         ),
     ],
 )
-def test_print_site_usage(cli_output: CLIOutput, resource_list: list, df: pd.DataFrame, expected) -> None:
+def test_print_site_usage(cli_output: CLIOutput, resource_list: list, df: pd.DataFrame, expected: str) -> None:
     cli_output.print_site_usage(resource_list, df)
+    result = cli_output.output.getvalue()
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    "dataFrame, headers, table_format, expected",
+    [
+        (
+            pd.DataFrame(
+                {
+                    "Site Name": ["Site1", "Site2"],
+                    "Site_RAM_Usage": [533, 764],
+                }
+            ).set_index("Site Name"),
+            ["Site Name", "Memory Capacity (GB)"],
+            "simple",
+            "Site Name     Memory Capacity (GB)\n"
+            "-----------  ----------------------\n"
+            "Site1                 533\n"
+            "Site2                 764",
+        )
+    ],
+)
+def test_create_site_table(
+    cli_output: CLIOutput, dataFrame: pd.DataFrame, headers: list, table_format: str, expected: str
+) -> None:
+    memory_usage = dataFrame["Site_RAM_Usage"].round(0).astype(int)
+    result = cli_output.create_site_table(memory_usage, headers=headers, table_format=table_format)
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    "series, expected",
+    [
+        (
+            pd.Series(
+                [732, 280, 1100],
+                index=["Microsoft Windows Server", "SUSE Linux Enterprise", "Red Hat Enterprise Linux"],
+                name="Operating Systems",
+            ),
+            "Microsoft Windows Server     732\n"
+            "SUSE Linux Enterprise        280\n"
+            "Red Hat Enterprise Linux    1100\n",
+        )
+    ],
+)
+def test_format_series_output(cli_output: CLIOutput, series: pd.Series, expected: str) -> None:
+    cli_output.format_series_output(series)
+    result = cli_output.output.getvalue()
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    "dataFrame, os_name, expected",
+    [
+        (
+            pd.DataFrame({"OS Version": ["4/5/6", "7"], "Count": [125, 600]}),
+            "CentOS",
+            "\nCentOS\n"
+            "--------------\n"
+            "OS Version			 Count\n"
+            "4/5/6                            125\n"
+            "7                                600\n",
+        )
+    ],
+)
+def test_format_dataframe_output(
+    cli_output: CLIOutput, dataFrame: pd.DataFrame, os_name: t.Optional[str], expected: str
+) -> None:
+    cli_output.format_dataframe_output(dataFrame, os_name)
     result = cli_output.output.getvalue()
     assert result == expected
