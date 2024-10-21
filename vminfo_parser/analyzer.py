@@ -122,7 +122,7 @@ class Analyzer:
 
     def calculate_disk_space_ranges(
         self: t.Self,
-        dataFrame: t.Optional[pd.DataFrame] = None,
+        dataFrame: pd.DataFrame | None = None,
         show_disk_in_tb: bool = False,
         over_under_tb: bool = False,
     ) -> list[tuple[int, int]]:
@@ -131,7 +131,7 @@ class Analyzer:
         This function processes the DataFrame to determine which disk space ranges contain virtual machines.
 
         Args:
-            dataFrame (Optional[pd.DataFrame], optional): The DataFrame containing disk space data.
+            dataFrame (pd.DataFrame, optional): The DataFrame containing disk space data.
                 If None, the default DataFrame from the instance will be used. Defaults to None.
             show_disk_in_tb (bool, optional): If True, the ranges will be calculated in terabytes. Defaults to False.
             over_under_tb (bool, optional): If True, generates a simplified range for over/under thresholds.
@@ -426,7 +426,7 @@ class Analyzer:
 
     def generate_os_version_distribution(self: t.Self) -> t.Generator[tuple[str, pd.Series], None, None]:
         for os_name in self.get_unique_os_names():
-            yield os_name, self.get_os_version_distrobution(os_name)
+            yield os_name, self.get_os_version_distribution(os_name)
 
     def get_os_version_distribution(self: t.Self, os_name: str) -> pd.Series:
         df_copy = self.vm_data.df.copy()

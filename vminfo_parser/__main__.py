@@ -15,16 +15,14 @@ from .vmdata import VMData
 LOGGER = logging.getLogger(__name__)
 
 
-def get_unsupported_os(analyzer: Analyzer, cli_output: CLIOutput, visualizer: t.Optional[Visualizer]) -> None:
+def get_unsupported_os(analyzer: Analyzer, cli_output: CLIOutput, visualizer: Visualizer | None) -> None:
     unsupported_counts = analyzer.generate_unsupported_os_counts()
     cli_output.format_series_output(unsupported_counts)
     if visualizer is not None:
         visualizer.visualize_unsupported_os_distribution(unsupported_counts)
 
 
-def get_supported_os(
-    config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: t.Optional[Visualizer]
-) -> None:
+def get_supported_os(config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: Visualizer | None) -> None:
     supported_counts: pd.Series = analyzer.get_supported_os_counts()
 
     cli_output.format_series_output(supported_counts)
@@ -32,16 +30,14 @@ def get_supported_os(
         visualizer.visualize_supported_os_distribution(supported_counts, environment_filter=config.environment_filter)
 
 
-def output_os_by_version(analyzer: Analyzer, cli_output: CLIOutput, visualizer: t.Optional[Visualizer]) -> None:
+def output_os_by_version(analyzer: Analyzer, cli_output: CLIOutput, visualizer: Visualizer | None) -> None:
     for os_name, counts_dataframe in analyzer.generate_os_version_distribution():
         cli_output.format_dataframe_output(counts_dataframe, os_name=os_name)
         if visualizer is not None:
             visualizer.visualize_os_version_distribution(counts_dataframe, os_name)
 
 
-def get_os_counts(
-    config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: t.Optional[Visualizer]
-) -> None:
+def get_os_counts(config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: Visualizer | None) -> None:
     counts: pd.Series = analyzer.get_operating_system_counts()
     cli_output.format_series_output(counts)
 
@@ -50,7 +46,7 @@ def get_os_counts(
 
 
 def get_disk_space_ranges(
-    config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: t.Optional[Visualizer]
+    config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: Visualizer | None
 ) -> None:
     disk_space_df = analyzer.get_disk_space(os_filter=config.os_name)
     if not disk_space_df.empty:
@@ -63,7 +59,7 @@ def get_disk_space_ranges(
 
 
 def show_disk_space_by_os(
-    config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: t.Optional[Visualizer]
+    config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: Visualizer | None
 ) -> None:
     os_names: list[str]
     if config.os_name:
@@ -96,7 +92,7 @@ def main(*args: str) -> None:  # noqa: C901
     vm_data.set_column_headings()
     vm_data.add_extra_columns()
 
-    visualizer: Visualizer = None
+    visualizer: Visualizer | None = None
     if config.generate_graphs:
         visualizer = Visualizer()
     cli_output = CLIOutput()
