@@ -230,3 +230,72 @@ def test_sort_by_site(mock_vmdata: MockType, mock_clioutput: MockType) -> None:
     mock_clioutput.print_site_usage.assert_called_once_with(
         ["Memory", "CPU", "Disk", "VM"], mock_vmdata.create_site_specific_dataframe.return_value
     )
+
+
+def test_show_disk_space_by_os(
+    mock_config: MockType, mock_analyzer: MockType, mock_clioutput: MockType, mock_visualizer: MockType
+) -> None:
+    mock_analyzer.get_unique_os_names.return_value = ["os1", "os2"]
+    expected_df = mock_analyzer.get_disk_space.return_value
+    expected_df.empty = False
+    __main__.show_disk_space_by_os(mock_config, mock_analyzer, mock_clioutput, mock_visualizer)
+    mock_analyzer.get_unique_os_names.assert_called_once()
+    mock_analyzer.get_disk_space.assert_has_calls(
+        [
+            ((), {"os_filter": "os1"}),
+            ((), {"os_filter": "os2"}),
+        ]
+    )
+    mock_clioutput.print_formatted_disk_space.assert_has_calls(
+        [
+            ((expected_df,), {"os_filter": "os1"}),
+            ((expected_df,), {"os_filter": "os2"}),
+        ]
+    )
+    mock_visualizer.visualize_disk_space_vertical.assert_has_calls(
+        [
+            ((expected_df,), {"os_filter": "os1"}),
+            ((expected_df,), {"os_filter": "os2"}),
+        ]
+    )
+    mock_visualizer.visualize_disk_space_horizontal.assert_not_called()
+
+
+def test_show_disk_space_by_os_no_graphs(
+    mock_config: MockType, mock_analyzer: MockType, mock_clioutput: MockType, mock_visualizer: MockType
+) -> None:
+    mock_analyzer.get_unique_os_names.return_value = ["os1", "os2"]
+    expected_df = mock_analyzer.get_disk_space.return_value
+    expected_df.empty = False
+    __main__.show_disk_space_by_os(mock_config, mock_analyzer, mock_clioutput, None)
+    mock_visualizer.visualize_disk_space_vertical.assert_not_called()
+    mock_visualizer.visualize_disk_space_horizontal.assert_not_called()
+
+
+def test_show_disk_space_by_os_all_env(
+    mock_config: MockType, mock_analyzer: MockType, mock_clioutput: MockType, mock_visualizer: MockType
+) -> None:
+    mock_analyzer.get_unique_os_names.return_value = ["os1", "os2"]
+    expected_df = mock_analyzer.get_disk_space.return_value
+    expected_df.empty = False
+    mock_config.environment_filter = "all"
+    __main__.show_disk_space_by_os(mock_config, mock_analyzer, mock_clioutput, mock_visualizer)
+    mock_visualizer.visualize_disk_space_horizontal.assert_has_calls(
+        [
+            ((expected_df,), {}),
+            ((expected_df,), {}),
+        ]
+    )
+    mock_visualizer.visualize_disk_space_vertical.assert_not_called()
+
+
+def test_show_disk_space_by_os_empty_df(
+    mock_config: MockType, mock_analyzer: MockType, mock_clioutput: MockType, mock_visualizer: MockType
+) -> None:
+    mock_analyzer.get_unique_os_names.return_value = ["os1", "os2"]
+    expected_df = mock_analyzer.get_disk_space.return_value
+    expected_df.empty = True
+    __main__.show_disk_space_by_os(mock_config, mock_analyzer, mock_clioutput, mock_visualizer)
+    mock_clioutput.print_formatted_disk_space.assert_not_called()
+    mock_visualizer.visualize_disk_space_vertical.assert_not_called()
+    mock_visualizer.visualize_disk_space_horizontal.assert_not_called()
