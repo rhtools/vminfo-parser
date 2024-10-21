@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # Std lib imports
 import logging
-import typing as t
 
 # 3rd party imports
 import pandas as pd
