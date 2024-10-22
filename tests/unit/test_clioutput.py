@@ -68,6 +68,7 @@ def test_writeline(cli_output: CLIOutput, arg: t.Any) -> None:
             "9             20 - 36.3 TB           2\n\n",
         ),
     ],
+    ids=["split by env", "default", "split by version"],
 )
 def test_print_formatted_disk_space(
     cli_output: CLIOutput,
@@ -115,6 +116,7 @@ def test_print_formatted_disk_space(
             "Site2           177\n\n",
         ),
     ],
+    ids=["default"],
 )
 def test_print_site_usage(cli_output: CLIOutput, resource_list: list, df: pd.DataFrame, expected: str) -> None:
     cli_output.print_site_usage(resource_list, df)
@@ -140,6 +142,7 @@ def test_print_site_usage(cli_output: CLIOutput, resource_list: list, df: pd.Dat
             "Site2                 764",
         )
     ],
+    ids=["simple"],
 )
 def test_create_site_table(
     cli_output: CLIOutput, dataFrame: pd.DataFrame, headers: list, table_format: str, expected: str
@@ -163,6 +166,7 @@ def test_create_site_table(
             "Red Hat Enterprise Linux    1100\n",
         )
     ],
+    ids=["default"],
 )
 def test_format_series_output(cli_output: CLIOutput, series: pd.Series, expected: str) -> None:
     cli_output.format_series_output(series)
@@ -183,6 +187,7 @@ def test_format_series_output(cli_output: CLIOutput, series: pd.Series, expected
             "7                                600\n",
         )
     ],
+    ids=["default"],
 )
 def test_format_dataframe_output(
     cli_output: CLIOutput, dataFrame: pd.DataFrame, os_name: str | None, expected: str
