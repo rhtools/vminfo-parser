@@ -20,12 +20,12 @@ class CLIOutput:
         self._closed = False
 
     @staticmethod
-    def flush_output(output: io.StringIO, file: t.Optional[io.TextIOBase] = None) -> None:
+    def flush_output(output: io.StringIO, file: io.TextIOBase | None = None) -> None:
         """Write StringIO Buffer to file (or stdout).  Closes output buffer.
 
         Args:
             output (io.StringIO): StringIO obj containing output buffer
-            file (t.Optional[io.TextIOBase], optional): File to write butter to. Defaults to stdout.
+            file (io.TextIOBase | None, optional): File to write butter to. Defaults to stdout.
         """
         if output.closed:
             return
@@ -67,7 +67,7 @@ class CLIOutput:
             self._finalize()
             self._closed = True
 
-    def format_dataframe_output(self: t.Self, dataFrame: pd.DataFrame, os_name: t.Optional[str] = None) -> None:
+    def format_dataframe_output(self: t.Self, dataFrame: pd.DataFrame, os_name: str | None = None) -> None:
         if dataFrame.index.nlevels == 2:
             pass
         else:
@@ -90,7 +90,7 @@ class CLIOutput:
     def print_formatted_disk_space(
         self: t.Self,
         dataFrame: pd.DataFrame,
-        os_filter: t.Optional[str] = None,
+        os_filter: str | None = None,
     ) -> None:
         """
         Print the formatted disk space information to the output.

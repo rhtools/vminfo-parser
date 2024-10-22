@@ -1,8 +1,8 @@
 import pytest
 
-from vminfo_parser import main
+from vminfo_parser.__main__ import main
 
-from . import const as test_const
+from .. import const as test_const
 
 
 @pytest.mark.parametrize(
@@ -22,5 +22,7 @@ def test_main_with_args(cli_args: list[str], expected_output: str, capsys: pytes
     # Get the output
     output = capsys.readouterr()
 
+    with open("testout.txt", "w") as file:
+        file.write(output.out)
     # Add your assertions here
     assert expected_output in output.out.strip()

@@ -17,8 +17,8 @@ class VMData:
         self.df: pd.DataFrame = df
         self.column_headers: dict[str, str] = {}
 
-    @classmethod
-    def get_file_type(cls: t.Self, filepath: Path) -> str:
+    @staticmethod
+    def get_file_type(filepath: Path) -> str:
         """
         Returns the MIME type of the file located at the specified file path.
 
@@ -35,7 +35,7 @@ class VMData:
         return mime_type
 
     @classmethod
-    def from_file(cls: t.Self, filepath: Path) -> "VMData":
+    def from_file(cls: type[t.Self], filepath: Path) -> t.Self:
         file_type = cls.get_file_type(filepath)
         if file_type == const.MIME.get("csv"):
             df = pd.read_csv(filepath)
@@ -135,8 +135,7 @@ class VMData:
         new_site_df = self.df.copy()
         # Check if all site-specific columns already exist
         if all(col in new_site_df.columns for col in site_columns):
-            self.output.writeline("Site-specific columns already exist in the DataFrame.")
-            return
+            raise ValueError("Site-specific columns already exist in the DataFrame.")
 
         # Get the column names from the column_headers dictionary
         memory_col = self.column_headers["vmMemory"]
@@ -165,5 +164,34 @@ class VMData:
 
         return site_usage
 
+    def create_environment_filtered_dataframe(
+        self: t.Self, prod_envs: list[str], env_filter: str | None = None
+    ) -> pd.DataFrame:
+        data_cp = self.df.copy()
+        data_cp[self.column_headers["environment"]] = self.df[self.column_headers["environment"]].apply(
+            _categorize_environment, prod_envs=prod_envs
+        )
+
+        if env_filter and env_filter not in ["all", "both"]:
+            data_cp = data_cp[data_cp[self.column_headers["environment"]] == env_filter]
+
+        return data_cp
+
     def save_to_csv(self: t.Self, path: str) -> None:
         self.df.to_csv(path, index=False)
+
+
+def _categorize_environment(x: str, prod_envs: list[str]) -> str:
+    if pd.isnull(x):
+        return "non-prod"
+
+    if not prod_envs:
+        return "all envs"
+
+    # Ensure x is a string
+    if isinstance(x, str):
+        for env in prod_envs:
+            if env in x:
+                return "prod"
+
+    return "non-prod"
