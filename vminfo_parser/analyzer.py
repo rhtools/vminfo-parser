@@ -1,7 +1,7 @@
 # Std lib imports
 import logging
 import typing as t
-from collections.abc import Callable, Generator
+from collections.abc import Callable
 
 # 3rd party imports
 import pandas as pd
