@@ -1,6 +1,7 @@
 # Std lib imports
 import logging
 import typing as t
+from collections.abc import Callable, Generator
 
 # 3rd party imports
 import pandas as pd
@@ -320,24 +321,31 @@ class Analyzer:
 
         return self.sort_by_disk_space_range(df)
 
-    def generate_disk_space_by_os(self: t.Self) -> t.Generator[tuple[str, pd.DataFrame], None, None]:
-        for os_name in self.get_unique_os_names():
-            yield os_name, self.get_disk_space(os_name)
+    def get_unique_os_names(self: t.Self, df: pd.DataFrame | None = None) -> list[str]:
+        """Generate list of unique os names from dataframe.
 
-    def get_unique_os_names(self: t.Self) -> list[str]:
-        """Returns unique os names from vmdata
-
+        Uses vmdata object if no dataframe is passed.
+        Returns single entry if os_name in config object.
+        Returns empty list if os_name in config object and os_name not in dataframe.
         Args:
             None
 
         Returns:
             list[str]: list of unique OS Names
         """
-        return [
+
+        os_names: list[str] = [
             os_name
             for os_name in self.vm_data.df["OS Name"].unique()
             if os_name is not None and not pd.isna(os_name) and os_name != ""
         ]
+        if not os_names:
+            return []
+        if self.config.os_name:
+            if self.config.os_name in os_names:
+                return [self.config.os_names]
+            return []
+        return os_names
 
     def get_operating_system_counts(self: t.Self) -> pd.Series:
         """Returns the counts of operating systems based on the configured environment filter.
@@ -424,10 +432,6 @@ class Analyzer:
 
         return unsupported_counts
 
-    def generate_os_version_distribution(self: t.Self) -> t.Generator[tuple[str, pd.Series], None, None]:
-        for os_name in self.get_unique_os_names():
-            yield os_name, self.get_os_version_distribution(os_name)
-
     def get_os_version_distribution(self: t.Self, os_name: str) -> pd.Series:
         df_copy = self.vm_data.df.copy()
         df_copy = df_copy[(df_copy["OS Name"] == os_name)]
@@ -438,3 +442,13 @@ class Analyzer:
             counts = counts[counts["Count"] >= self.config.minimum_count]
 
         return counts
+
+    def by_os(self: t.Self, func: Callable[[str], None]) -> None:
+        """Execute func once for each os in get_unique_os_names.
+
+            Func should have one argument (os_name), and return None
+        Args:
+            func (Callable[[str], None]): Function to execute for each os.
+        """
+        for os_name in self.get_unique_os_names():
+            func(os_name)

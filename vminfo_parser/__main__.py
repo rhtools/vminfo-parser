@@ -30,10 +30,13 @@ def get_supported_os(config: Config, analyzer: Analyzer, cli_output: CLIOutput, 
 
 
 def output_os_by_version(analyzer: Analyzer, cli_output: CLIOutput, visualizer: Visualizer | None) -> None:
-    for os_name, counts_dataframe in analyzer.generate_os_version_distribution():
+    def output_os_versions(os_name: str) -> None:
+        counts_dataframe = analyzer.get_os_version_distribution(os_name)
         cli_output.format_dataframe_output(counts_dataframe, os_name=os_name)
         if visualizer is not None:
-            visualizer.visualize_os_version_distribution(counts_dataframe, os_name)
+            visualizer.visualize_os_version_distribution(counts_dataframe, os_name=os_name)
+
+    analyzer.by_os(output_os_versions)
 
 
 def get_os_counts(config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: Visualizer | None) -> None:
@@ -60,13 +63,8 @@ def get_disk_space_ranges(
 def show_disk_space_by_os(
     config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: Visualizer | None
 ) -> None:
-    os_names: list[str]
-    if config.os_name:
-        os_names = [config.os_name]
-    else:
-        os_names = analyzer.get_unique_os_names()
 
-    for os_name in os_names:
+    def show_disk_space(os_name: str) -> None:
         disk_space_df = analyzer.get_disk_space(os_filter=os_name)
         if not disk_space_df.empty:
             cli_output.print_formatted_disk_space(disk_space_df, os_filter=os_name)
@@ -75,6 +73,8 @@ def show_disk_space_by_os(
                     visualizer.visualize_disk_space_horizontal(disk_space_df)
                 else:
                     visualizer.visualize_disk_space_vertical(disk_space_df, os_filter=os_name)
+
+    analyzer.by_os(show_disk_space)
 
 
 def sort_by_site(vm_data: VMData, cli_output: CLIOutput) -> None:
