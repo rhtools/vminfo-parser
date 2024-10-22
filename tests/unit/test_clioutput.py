@@ -1,4 +1,5 @@
 import typing as t
+from collections.abc import Generator
 
 import pandas as pd
 import pytest
@@ -7,7 +8,7 @@ from vminfo_parser.clioutput import CLIOutput
 
 
 @pytest.fixture
-def cli_output() -> t.Generator[CLIOutput, None, None]:
+def cli_output() -> Generator[CLIOutput, None, None]:
     co = CLIOutput()
     co.output.truncate()
     yield co
