@@ -244,6 +244,9 @@ CLI_OPTIONS = {
     "output_os_by_version": {
         "output-os-by-version": True,
     },
+    "disk_space_ranges": {
+        "get-disk-space-ranges": True,
+    },
 }
 
 EXPECTED_CLI_OUTPUT = {
@@ -1007,6 +1010,23 @@ EXPECTED_CLI_OUTPUT = {
         "--------------\n"
         "OS Version			 Count\n"
         "unknown                          9"
+    ),
+    "disk_space_ranges": (
+        "Disk Space Range     Count\n"
+        "------------------  -------\n"
+        "0 - 200 GB           7394\n"
+        "201 - 400 GB         19146\n"
+        "401 - 600 GB         8570\n"
+        "601 - 800 GB         7122\n"
+        "801 GB - 1 TB        3189\n"
+        "1 - 2 TB             3764\n"
+        "2 - 3 TB             2313\n"
+        "3 - 5 TB             1159\n"
+        "5 - 10 TB            1202\n"
+        "10 - 20 TB            537\n"
+        "20 - 50 TB            152\n"
+        "50 - 100 TB           16\n"
+        "100 - 114.3 TB         2"
     ),
 }
 
