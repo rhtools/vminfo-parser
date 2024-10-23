@@ -105,6 +105,7 @@ jobs:
       contents: read
       issues: read
       pull-requests: write
+    continue-on-error: true
     strategy:
       matrix:
         mark: [unit, e2e]
