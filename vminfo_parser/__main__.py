@@ -59,68 +59,37 @@ def get_os_counts(
         visualizer.visualize_os_distribution(counts, config.minimum_count)
 
 
-def get_disk_space_ranges(config: Config, analyzer: Analyzer) -> None:
-    if config.sort_by_env != "all":
-        analyzer.sort_attribute_by_environment(
-            *config.environments,
-            attribute="diskSpace",
-            environment_filter=config.sort_by_env,
-            over_under_tb=config.over_under_tb,
-            show_disk_in_tb=config.breakdown_by_terabyte,
-        )
-    else:
-        analyzer.sort_attribute_by_environment(
-            attribute="diskSpace",
-            environment_filter=config.sort_by_env,
-            over_under_tb=config.over_under_tb,
-            show_disk_in_tb=config.breakdown_by_terabyte,
-        )
-
-
-def show_disk_space_by_os(config: Config, vm_data: VMData, analyzer: Analyzer) -> None:
-    if config.os_name:
-        # If the user specifies an OS, use that to filter out everything else
-        if config.environments:
-            analyzer.sort_attribute_by_environment(
-                *config.environments,
-                attribute="diskSpace",
-                os_filter=config.os_name,
-                environment_filter=config.sort_by_env,
-                over_under_tb=config.over_under_tb,
-                show_disk_in_tb=config.breakdown_by_terabyte,
-            )
-        else:
-            analyzer.plot_disk_space_distribution(
-                os_filter=config.os_name,
-                show_disk_in_tb=config.breakdown_by_terabyte,
-            )
-    else:
-        # If the user has not specified an OS name, assume they want them all
-        for os_name in vm_data.df["OS Name"].unique():
-            if config.environments:
-                analyzer.sort_attribute_by_environment(
-                    *config.environments,
-                    attribute="diskSpace",
-                    os_filter=os_name,
-                    environment_filter=config.sort_by_env,
-                    over_under_tb=config.over_under_tb,
-                    granular_disk_space_by_os=config.disk_space_by_granular_os,
-                )
-
+def get_disk_space_ranges(
+    config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: t.Optional[Visualizer]
+) -> None:
+    disk_space_df = analyzer.get_disk_space(os_filter=config.os_name)
+    if not disk_space_df.empty:
+        cli_output.print_formatted_disk_space(disk_space_df, os_filter=config.os_name)
+        if visualizer:
+            if config.environment_filter == "all":
+                visualizer.visualize_disk_space_horizontal(disk_space_df)
             else:
-                if config.over_under_tb:
-                    analyzer.sort_attribute_by_environment(
-                        attribute="diskSpace",
-                        os_filter=os_name,
-                        show_disk_in_tb=config.breakdown_by_terabyte,
-                        granular_disk_space_by_os=config.disk_space_by_granular_os,
-                    )
+                visualizer.visualize_disk_space_vertical(disk_space_df, os_filter=config.os_name)
+
+
+def show_disk_space_by_os(
+    config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: t.Optional[Visualizer]
+) -> None:
+    os_names: list[str]
+    if config.os_name:
+        os_names = [config.os_name]
+    else:
+        os_names = analyzer.get_unique_os_names()
+
+    for os_name in os_names:
+        disk_space_df = analyzer.get_disk_space(os_filter=os_name)
+        if not disk_space_df.empty:
+            cli_output.print_formatted_disk_space(disk_space_df, os_filter=os_name)
+            if visualizer:
+                if config.environment_filter == "all":
+                    visualizer.visualize_disk_space_horizontal(disk_space_df)
                 else:
-                    analyzer.sort_attribute_by_environment(
-                        os_filter=os_name,
-                        attribute="diskSpace",
-                        granular_disk_space_by_os=config.disk_space_by_granular_os,
-                    )
+                    visualizer.visualize_disk_space_vertical(disk_space_df, os_filter=os_name)
 
 
 def sort_by_site(vm_data: VMData, cli_output: CLIOutput) -> None:
@@ -148,10 +117,10 @@ def main(*args: str) -> None:  # noqa: C901
             sort_by_site(vm_data, cli_output)
 
         case config.show_disk_space_by_os:
-            show_disk_space_by_os(config, vm_data, analyzer)
+            show_disk_space_by_os(config, analyzer, cli_output, visualizer)
 
         case config.get_disk_space_ranges:
-            get_disk_space_ranges(config, analyzer)
+            get_disk_space_ranges(config, analyzer, cli_output, visualizer)
 
         case config.get_os_counts:
             get_os_counts(config, analyzer, cli_output, visualizer)
