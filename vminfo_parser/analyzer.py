@@ -34,7 +34,7 @@ class Analyzer:
         for os in os_values:
             filtered_hosts = self.vm_data.df[
                 (self.vm_data.df["OS Name"] == os)
-                & (self.vm_data.df[self.vm_datat.column_headers["environment"]].str.contains(environment_type))
+                & (self.vm_data.df[self.vm_data.column_headers["environment"]].str.contains(environment_type))
             ]
 
             if not filtered_hosts.empty:

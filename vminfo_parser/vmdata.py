@@ -17,8 +17,8 @@ class VMData:
         self.df: pd.DataFrame = df
         self.column_headers: dict[str, str] = {}
 
-    @classmethod
-    def get_file_type(cls: t.Self, filepath: Path) -> str:
+    @staticmethod
+    def get_file_type(filepath: Path) -> str:
         """
         Returns the MIME type of the file located at the specified file path.
 
@@ -35,7 +35,7 @@ class VMData:
         return mime_type
 
     @classmethod
-    def from_file(cls: t.Self, filepath: Path) -> "VMData":
+    def from_file(cls: t.Self, filepath: Path) -> t.Self:
         file_type = cls.get_file_type(filepath)
         if file_type == const.MIME.get("csv"):
             df = pd.read_csv(filepath)
