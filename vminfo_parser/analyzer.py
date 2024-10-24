@@ -492,18 +492,18 @@ class Analyzer:
 
         return unsupported_counts
 
-    def generate_os_version_distribution(
-        self: t.Self, dataFrame: pd.DataFrame, os_name: str, minimum_count: int
-    ) -> pd.DataFrame:
+    def generate_os_version_distribution(self: t.Self) -> t.Generator[tuple[str, pd.DataFrame], None, None]:
+        for os_name in self.vm_data.df["OS Name"].unique():
+            if os_name is not None and not pd.isna(os_name) and os_name != "":
+                dataFrame = self.vm_data.df.copy()
+                filtered_df = dataFrame[(dataFrame["OS Name"] == os_name)]
+                counts = filtered_df["OS Version"].fillna("unknown").value_counts().reset_index()
+                counts.columns = ["OS Version", "Count"]
 
-        filtered_df = dataFrame[(dataFrame["OS Name"] == os_name)]
-        counts = filtered_df["OS Version"].fillna("unknown").value_counts().reset_index()
-        counts.columns = ["OS Version", "Count"]
+                if self.config.minimum_count is not None and self.config.minimum_count > 0:
+                    counts = counts[counts["Count"] >= self.config.minimum_count]
 
-        if minimum_count is not None and minimum_count > 0:
-            counts = counts[counts["Count"] >= minimum_count]
-
-        return counts
+                yield os_name, counts
 
     def sort_attribute_by_environment(
         self: t.Self,
