@@ -88,6 +88,7 @@ source = ["vminfo_parser"]
 show_missing = true
 skip_empty = true
 fail_under = 60
+exclude_also = ['if __name__ == "__main__"']
 
 [tool.coverage.lcov]
 output = 'coverage.lcov'
