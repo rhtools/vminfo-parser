@@ -145,7 +145,7 @@ def main(*args: t.Optional[str]) -> None:  # noqa: C901
     if config.generate_graphs:
         visualizer = Visualizer()
     cli_output = CLIOutput()
-    analyzer = Analyzer(vm_data, config, column_headers=vm_data.column_headers)
+    analyzer = Analyzer(vm_data, config)
 
     match True:
         case config.sort_by_site:

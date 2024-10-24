@@ -19,11 +19,9 @@ class Analyzer:
         self: t.Self,
         vm_data: VMData,
         config: Config,
-        column_headers: t.Optional[dict[str, str]] = None,
     ) -> None:
         self.vm_data = vm_data
         self.config = config
-        self.column_headers = column_headers if column_headers else vm_data.column_headers
         self.visualizer = Visualizer()
         self.cli_output = CLIOutput()
 
@@ -36,11 +34,11 @@ class Analyzer:
         for os in os_values:
             filtered_hosts = self.vm_data.df[
                 (self.vm_data.df["OS Name"] == os)
-                & (self.vm_data.df[self.column_headers["environment"]].str.contains(environment_type))
+                & (self.vm_data.df[self.vm_datat.column_headers["environment"]].str.contains(environment_type))
             ]
 
             if not filtered_hosts.empty:
-                avg_ram = filtered_hosts[self.column_headers["vmMemory"]].mean()
+                avg_ram = filtered_hosts[self.vm_data.column_headers["vmMemory"]].mean()
                 self.cli_output.writeline("{:<20} {:<10.2f}".format(os, avg_ram))
 
     def generate_dynamic_ranges(
@@ -149,7 +147,7 @@ class Analyzer:
         if dataFrame is None:
             # default to the dataframe in the attribute unless overridden
             dataFrame = self.vm_data.df
-        frameHeading = self.column_headers["vmDisk"]
+        frameHeading = self.vm_data.column_headers["vmDisk"]
         # sometimes the values in this column are interpreted as a string and have a comma inserted
         # we want to check and replace the comma
         for index, row in dataFrame.iterrows():
@@ -159,7 +157,7 @@ class Analyzer:
         dataFrame[frameHeading] = pd.to_numeric(dataFrame[frameHeading], errors="coerce")
 
         # Normalize the Disk Column to GiB before applying further analysis
-        if self.column_headers["unitType"] == "MB":
+        if self.vm_data.column_headers["unitType"] == "MB":
             dataFrame[frameHeading] = dataFrame[frameHeading] / 1024
         max_disk_space = round(int(dataFrame[frameHeading].max()))
         disk_space_ranges = self.generate_dynamic_ranges(max_disk_space, show_disk_in_tb, over_under_tb)
@@ -283,7 +281,7 @@ class Analyzer:
             sorted_range_counts_by_environment = sorted_range_counts_by_environment.set_index("OS Version")
 
         else:
-            envHeading = self.column_headers["environment"]
+            envHeading = self.vm_data.column_headers["environment"]
 
             if environment_filter == "both":
                 range_counts_by_environment = (
@@ -343,7 +341,7 @@ class Analyzer:
         Returns:
             None
         """
-        diskHeading = self.column_headers["vmDisk"]
+        diskHeading = self.vm_data.column_headers["vmDisk"]
         disk_space_ranges = self.calculate_disk_space_ranges(
             dataFrame=dataFrame,
             show_disk_in_tb=show_disk_in_tb,
@@ -436,7 +434,7 @@ class Analyzer:
             counts = dataFrame["OS Name"].value_counts()
             counts = counts[counts >= min_count]
         else:
-            counts = dataFrame.groupby(["OS Name", self.column_headers["environment"]]).size().unstack().fillna(0)
+            counts = dataFrame.groupby(["OS Name", self.vm_data.column_headers["environment"]]).size().unstack().fillna(0)
             counts["total"] = counts.sum(axis=1)
             counts["combined_total"] = counts["prod"] + counts["non-prod"]
             counts = counts[(counts["total"] >= min_count) & (counts["combined_total"] >= min_count)].drop(
@@ -455,14 +453,14 @@ class Analyzer:
     ) -> pd.Series:
         data_cp = self.vm_data.df.copy()
         if environment_filter and env_keywords:
-            data_cp[self.column_headers["environment"]] = self.vm_data.df[self.column_headers["environment"]].apply(
+            data_cp[self.vm_data.column_headers["environment"]] = self.vm_data.df[self.vm_data.column_headers["environment"]].apply(
                 self.categorize_environment, args=env_keywords
             )
 
         if environment_filter and environment_filter not in ["all", "both"]:
-            data_cp = data_cp[data_cp[self.column_headers["environment"]] == environment_filter]
+            data_cp = data_cp[data_cp[self.vm_data.column_headers["environment"]] == environment_filter]
         elif environment_filter == "both":
-            data_cp = data_cp.groupby(["OS Name", self.column_headers["environment"]]).size().unstack().fillna(0)
+            data_cp = data_cp.groupby(["OS Name", self.vm_data.column_headers["environment"]]).size().unstack().fillna(0)
 
         if data_cp.empty:
             LOGGER.warning("None found in %s", environment_filter)
