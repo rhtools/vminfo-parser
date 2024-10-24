@@ -144,7 +144,7 @@ def sort_by_site(vm_data: VMData, cli_output: CLIOutput) -> None:
     cli_output.print_site_usage(["Memory", "CPU", "Disk", "VM"], site_dataframe)
 
 
-def main(*args: t.Optional[str]) -> None:  # noqa: C901
+def main(*args: str) -> None:  # noqa: C901
     config = Config.from_args(*args)
     if config.generate_yaml:
         config.generate_yaml_from_parser()
