@@ -434,7 +434,9 @@ class Analyzer:
             counts = dataFrame["OS Name"].value_counts()
             counts = counts[counts >= min_count]
         else:
-            counts = dataFrame.groupby(["OS Name", self.vm_data.column_headers["environment"]]).size().unstack().fillna(0)
+            counts = (
+                dataFrame.groupby(["OS Name", self.vm_data.column_headers["environment"]]).size().unstack().fillna(0)
+            )
             counts["total"] = counts.sum(axis=1)
             counts["combined_total"] = counts["prod"] + counts["non-prod"]
             counts = counts[(counts["total"] >= min_count) & (counts["combined_total"] >= min_count)].drop(
@@ -453,14 +455,16 @@ class Analyzer:
     ) -> pd.Series:
         data_cp = self.vm_data.df.copy()
         if environment_filter and env_keywords:
-            data_cp[self.vm_data.column_headers["environment"]] = self.vm_data.df[self.vm_data.column_headers["environment"]].apply(
-                self.categorize_environment, args=env_keywords
-            )
+            data_cp[self.vm_data.column_headers["environment"]] = self.vm_data.df[
+                self.vm_data.column_headers["environment"]
+            ].apply(self.categorize_environment, args=env_keywords)
 
         if environment_filter and environment_filter not in ["all", "both"]:
             data_cp = data_cp[data_cp[self.vm_data.column_headers["environment"]] == environment_filter]
         elif environment_filter == "both":
-            data_cp = data_cp.groupby(["OS Name", self.vm_data.column_headers["environment"]]).size().unstack().fillna(0)
+            data_cp = (
+                data_cp.groupby(["OS Name", self.vm_data.column_headers["environment"]]).size().unstack().fillna(0)
+            )
 
         if data_cp.empty:
             LOGGER.warning("None found in %s", environment_filter)
