@@ -10,49 +10,83 @@ from vminfo_parser.config import Config
 from vminfo_parser.visualizer import Visualizer
 from vminfo_parser.vmdata import VMData
 
+from .. import const as test_const
+
 
 @pytest.fixture
-def mock_main(mocker: MockFixture) -> t.Generator[MockType, None, None]:
+def mock_analyzer(mocker: MockFixture) -> t.Generator[MockType, None, None]:
+    yield mocker.NonCallableMagicMock(Analyzer)
+
+
+@pytest.fixture
+def mock_visualizer(mocker: MockFixture) -> t.Generator[MockType, None, None]:
+    yield mocker.NonCallableMagicMock(Visualizer)
+
+
+@pytest.fixture
+def mock_clioutput(mocker: MockFixture) -> t.Generator[MockType, None, None]:
+    yield mocker.NonCallableMagicMock(CLIOutput)
+
+
+@pytest.fixture
+def mock_config(mocker: MockFixture) -> t.Generator[MockType, None, None]:
+    mock_config = mocker.NonCallableMagicMock(Config)
+
+    # set defaults for config items
+    for prop, val in [
+        ("generate_yaml", False),
+        ("generate_graphs", False),
+        ("sort_by_site", False),
+        ("show_disk_space_by_os", False),
+        ("get_disk_space_ranges", False),
+        ("get_os_counts", False),
+        ("output_os_by_version", False),
+        ("get_supported_os", False),
+        ("get_unsupported_os", False),
+        ("file", None),
+        ("minimum_count", 0),
+        ("os_name", None),
+        ("over_under_tb", False),
+        ("breakdown_by_terabyte", False),
+        ("disk_space_by_granular_os", False),
+        ("prod_env_labels", None),
+        ("sort_by_env", None),
+    ]:
+        setattr(mock_config, prop, val)
+    yield mock_config
+
+
+@pytest.fixture
+def mock_vmdata(mocker: MockFixture) -> t.Generator[MockType, None, None]:
+    yield mocker.NonCallableMagicMock(VMData)
+
+
+@pytest.fixture
+def mock_main(
+    mocker: MockFixture,
+    mock_analyzer: MockType,
+    mock_visualizer: MockType,
+    mock_clioutput: MockType,
+    mock_config: MockType,
+    mock_vmdata: MockType,
+) -> t.Generator[MockType, None, None]:
     main_obj = mocker.NonCallableMagicMock()
-    main_obj.config_class = mocker.patch("vminfo_parser.__main__.Config", spec=Config)
-    main_obj.config = main_obj.config_class.from_args.return_value
-
-    # Disable all options by default
-
-    main_obj.config.generate_yaml = False
-    main_obj.config.generate_graphs = False
-    main_obj.config.sort_by_site = False
-    main_obj.config.show_disk_space_by_os = False
-    main_obj.config.get_disk_space_ranges = False
-    main_obj.config.get_os_counts = False
-    main_obj.config.output_os_by_version = False
-    main_obj.config.get_supported_os = False
-    main_obj.config.get_unsupported_os = False
-
-    main_obj.vmdata_class = mocker.patch("vminfo_parser.__main__.VMData", spec=VMData)
-    main_obj.vm_data = main_obj.vmdata_class.from_file.return_value
-    main_obj.visualizer_class = mocker.patch("vminfo_parser.__main__.Visualizer", spec=Visualizer)
-    main_obj.visualizer = main_obj.visualizer_class.return_value
-    main_obj.clioutput_class = mocker.patch("vminfo_parser.__main__.CLIOutput", spec=CLIOutput)
-    main_obj.cli_output = main_obj.clioutput_class.return_value
-    main_obj.analyzer_class = mocker.patch("vminfo_parser.__main__.Analyzer", spec=Analyzer)
-    main_obj.analyzer = main_obj.analyzer_class.return_value
+    main_obj.config_class = mocker.patch("vminfo_parser.__main__.Config")
+    main_obj.config = main_obj.config_class.from_args.return_value = mock_config
+    main_obj.vmdata_class = mocker.patch("vminfo_parser.__main__.VMData")
+    main_obj.vm_data = main_obj.vmdata_class.from_file.return_value = mock_vmdata
+    main_obj.visualizer_class = mocker.patch("vminfo_parser.__main__.Visualizer")
+    main_obj.visualizer = main_obj.visualizer_class.return_value = mock_visualizer
+    main_obj.clioutput_class = mocker.patch("vminfo_parser.__main__.CLIOutput")
+    main_obj.cli_output = main_obj.clioutput_class.return_value = mock_clioutput
+    main_obj.analyzer_class = mocker.patch("vminfo_parser.__main__.Analyzer")
+    main_obj.analyzer = main_obj.analyzer_class.return_value = mock_analyzer
     main_obj.analyzer.cli_output = mocker.MagicMock(CLIOutput)
     main_obj.analyzer.visualizer = mocker.MagicMock(Visualizer)
 
     # Add main functions to mock
-    for func in [
-        "get_disk_space_ranges",
-        "get_os_counts",
-        "get_supported_os",
-        "get_unsupported_os",
-        "output_os_by_version",
-        "show_disk_space_by_os",
-        "sort_by_site",
-    ]:
+    for func in test_const.MAIN_FUNCTION_CALLS.keys():
         setattr(main_obj, func, mocker.patch(f"vminfo_parser.__main__.{func}"))
-
-    mocker.seal(main_obj)
 
     yield main_obj
 
@@ -104,19 +138,41 @@ def test_main_generate_graphs(mock_main: MockType) -> None:
 
 
 @pytest.mark.parametrize(
-    ["func", "args"],
-    [
-        ("sort_by_site", ["vm_data", "cli_output"]),
-        ("show_disk_space_by_os", ["config", "vm_data", "analyzer"]),
-        ("get_disk_space_ranges", ["config", "analyzer"]),
-        ("get_os_counts", ["config", "analyzer"]),
-        ("output_os_by_version", ["analyzer", "cli_output", "visualizer"]),
-        ("get_supported_os", ["config", "analyzer", "cli_output", "visualizer"]),
-        ("get_unsupported_os", ["analyzer", "cli_output", "visualizer"]),
-    ],
+    ["func", "args"], test_const.MAIN_FUNCTION_CALLS.items(), ids=test_const.MAIN_FUNCTION_CALLS.keys()
 )
 def test_main_funcs(mock_main: MockType, func: str, args: list[str]) -> None:
     setattr(mock_main.config, func, True)
     mock_main.config.generate_graphs = True
     __main__.main()
     getattr(mock_main, func).assert_called_once_with(*[getattr(mock_main, arg) for arg in args])
+
+
+def test_get_unsupported_os(mock_analyzer: MockType, mock_clioutput: MockType, mock_visualizer: MockType) -> None:
+    __main__.get_unsupported_os(mock_analyzer, mock_clioutput, mock_visualizer)
+    mock_analyzer.generate_unsupported_os_counts.assert_called_once()
+    mock_clioutput.format_series_output.assert_called_once_with(
+        mock_analyzer.generate_unsupported_os_counts.return_value
+    )
+    mock_visualizer.visualize_unsupported_os_distribution.assert_called_once_with(
+        mock_analyzer.generate_unsupported_os_counts.return_value
+    )
+
+
+def test_get_unsupported_os_no_graphs(
+    mock_analyzer: MockType, mock_clioutput: MockType, mock_visualizer: MockType
+) -> None:
+    __main__.get_unsupported_os(mock_analyzer, mock_clioutput, None)
+    mock_analyzer.generate_unsupported_os_counts.assert_called_once()
+    mock_clioutput.format_series_output.assert_called_once_with(
+        mock_analyzer.generate_unsupported_os_counts.return_value
+    )
+    mock_visualizer.visualize_unsupported_os_distribution.assert_not_called()
+
+
+
+def test_sort_by_site(mock_vmdata: MockType, mock_clioutput: MockType) -> None:
+    __main__.sort_by_site(mock_vmdata, mock_clioutput)
+    mock_vmdata.create_site_specific_dataframe.assert_called_once()
+    mock_clioutput.print_site_usage.assert_called_once_with(
+        ["Memory", "CPU", "Disk", "VM"], mock_vmdata.create_site_specific_dataframe.return_value
+    )

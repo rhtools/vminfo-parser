@@ -374,3 +374,12 @@ TEST_DATAFRAMES = [
         "version": 2,
     },
 ]
+
+MAIN_FUNCTION_CALLS = {
+    "sort_by_site": ["vm_data", "cli_output"],
+    "show_disk_space_by_os": ["config", "vm_data", "analyzer"],
+    "get_disk_space_ranges": ["config", "analyzer"],
+    "output_os_by_version": ["analyzer", "cli_output", "visualizer"],
+    "get_supported_os": ["config", "analyzer", "cli_output", "visualizer"],
+    "get_unsupported_os": ["analyzer", "cli_output", "visualizer"],
+}
