@@ -136,7 +136,7 @@ class Visualizer:
             min_count (int, optional): minimum count of oses graphed for title. Defaults to 500.
         """
         # this may not be needed anymore, it might be simplifiable to counts.index
-        os_names = [idx[1] for idx in counts.index] if counts.index.nlevels == 2 else counts.index
+        os_names: list[str] = [idx[1] for idx in counts.index] if counts.index.nlevels == 2 else counts.index
         # Plot the counts as a horizontal bar chart with specified and random colors
         counts.plot(kind="barh", rot=45, color=_get_colors(os_names))
 

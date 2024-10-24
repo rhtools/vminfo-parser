@@ -165,7 +165,7 @@ class VMData:
         return site_usage
 
     def create_environment_filtered_dataframe(
-        self: t.Self, prod_envs: list[str], env_filter: t.Optional[str] = None
+        self: t.Self, prod_envs: list[str], env_filter: str | None = None
     ) -> pd.DataFrame:
         data_cp = self.df.copy()
         data_cp[self.column_headers["environment"]] = self.df[self.column_headers["environment"]].apply(

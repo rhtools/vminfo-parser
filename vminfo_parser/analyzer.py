@@ -426,7 +426,7 @@ class Analyzer:
 
     def generate_os_version_distribution(self: t.Self) -> t.Generator[tuple[str, pd.Series], None, None]:
         for os_name in self.get_unique_os_names():
-            yield os_name, self.get_os_version_distrobution(os_name)
+            yield os_name, self.get_os_version_distribution(os_name)
 
     def get_os_version_distribution(self: t.Self, os_name: str) -> pd.Series:
         df_copy = self.vm_data.df.copy()
