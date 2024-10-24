@@ -1,4 +1,4 @@
-import typing as t
+from collections.abc import Generator
 from pathlib import Path, PosixPath
 
 import pytest
@@ -39,7 +39,7 @@ yaml.add_representer(PosixPath, yaml_path_representer)
     params=test_const.CLI_OPTIONS.values(),
     ids=test_const.CLI_OPTIONS.keys(),
 )
-def config_dict(request: pytest.FixtureRequest) -> t.Generator[dict, None, None]:
+def config_dict(request: pytest.FixtureRequest) -> Generator[dict, None, None]:
     default_dict = {
         "breakdown-by-terabyte": False,
         "file": Path("tests/files/Test_Inventory_VMs.xlsx"),
@@ -62,7 +62,7 @@ def config_dict(request: pytest.FixtureRequest) -> t.Generator[dict, None, None]
 
 
 @pytest.fixture
-def cli_args(config_dict: dict) -> t.Generator[list[str], None, None]:
+def cli_args(config_dict: dict) -> Generator[list[str], None, None]:
     args = []
     for key, value in config_dict.items():
         match value:

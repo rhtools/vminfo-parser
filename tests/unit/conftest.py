@@ -1,5 +1,5 @@
 import re
-import typing as t
+from collections.abc import Generator
 from pathlib import Path, PosixPath
 
 import pytest
@@ -20,7 +20,7 @@ yaml.add_representer(PosixPath, yaml_path_representer)
 
 
 @pytest.fixture(params=["csv", "xlsx", "emptycsv", "emptyxlsx"])
-def datafile(tmp_path: Path, request: pytest.FixtureRequest) -> t.Generator[tuple[bool, Path], None, None]:
+def datafile(tmp_path: Path, request: pytest.FixtureRequest) -> Generator[tuple[bool, Path], None, None]:
     srcfile: Path = None
     suffix: str
     if request.param.startswith("empty"):
@@ -47,19 +47,19 @@ def datafile(tmp_path: Path, request: pytest.FixtureRequest) -> t.Generator[tupl
 
 
 @pytest.fixture
-def vmdata(datafile: tuple[bool, Path]) -> t.Generator[VMData, None, None]:
+def vmdata(datafile: tuple[bool, Path]) -> Generator[VMData, None, None]:
     _, filepath = datafile
     yield VMData.from_file(filepath)
 
 
 @pytest.fixture
-def vmdata_with_headers(vmdata: VMData) -> t.Generator[VMData, None, None]:
+def vmdata_with_headers(vmdata: VMData) -> Generator[VMData, None, None]:
     vmdata.set_column_headings()
     yield vmdata
 
 
 @pytest.fixture(scope="session")
-def extra_columns_regexs() -> t.Generator[dict[str, re.Pattern], None, None]:
+def extra_columns_regexs() -> Generator[dict[str, re.Pattern], None, None]:
     yield {
         "non_windows": re.compile(vm_const.EXTRA_COLUMNS_NON_WINDOWS_REGEX),
         "windows_server": re.compile(vm_const.EXTRA_COLUMNS_WINDOWS_SERVER_REGEX),
@@ -68,7 +68,7 @@ def extra_columns_regexs() -> t.Generator[dict[str, re.Pattern], None, None]:
 
 
 @pytest.fixture
-def yaml_config(tmp_path: Path, config_dict: dict) -> t.Generator[str, None, None]:
+def yaml_config(tmp_path: Path, config_dict: dict) -> Generator[str, None, None]:
     yamlfile = tmp_path / "config.yaml"
     with open(yamlfile, "w") as file:
         yaml.dump(config_dict, file)
@@ -76,5 +76,5 @@ def yaml_config(tmp_path: Path, config_dict: dict) -> t.Generator[str, None, Non
 
 
 @pytest.fixture
-def visualizer() -> t.Generator[Visualizer, None, None]:
+def visualizer() -> Generator[Visualizer, None, None]:
     yield Visualizer()

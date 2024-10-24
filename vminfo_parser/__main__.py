@@ -36,7 +36,9 @@ def get_supported_os(config: Config, analyzer: Analyzer, cli_output: CLIOutput, 
         visualizer.visualize_supported_os_distribution(supported_counts, environment_filter=config.sort_by_env)
 
 
-def output_os_by_version(analyzer: Analyzer, cli_output: CLIOutput, visualizer: Visualizer | None) -> None:
+def output_os_by_version(
+    config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: Visualizer | None
+) -> None:
     for os_name in analyzer.vm_data.df["OS Name"].unique():
         if os_name is not None and not pd.isna(os_name) and os_name != "":
             counts_dataframe = analyzer.generate_os_version_distribution(

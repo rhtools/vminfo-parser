@@ -1,4 +1,4 @@
-import typing as t
+from collections.abc import Generator
 
 import pytest
 from pytest_mock import MockFixture, MockType
@@ -14,22 +14,22 @@ from .. import const as test_const
 
 
 @pytest.fixture
-def mock_analyzer(mocker: MockFixture) -> t.Generator[MockType, None, None]:
+def mock_analyzer(mocker: MockFixture) -> Generator[MockType, None, None]:
     yield mocker.NonCallableMagicMock(Analyzer)
 
 
 @pytest.fixture
-def mock_visualizer(mocker: MockFixture) -> t.Generator[MockType, None, None]:
+def mock_visualizer(mocker: MockFixture) -> Generator[MockType, None, None]:
     yield mocker.NonCallableMagicMock(Visualizer)
 
 
 @pytest.fixture
-def mock_clioutput(mocker: MockFixture) -> t.Generator[MockType, None, None]:
+def mock_clioutput(mocker: MockFixture) -> Generator[MockType, None, None]:
     yield mocker.NonCallableMagicMock(CLIOutput)
 
 
 @pytest.fixture
-def mock_config(mocker: MockFixture) -> t.Generator[MockType, None, None]:
+def mock_config(mocker: MockFixture) -> Generator[MockType, None, None]:
     mock_config = mocker.NonCallableMagicMock(Config)
 
     # set defaults for config items
@@ -57,7 +57,7 @@ def mock_config(mocker: MockFixture) -> t.Generator[MockType, None, None]:
 
 
 @pytest.fixture
-def mock_vmdata(mocker: MockFixture) -> t.Generator[MockType, None, None]:
+def mock_vmdata(mocker: MockFixture) -> Generator[MockType, None, None]:
     yield mocker.NonCallableMagicMock(VMData)
 
 
@@ -69,7 +69,7 @@ def mock_main(
     mock_clioutput: MockType,
     mock_config: MockType,
     mock_vmdata: MockType,
-) -> t.Generator[MockType, None, None]:
+) -> Generator[MockType, None, None]:
     main_obj = mocker.NonCallableMagicMock()
     main_obj.config_class = mocker.patch("vminfo_parser.__main__.Config")
     main_obj.config = main_obj.config_class.from_args.return_value = mock_config
@@ -167,7 +167,6 @@ def test_get_unsupported_os_no_graphs(
         mock_analyzer.generate_unsupported_os_counts.return_value
     )
     mock_visualizer.visualize_unsupported_os_distribution.assert_not_called()
-
 
 
 def test_sort_by_site(mock_vmdata: MockType, mock_clioutput: MockType) -> None:
