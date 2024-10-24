@@ -1,4 +1,4 @@
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 
 import pytest
 from pytest_mock import MockFixture, MockType
@@ -89,6 +89,17 @@ def mock_main(
         setattr(main_obj, func, mocker.patch(f"vminfo_parser.__main__.{func}"))
 
     yield main_obj
+
+
+def generate_by_os_side_effect(os_names: list[str] | None) -> Callable:
+
+    def side_effect(func: Callable[[str], None]) -> None:
+        if os_names is None:
+            return None
+        for os_name in os_names:
+            func(os_name)
+
+    return side_effect
 
 
 def test_main_default(mock_main: MockType) -> None:
@@ -235,11 +246,11 @@ def test_sort_by_site(mock_vmdata: MockType, mock_clioutput: MockType) -> None:
 def test_show_disk_space_by_os(
     mock_config: MockType, mock_analyzer: MockType, mock_clioutput: MockType, mock_visualizer: MockType
 ) -> None:
-    mock_analyzer.get_unique_os_names.return_value = ["os1", "os2"]
+    mock_analyzer.by_os.side_effect = generate_by_os_side_effect(["os1", "os2"])
     expected_df = mock_analyzer.get_disk_space.return_value
     expected_df.empty = False
     __main__.show_disk_space_by_os(mock_config, mock_analyzer, mock_clioutput, mock_visualizer)
-    mock_analyzer.get_unique_os_names.assert_called_once()
+    mock_analyzer.by_os.assert_called_once()
     mock_analyzer.get_disk_space.assert_has_calls(
         [
             ((), {"os_filter": "os1"}),
@@ -275,7 +286,7 @@ def test_show_disk_space_by_os_no_graphs(
 def test_show_disk_space_by_os_all_env(
     mock_config: MockType, mock_analyzer: MockType, mock_clioutput: MockType, mock_visualizer: MockType
 ) -> None:
-    mock_analyzer.get_unique_os_names.return_value = ["os1", "os2"]
+    mock_analyzer.by_os.side_effect = generate_by_os_side_effect(["os1", "os2"])
     expected_df = mock_analyzer.get_disk_space.return_value
     expected_df.empty = False
     mock_config.environment_filter = "all"
@@ -292,10 +303,43 @@ def test_show_disk_space_by_os_all_env(
 def test_show_disk_space_by_os_empty_df(
     mock_config: MockType, mock_analyzer: MockType, mock_clioutput: MockType, mock_visualizer: MockType
 ) -> None:
-    mock_analyzer.get_unique_os_names.return_value = ["os1", "os2"]
+    mock_analyzer.by_os.side_effect = generate_by_os_side_effect(["os1", "os2"])
     expected_df = mock_analyzer.get_disk_space.return_value
     expected_df.empty = True
     __main__.show_disk_space_by_os(mock_config, mock_analyzer, mock_clioutput, mock_visualizer)
     mock_clioutput.print_formatted_disk_space.assert_not_called()
     mock_visualizer.visualize_disk_space_vertical.assert_not_called()
     mock_visualizer.visualize_disk_space_horizontal.assert_not_called()
+
+
+def test_output_os_by_version(mock_analyzer: MockType, mock_clioutput: MockType, mock_visualizer: MockType) -> None:
+    mock_analyzer.by_os.side_effect = generate_by_os_side_effect(["os1", "os2"])
+    expected_df = mock_analyzer.get_os_version_distribution.return_value
+    __main__.output_os_by_version(mock_analyzer, mock_clioutput, mock_visualizer)
+    mock_clioutput.format_dataframe_output.assert_has_calls(
+        [
+            ((expected_df,), {"os_name": "os1"}),
+            ((expected_df,), {"os_name": "os2"}),
+        ]
+    )
+    mock_visualizer.visualize_os_version_distribution.assert_has_calls(
+        [
+            ((expected_df,), {"os_name": "os1"}),
+            ((expected_df,), {"os_name": "os2"}),
+        ]
+    )
+
+
+def test_output_os_by_version_no_graphs(
+    mock_analyzer: MockType, mock_clioutput: MockType, mock_visualizer: MockType
+) -> None:
+    mock_analyzer.by_os.side_effect = generate_by_os_side_effect(["os1", "os2"])
+    expected_df = mock_analyzer.get_os_version_distribution.return_value
+    __main__.output_os_by_version(mock_analyzer, mock_clioutput, None)
+    mock_clioutput.format_dataframe_output.assert_has_calls(
+        [
+            ((expected_df,), {"os_name": "os1"}),
+            ((expected_df,), {"os_name": "os2"}),
+        ]
+    )
+    mock_visualizer.visualize_os_version_distribution.assert_not_called()
