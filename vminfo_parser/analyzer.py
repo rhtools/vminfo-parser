@@ -174,21 +174,6 @@ class Analyzer:
 
         return disk_space_ranges_with_vms
 
-    def categorize_environment(self: t.Self, x: str, *args: str) -> str:
-        if pd.isnull(x):
-            return "non-prod"
-
-        if not args:
-            return "all envs"
-
-        # Ensure x is a string
-        if isinstance(x, str):
-            for arg in args:
-                if arg in x:
-                    return "prod"
-
-        return "non-prod"
-
     def convert_to_tb(self: t.Self, value: str) -> str:
         """
         Convert a given storage value in GB to TB if applicable.
@@ -344,7 +329,11 @@ class Analyzer:
         Returns:
             list[str]: list of unique OS Names
         """
-        return list(self.vm_data.df["OS Name"].unique())
+        return [
+            os_name
+            for os_name in self.vm_data.df["OS Name"].unique()
+            if os_name is not None and not pd.isna(os_name) and os_name != ""
+        ]
 
     def get_operating_system_counts(self: t.Self) -> pd.Series:
         """Returns the counts of operating systems based on the configured environment filter.
@@ -399,32 +388,20 @@ class Analyzer:
 
         return counts
 
-    def generate_supported_os_counts(
-        self: t.Self,
-        *env_keywords: str,
-        environment_filter: t.Optional[str] = None,
-    ) -> pd.Series:
-        data_cp = self.vm_data.df.copy()
-        if environment_filter and env_keywords:
-            data_cp[self.vm_data.column_headers["environment"]] = self.vm_data.df[
-                self.vm_data.column_headers["environment"]
-            ].apply(self.categorize_environment, args=env_keywords)
-
-        if environment_filter and environment_filter not in ["all", "both"]:
-            data_cp = data_cp[data_cp[self.vm_data.column_headers["environment"]] == environment_filter]
-        elif environment_filter == "both":
-            data_cp = (
+    def get_supported_os_counts(self: t.Self) -> pd.Series:
+        data_cp = self.vm_data.create_environment_filtered_dataframe(
+            self.config.environments, self.config.environment_filter
+        )
+        if self.config.environment_filter == "both":
+            filtered_counts = (
                 data_cp.groupby(["OS Name", self.vm_data.column_headers["environment"]]).size().unstack().fillna(0)
             )
-
-        if data_cp.empty:
-            LOGGER.warning("None found in %s", environment_filter)
-            return pd.Series()
-
-        if environment_filter and environment_filter != "both":
-            filtered_counts = data_cp["OS Name"].value_counts()
         else:
-            filtered_counts = data_cp
+            filtered_counts = data_cp["OS Name"].value_counts()
+
+        if filtered_counts.empty:
+            LOGGER.warning("None found in %s", self.config.environment_filter)
+            return pd.Series()
 
         filtered_counts = filtered_counts[filtered_counts.index.isin(const.SUPPORTED_OSES)]
         filtered_counts = filtered_counts.astype(int)
@@ -444,14 +421,16 @@ class Analyzer:
         return unsupported_counts
 
     def generate_os_version_distribution(self: t.Self) -> t.Generator[tuple[str, pd.DataFrame], None, None]:
-        for os_name in self.vm_data.df["OS Name"].unique():
-            if os_name is not None and not pd.isna(os_name) and os_name != "":
-                dataFrame = self.vm_data.df.copy()
-                filtered_df = dataFrame[(dataFrame["OS Name"] == os_name)]
-                counts = filtered_df["OS Version"].fillna("unknown").value_counts().reset_index()
-                counts.columns = ["OS Version", "Count"]
+        for os_name in self.get_unique_os_names():
+            yield os_name, self.get_os_version_distrobution(os_name)
 
-                if self.config.minimum_count is not None and self.config.minimum_count > 0:
-                    counts = counts[counts["Count"] >= self.config.minimum_count]
+    def get_os_version_distribution(self: t.Self, os_name: str) -> pd.Series:
+        df_copy = self.vm_data.df.copy()
+        df_copy = df_copy[(df_copy["OS Name"] == os_name)]
+        counts = df_copy["OS Version"].fillna("unknown").value_counts().reset_index()
+        counts.columns = ["OS Version", "Count"]
 
-                yield os_name, counts
+        if self.config.minimum_count is not None and self.config.minimum_count > 0:
+            counts = counts[counts["Count"] >= self.config.minimum_count]
+
+        return counts

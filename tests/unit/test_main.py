@@ -147,6 +147,21 @@ def test_main_funcs(mock_main: MockType, func: str, args: list[str]) -> None:
     getattr(mock_main, func).assert_called_once_with(*[getattr(mock_main, arg) for arg in args])
 
 
+@pytest.mark.parametrize(
+    ["func", "args"], test_const.MAIN_FUNCTION_CALLS.items(), ids=test_const.MAIN_FUNCTION_CALLS.keys()
+)
+def test_main_funcs_no_graphs(mock_main: MockType, func: str, args: list[str]) -> None:
+    setattr(mock_main.config, func, True)
+    expected_args: list[object | None] = []
+    for arg in args:
+        if arg == "visualizer":
+            expected_args.append(None)
+        else:
+            expected_args.append(getattr(mock_main, arg))
+    __main__.main()
+    getattr(mock_main, func).assert_called_once_with(*expected_args)
+
+
 def test_get_unsupported_os(mock_analyzer: MockType, mock_clioutput: MockType, mock_visualizer: MockType) -> None:
     __main__.get_unsupported_os(mock_analyzer, mock_clioutput, mock_visualizer)
     mock_analyzer.generate_unsupported_os_counts.assert_called_once()
@@ -167,6 +182,26 @@ def test_get_unsupported_os_no_graphs(
         mock_analyzer.generate_unsupported_os_counts.return_value
     )
     mock_visualizer.visualize_unsupported_os_distribution.assert_not_called()
+
+
+def test_get_supported_os(
+    mock_config: MockType, mock_analyzer: MockType, mock_clioutput: MockType, mock_visualizer: MockType
+) -> None:
+    __main__.get_supported_os(mock_config, mock_analyzer, mock_clioutput, mock_visualizer)
+    mock_analyzer.get_supported_os_counts.assert_called_once()
+    mock_clioutput.format_series_output.assert_called_once_with(mock_analyzer.get_supported_os_counts.return_value)
+    mock_visualizer.visualize_supported_os_distribution.assert_called_once_with(
+        mock_analyzer.get_supported_os_counts.return_value, environment_filter=mock_config.environment_filter
+    )
+
+
+def test_get_supported_os_no_graphs(
+    mock_config: MockType, mock_analyzer: MockType, mock_clioutput: MockType, mock_visualizer: MockType
+) -> None:
+    __main__.get_supported_os(mock_config, mock_analyzer, mock_clioutput, None)
+    mock_analyzer.get_supported_os_counts.assert_called_once()
+    mock_clioutput.format_series_output.assert_called_once_with(mock_analyzer.get_supported_os_counts.return_value)
+    mock_visualizer.visualize_supported_os_distribution.assert_not_called()
 
 
 def test_get_os_counts(
