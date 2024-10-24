@@ -189,7 +189,7 @@ def test_format_series_output(cli_output: CLIOutput, series: pd.Series, expected
     ids=["default"],
 )
 def test_format_dataframe_output(
-    cli_output: CLIOutput, dataFrame: pd.DataFrame, os_name: t.Optional[str], expected: str
+    cli_output: CLIOutput, dataFrame: pd.DataFrame, os_name: str | None, expected: str
 ) -> None:
     cli_output.format_dataframe_output(dataFrame, os_name)
     result = cli_output.output.getvalue()

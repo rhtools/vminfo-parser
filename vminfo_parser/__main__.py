@@ -15,16 +15,14 @@ from .vmdata import VMData
 LOGGER = logging.getLogger(__name__)
 
 
-def get_unsupported_os(analyzer: Analyzer, cli_output: CLIOutput, visualizer: t.Optional[Visualizer]) -> None:
+def get_unsupported_os(analyzer: Analyzer, cli_output: CLIOutput, visualizer: Visualizer | None) -> None:
     unsupported_counts = analyzer.generate_unsupported_os_counts()
     cli_output.format_series_output(unsupported_counts)
     if visualizer is not None:
         visualizer.visualize_unsupported_os_distribution(unsupported_counts)
 
 
-def get_supported_os(
-    config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: t.Optional[Visualizer]
-) -> None:
+def get_supported_os(config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: Visualizer | None) -> None:
     supported_counts: pd.Series
     if config.prod_env_labels and config.sort_by_env:
         supported_counts = analyzer.generate_supported_os_counts(
@@ -39,9 +37,7 @@ def get_supported_os(
         visualizer.visualize_supported_os_distribution(supported_counts, environment_filter=config.sort_by_env)
 
 
-def output_os_by_version(
-    config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: t.Optional[Visualizer]
-) -> None:
+def output_os_by_version(analyzer: Analyzer, cli_output: CLIOutput, visualizer: Visualizer | None) -> None:
     for os_name in analyzer.vm_data.df["OS Name"].unique():
         if os_name is not None and not pd.isna(os_name) and os_name != "":
             counts_dataframe = analyzer.generate_os_version_distribution(
@@ -153,7 +149,7 @@ def main(*args: str) -> None:  # noqa: C901
     vm_data.set_column_headings()
     vm_data.add_extra_columns()
 
-    visualizer: Visualizer = None
+    visualizer: Visualizer | None = None
     if config.generate_graphs:
         visualizer = Visualizer()
     cli_output = CLIOutput()
