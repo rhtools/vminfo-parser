@@ -11,7 +11,7 @@ import pytest
 import vminfo_parser.const as vm_const
 from vminfo_parser.vmdata import VMData
 
-from . import const as test_const
+from .. import const as test_const
 
 
 def test_get_file_type(datafile: tuple[bool, Path]) -> None:
@@ -142,7 +142,7 @@ def test_add_extra_columns_bypass(vmdata_with_headers: VMData, caplog: pytest.Lo
 @pytest.mark.parametrize(
     "osname,expected",
     [(name, expected) for name, expected in test_const.SERVER_NAME_MATCHES.items()],
-    ids=[name for name in test_const.SERVER_NAME_MATCHES.keys()],
+    ids=[name if len(name) < 36 else name[0:32] + "..." for name in test_const.SERVER_NAME_MATCHES.keys()],
 )
 def test_extra_column_regex(
     extra_columns_regexs: dict[str, re.Pattern], osname: str, expected: t.Optional[dict[str, str]]

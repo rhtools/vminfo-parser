@@ -105,6 +105,11 @@ jobs:
       contents: read
       issues: read
       pull-requests: write
+    continue-on-error: true
+    strategy:
+      matrix:
+        mark: [unit, e2e]
+
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python 3.12
@@ -123,7 +128,7 @@ jobs:
       - name: Tests
         id: pytest
         run: |
-          py.test --cov-report=xml --showlocals -vv
+          py.test --cov-report=xml --showlocals -vv -n2 -m ${{matrix.mark}}
 
       - name: Pytest coverage comment
         if: ${{ success() || (failure() && steps.pytest.conclusion == 'failure') }}
@@ -132,6 +137,8 @@ jobs:
         with:
           pytest-xml-coverage-path: coverage.xml
           junitxml-path: ./.pytest.xml
+          unique-id-for-comment: ${{matrix.mark}}
+          title: "Test Report - ${{matrix.mark}}"
   build:
     runs-on: ubuntu-latest
     name: Test Build

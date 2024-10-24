@@ -2,7 +2,7 @@ import pytest
 
 from vminfo_parser import main
 
-from . import const as test_const
+from .. import const as test_const
 
 
 @pytest.mark.parametrize(
