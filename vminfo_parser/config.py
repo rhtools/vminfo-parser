@@ -246,5 +246,5 @@ class Config:
         return []
 
     @cached_property
-    def environment_filter(self: t.Self) -> list[str]:
+    def environment_filter(self: t.Self) -> str:
         return self.sort_by_env if self.sort_by_env else "all"

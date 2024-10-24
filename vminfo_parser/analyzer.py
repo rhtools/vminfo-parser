@@ -320,6 +320,10 @@ class Analyzer:
 
         return self.sort_by_disk_space_range(df)
 
+    def generate_disk_space_by_os(self: t.Self) -> t.Generator[tuple[str, pd.DataFrame], None, None]:
+        for os_name in self.get_unique_os_names():
+            yield os_name, self.get_disk_space(os_name)
+
     def get_unique_os_names(self: t.Self) -> list[str]:
         """Returns unique os names from vmdata
 
@@ -420,7 +424,7 @@ class Analyzer:
 
         return unsupported_counts
 
-    def generate_os_version_distribution(self: t.Self) -> t.Generator[tuple[str, pd.DataFrame], None, None]:
+    def generate_os_version_distribution(self: t.Self) -> t.Generator[tuple[str, pd.Series], None, None]:
         for os_name in self.get_unique_os_names():
             yield os_name, self.get_os_version_distrobution(os_name)
 
