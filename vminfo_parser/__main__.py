@@ -39,11 +39,17 @@ def get_supported_os(
         visualizer.visualize_supported_os_distribution(supported_counts, environment_filter=config.sort_by_env)
 
 
-def output_os_by_version(analyzer: Analyzer, cli_output: CLIOutput, visualizer: t.Optional[Visualizer]) -> None:
-    for os_name, counts_dataframe in analyzer.generate_os_version_distribution():
-        cli_output.format_dataframe_output(counts_dataframe, os_name=os_name)
-        if visualizer is not None:
-            visualizer.visualize_os_version_distribution(counts_dataframe, os_name)
+def output_os_by_version(
+    config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: t.Optional[Visualizer]
+) -> None:
+    for os_name in analyzer.vm_data.df["OS Name"].unique():
+        if os_name is not None and not pd.isna(os_name) and os_name != "":
+            counts_dataframe = analyzer.generate_os_version_distribution(
+                analyzer.vm_data.df, os_name, config.minimum_count
+            )
+            cli_output.format_dataframe_output(counts_dataframe, os_name=os_name)
+            if visualizer is not None:
+                visualizer.visualize_os_version_distribution(counts_dataframe, os_name)
 
 
 def get_os_counts(config: Config, analyzer: Analyzer) -> None:
@@ -101,7 +107,7 @@ def show_disk_space_by_os(config: Config, vm_data: VMData, analyzer: Analyzer) -
             )
         else:
             analyzer.plot_disk_space_distribution(
-                os_name=config.os_name,
+                os_filter=config.os_name,
                 show_disk_in_tb=config.breakdown_by_terabyte,
             )
     else:
@@ -120,11 +126,17 @@ def show_disk_space_by_os(config: Config, vm_data: VMData, analyzer: Analyzer) -
             else:
                 if config.over_under_tb:
                     analyzer.sort_attribute_by_environment(
-                        os_name=os_name,
+                        attribute="diskSpace",
+                        os_filter=os_name,
                         show_disk_in_tb=config.breakdown_by_terabyte,
+                        granular_disk_space_by_os=config.disk_space_by_granular_os,
                     )
                 else:
-                    analyzer.sort_attribute_by_environment(os_name=os_name)
+                    analyzer.sort_attribute_by_environment(
+                        os_filter=os_name,
+                        attribute="diskSpace",
+                        granular_disk_space_by_os=config.disk_space_by_granular_os,
+                    )
 
 
 def sort_by_site(vm_data: VMData, cli_output: CLIOutput) -> None:
@@ -161,7 +173,7 @@ def main(*args: t.Optional[str]) -> None:  # noqa: C901
             get_os_counts(config, analyzer)
 
         case config.output_os_by_version:
-            output_os_by_version(analyzer, cli_output, visualizer)
+            output_os_by_version(config, analyzer, cli_output, visualizer)
 
         case config.get_supported_os:
             get_supported_os(config, analyzer, cli_output, visualizer)
