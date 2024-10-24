@@ -239,10 +239,7 @@ class Analyzer:
                 return f"{lower} {lower_unit} - {upper} {upper_unit}"
         return value
 
-    def sort_by_disk_space_range(
-        self: t.Self,
-        dataFrame: pd.DataFrame
-    ) -> pd.DataFrame:
+    def sort_by_disk_space_range(self: t.Self, dataFrame: pd.DataFrame) -> pd.DataFrame:
         """
         Sorts the provided DataFrame by disk space range, optionally breaking down by operating system.
 
@@ -307,10 +304,7 @@ class Analyzer:
 
         return sorted_range_counts_by_environment
 
-    def get_disk_space(
-        self: t.Self,
-        os_filter: str
-    ) -> pd.DataFrame:
+    def get_disk_space(self: t.Self, os_filter: str) -> pd.DataFrame:
         """
         Processes and formats disk space data from the provided DataFrame based on specified filters.
 
@@ -321,7 +315,9 @@ class Analyzer:
         Returns:
             pd.DataFrame: A DataFrame containing counts of disk space ranges, optionally sorted by environment
         """
-        df = self.vm_data.create_environment_filtered_dataframe(self.config.environments, self.config.environment_filter)
+        df = self.vm_data.create_environment_filtered_dataframe(
+            self.config.environments, self.config.environment_filter
+        )
 
         if os_filter:
             df = df[df["OS Name"] == os_filter]
