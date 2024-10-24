@@ -49,27 +49,14 @@ def output_os_by_version(
                 visualizer.visualize_os_version_distribution(counts_dataframe, os_name)
 
 
-def get_os_counts(config: Config, analyzer: Analyzer) -> None:
-    if config.environments:
-        if config.os_name:
-            analyzer.sort_attribute_by_environment(
-                *config.environments,
-                attribute="operatingSystem",
-                os_filter=config.os_name,
-            )
-        elif config.sort_by_env:
-            analyzer.sort_attribute_by_environment(
-                *config.environments,
-                attribute="operatingSystem",
-                environment_filter=config.sort_by_env,
-            )
-        else:
-            analyzer.sort_attribute_by_environment(*config.environments, attribute="operatingSystem")
-    else:
-        if config.os_name:
-            analyzer.sort_attribute_by_environment(attribute="operatingSystem", os_filter=config.os_name)
-        else:
-            analyzer.sort_attribute_by_environment(attribute="operatingSystem")
+def get_os_counts(
+    config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: t.Optional[Visualizer]
+) -> None:
+    counts: pd.Series = analyzer.get_operating_system_counts()
+    cli_output.format_series_output(counts)
+
+    if visualizer:
+        visualizer.visualize_os_distribution(counts, config.minimum_count)
 
 
 def get_disk_space_ranges(config: Config, analyzer: Analyzer) -> None:
@@ -167,7 +154,7 @@ def main(*args: str) -> None:  # noqa: C901
             get_disk_space_ranges(config, analyzer)
 
         case config.get_os_counts:
-            get_os_counts(config, analyzer)
+            get_os_counts(config, analyzer, cli_output, visualizer)
 
         case config.output_os_by_version:
             output_os_by_version(config, analyzer, cli_output, visualizer)

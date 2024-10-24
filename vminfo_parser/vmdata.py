@@ -164,5 +164,34 @@ class VMData:
 
         return site_usage
 
+    def create_environment_filtered_dataframe(
+        self: t.Self, prod_envs: list[str], env_filter: t.Optional[str] = None
+    ) -> pd.DataFrame:
+        data_cp = self.df.copy()
+        data_cp[self.column_headers["environment"]] = self.df[self.column_headers["environment"]].apply(
+            _categorize_environment, prod_envs=prod_envs
+        )
+
+        if env_filter and env_filter not in ["all", "both"]:
+            data_cp = data_cp[data_cp[self.column_headers["environment"]] == env_filter]
+
+        return data_cp
+
     def save_to_csv(self: t.Self, path: str) -> None:
         self.df.to_csv(path, index=False)
+
+
+def _categorize_environment(x: str, prod_envs: list[str]) -> str:
+    if pd.isnull(x):
+        return "non-prod"
+
+    if not prod_envs:
+        return "all envs"
+
+    # Ensure x is a string
+    if isinstance(x, str):
+        for env in prod_envs:
+            if env in x:
+                return "prod"
+
+    return "non-prod"
