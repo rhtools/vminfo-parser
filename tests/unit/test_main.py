@@ -169,6 +169,26 @@ def test_get_unsupported_os_no_graphs(
     mock_visualizer.visualize_unsupported_os_distribution.assert_not_called()
 
 
+def test_get_os_counts(
+    mock_config: MockType, mock_analyzer: MockType, mock_clioutput: MockType, mock_visualizer: MockType
+) -> None:
+    __main__.get_os_counts(mock_config, mock_analyzer, mock_clioutput, mock_visualizer)
+    mock_analyzer.get_operating_system_counts.assert_called_once()
+    mock_clioutput.format_series_output.assert_called_once_with(mock_analyzer.get_operating_system_counts.return_value)
+    mock_visualizer.visualize_os_distribution.assert_called_once_with(
+        mock_analyzer.get_operating_system_counts.return_value, mock_config.minimum_count
+    )
+
+
+def test_get_os_counts_no_graphs(
+    mock_config: MockType, mock_analyzer: MockType, mock_clioutput: MockType, mock_visualizer: MockType
+) -> None:
+    __main__.get_os_counts(mock_config, mock_analyzer, mock_clioutput, None)
+    mock_analyzer.get_operating_system_counts.assert_called_once()
+    mock_clioutput.format_series_output.assert_called_once_with(mock_analyzer.get_operating_system_counts.return_value)
+    mock_visualizer.visualize_os_distribution.assert_not_called()
+
+
 def test_sort_by_site(mock_vmdata: MockType, mock_clioutput: MockType) -> None:
     __main__.sort_by_site(mock_vmdata, mock_clioutput)
     mock_vmdata.create_site_specific_dataframe.assert_called_once()
