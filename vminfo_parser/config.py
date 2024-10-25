@@ -144,7 +144,7 @@ class Config:
         return key in self.__dict__
 
     @classmethod
-    def from_args(cls: t.Self, *args: str) -> t.Self:
+    def from_args(cls: type[t.Self], *args: str) -> t.Self:
         """Create Config object from passed arguements or sys.argv
 
         Args:

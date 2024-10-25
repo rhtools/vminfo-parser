@@ -1,6 +1,6 @@
 import pytest
 
-from vminfo_parser import main
+from vminfo_parser.__main__ import main
 
 from .. import const as test_const
 

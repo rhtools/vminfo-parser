@@ -1,4 +1,5 @@
 import typing as t
+from collections.abc import Generator
 
 import pandas as pd
 import pytest
@@ -7,7 +8,7 @@ from vminfo_parser.clioutput import CLIOutput
 
 
 @pytest.fixture
-def cli_output() -> t.Generator[CLIOutput, None, None]:
+def cli_output() -> Generator[CLIOutput, None, None]:
     co = CLIOutput()
     co.output.truncate()
     yield co
@@ -189,7 +190,7 @@ def test_format_series_output(cli_output: CLIOutput, series: pd.Series, expected
     ids=["default"],
 )
 def test_format_dataframe_output(
-    cli_output: CLIOutput, dataFrame: pd.DataFrame, os_name: t.Optional[str], expected: str
+    cli_output: CLIOutput, dataFrame: pd.DataFrame, os_name: str | None, expected: str
 ) -> None:
     cli_output.format_dataframe_output(dataFrame, os_name)
     result = cli_output.output.getvalue()

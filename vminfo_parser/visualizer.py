@@ -1,14 +1,15 @@
-# Std lib imports
 import logging
 import math
 import typing as t
+from collections.abc import Callable, Iterable
 
-import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
+from matplotlib import colormaps
+from matplotlib.figure import Figure
 from matplotlib.typing import ColorType
 
 from . import config, const
@@ -22,28 +23,29 @@ LOGGER = logging.getLogger(__name__)
 PlotterParam = t.ParamSpec("PlotterParam")
 
 
-def plotter(func: t.Callable[PlotterParam, None]) -> t.Callable[PlotterParam, t.Optional[plt.Figure]]:
-    """Decorator for functions that use matplotlib.pyplot to create graphs.
+def plotter(func: Callable[PlotterParam, None]) -> Callable[PlotterParam, Figure | None]:
+    """Decorate functions that use matplotlib.pyplot to create graphs.
+
     Allows for different output methods depending on external variables.
     Currently only implemented option is returning the figure in testing, and showing the figure interactively.
 
     Args:
-        func (t.Callable[PlotterParam, None]): Function or Method being wrapped
+        func (Callable[PlotterParam, None]): Function or Method being wrapped
 
     Returns:
-        t.Callable[PlotterParam, t.Optional[plt.Figure]]: Wrapped Funciton or Method
+        Callable[PlotterParam, Figure] | None: Wrapped Funciton or Method
     """
 
     def plot_wrapper(
         *args: PlotterParam.args,
         **kwargs: PlotterParam.kwargs,
-    ) -> t.Optional[plt.Figure]:
-        """wrapper for @plotter decorator.
+    ) -> Figure | None:
+        """Wrap plotter fuction to enable configured output.
 
         Returns:
-            t.Optional[plt.Figure]: Figure from current matplotlib canvas if in testing. Defaults to None
+            plt.Figure | None: Figure from current matplotlib canvas if in testing. Defaults to None
         """
-        data: pd.DataFrame | pd.Series = None
+        data: pd.DataFrame | pd.Series | None = None
         for arg in args:
             if isinstance(arg, pd.DataFrame | pd.Series):
                 data = arg
@@ -79,7 +81,7 @@ class Visualizer:
         self: t.Self,
         dataFrame: pd.DataFrame,
     ) -> None:
-        """Create horizontal bar chart for disk space
+        """Create horizontal bar chart for disk space.
 
         Args:
             dataFrame (pd.DataFrame): dataframe with Disk Space Counts
@@ -107,13 +109,13 @@ class Visualizer:
     def visualize_disk_space_vertical(
         self: t.Self,
         range_counts_by_environment: pd.DataFrame,
-        os_filter: t.Optional[str] = None,
+        os_filter: str | None = None,
     ) -> None:
-        """Create vertical bar chart for disk space
+        """Create vertical bar chart for disk space.
 
         Args:
             dataFrame (pd.DataFrame): dataframe with Disk Space Counts
-            os_filter (t.Optional[str], optional): Name of filter applied to dataFrame for use in plot title. Defaults to None.
+            os_filter (str | None, optional): Name of filter applied to dataFrame for use in plot title. Defaults to None.
         """
         range_counts_by_environment.plot(kind="bar", stacked=False, figsize=(12, 8), rot=45)
 
@@ -128,7 +130,7 @@ class Visualizer:
         os_names: list[str],
         min_count: int = 500,
     ) -> None:
-        """Create horizontal bar chart of OS Counts
+        """Create horizontal bar chart of OS Counts.
 
         Args:
             counts (pd.Series): series of counts per os
@@ -149,12 +151,12 @@ class Visualizer:
         self: t.Self,
         counts: pd.Series,
     ) -> None:
-        """Create pie chart of unsupported os counts
+        """Create pie chart of unsupported os counts.
 
         Args:
             counts (pd.Series): series of counts per os
         """
-        random_colors = cm.rainbow(np.linspace(0, 1, len(counts)))
+        random_colors = colormaps["rainbow"](np.linspace(0, 1, len(counts)))
         plt.pie(
             counts,
             labels=counts.index,
@@ -167,13 +169,13 @@ class Visualizer:
     def visualize_supported_os_distribution(
         self: t.Self,
         counts: pd.Series,
-        environment_filter: t.Optional[str] = None,
+        environment_filter: str | None = None,
     ) -> None:
-        """Create horizontal bar chart of supported os counts
+        """Create horizontal bar chart of supported os counts.
 
         Args:
             counts (pd.Series): series of counts per os
-            environment_filter (t.Optional[str], optional): environment filter for title. Defaults to None.
+            environment_filter (str | None, optional): environment filter for title. Defaults to None.
         """
         colors = [const.SUPPORTED_OS_COLORS[os] for os in counts.index]
 
@@ -207,7 +209,7 @@ class Visualizer:
         dataFrame: pd.DataFrame,
         os_name: str,
     ) -> None:
-        """Create horizontal bar chart for os version counts
+        """Create horizontal bar chart for os version counts.
 
         Args:
             dataFrame (pd.DataFrame): dataframe of os version counts
@@ -223,7 +225,8 @@ class Visualizer:
 
 
 def _get_colors(os_names: list[str]) -> list[ColorType]:
-    """Generate Colors for OS names of mixed support status
+    """Generate Colors for OS names of mixed support status.
+
     Uses np.linspace to generate equally spaced colors, then removes the colors closest
     to the predefined supported os colors.  returns a list with predifined and generated colors ordered by os_names arg
 
@@ -234,16 +237,16 @@ def _get_colors(os_names: list[str]) -> list[ColorType]:
         list[ColorType]: matplotlib colors for each os.
     """
     supported_os_names = list(set(os_names).intersection(const.SUPPORTED_OSES))
-    supported_os_colors: list[ColorType] = [
-        mcolors.to_rgba(const.SUPPORTED_OS_COLORS.get(os)) for os in supported_os_names
-    ]
-    raw_colors: list[ColorType] = cm.rainbow(np.linspace(0, 1, len(os_names))).tolist()
+    supported_os_colors: list[ColorType] = [mcolors.to_rgba(const.SUPPORTED_OS_COLORS[os]) for os in supported_os_names]
+    raw_colors: list[ColorType] = colormaps["rainbow"](
+        np.linspace(0, 1, len(os_names)),
+    ).tolist()
     color_diff: list[float] = [4.0 for _ in raw_colors]
 
     for idx, rawcolor in enumerate(raw_colors):
         diff: float = 4.0  # Max possible value
         for usedcolor in supported_os_colors:
-            new_diff = math.fsum([abs(a - b) for a, b in zip(usedcolor, rawcolor)])
+            new_diff = _color_diff(usedcolor, rawcolor)
             diff = new_diff if new_diff < diff else diff
         color_diff[idx] = diff
 
@@ -255,7 +258,22 @@ def _get_colors(os_names: list[str]) -> list[ColorType]:
     chosen_colors: list[ColorType] = []
     for os in os_names:
         if os in supported_os_names:
-            chosen_colors.append(mcolors.to_rgba(const.SUPPORTED_OS_COLORS.get(os)))
+            chosen_colors.append(mcolors.to_rgba(const.SUPPORTED_OS_COLORS[os]))
         else:
             chosen_colors.append(raw_colors.pop())
     return chosen_colors
+
+
+def _color_diff(color_a: ColorType, color_b: ColorType) -> float:
+    """Calculate absolute value of the distance between two colors.
+
+    Args:
+        a (ColorType): color to calculate difference
+        b (ColorType): color to calculate difference
+
+    Returns:
+        float: absolute value of the distance between a and b in rgba color space
+    """
+    color_tuples = (mcolors.to_rgba(color_a), mcolors.to_rgba(color_b))
+    color_values: Iterable[tuple[float, float]] = zip(*color_tuples)
+    return math.fsum([abs(a - b) for a, b in color_values])
