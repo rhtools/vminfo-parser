@@ -22,24 +22,19 @@ class Analyzer:
         self.vm_data = vm_data
         self.config = config
 
-    def generate_dynamic_ranges(
-        self: t.Self, max_disk_space: int, show_disk_in_tb: bool = False, over_under_tb: bool = False
-    ) -> list[tuple[int, int]]:
+    def generate_dynamic_ranges(self: t.Self, max_disk_space: int) -> list[tuple[int, int]]:
         """
         Generate dynamic disk space ranges based on the maximum disk space and specified display options.
         This function returns a list of tuples representing the ranges of disk space in either terabytes or gigabytes.
 
         Args:
             max_disk_space (int): The maximum disk space to consider for generating ranges.
-            show_disk_in_tb (bool, optional): If True, the ranges will be in terabytes. Defaults to False.
-            over_under_tb (bool, optional): If True, generates a simplified range for over/under thresholds.
-                Defaults to False.
 
         Returns:
             list: A list of tuples representing the dynamic disk space ranges.
 
         Examples:
-            >>> generate_dynamic_ranges(150000, show_disk_in_tb=True)
+            >>> generate_dynamic_ranges(150000)
             [(0, 2000), (2001, 10000), (10001, 20000), (20001, 50000), (50001, 150000)]
         """
         disk_space_ranges_dict = {
@@ -70,7 +65,7 @@ class Analyzer:
         disk_space_ranges = []
         # In this section we are dynamically removing unneeded ranges
         # from the total list of ranges based on the dataframe
-        if show_disk_in_tb:
+        if self.config.breakdown_by_terabyte:
             ranges = disk_space_ranges_dict["tb"]
             if max_disk_space > 100000:
                 disk_space_ranges = ranges
@@ -82,7 +77,7 @@ class Analyzer:
             # and add on our custom one
             elif max_disk_space > 20000:
                 disk_space_ranges = ranges[:3] + [(20001, max_disk_space)]
-        elif over_under_tb:
+        elif self.config.over_under_tb:
             disk_space_ranges = [(0, 1000), (1001, max_disk_space)]
         # The Same logic applies to the 'gb' items as to the 'tb' items
         # however, given that this is more fine-grained, there are more ranges to add
@@ -104,8 +99,6 @@ class Analyzer:
     def calculate_disk_space_ranges(
         self: t.Self,
         dataFrame: pd.DataFrame | None = None,
-        show_disk_in_tb: bool = False,
-        over_under_tb: bool = False,
     ) -> list[tuple[int, int]]:
         """
         Calculate the ranges of disk space based on the provided DataFrame and specified display options.
@@ -114,15 +107,12 @@ class Analyzer:
         Args:
             dataFrame (pd.DataFrame, optional): The DataFrame containing disk space data.
                 If None, the default DataFrame from the instance will be used. Defaults to None.
-            show_disk_in_tb (bool, optional): If True, the ranges will be calculated in terabytes. Defaults to False.
-            over_under_tb (bool, optional): If True, generates a simplified range for over/under thresholds.
-                Defaults to False.
 
         Returns:
             list[tuple[int, int]]: A list of tuples representing the disk space ranges that contain virtual machines.
 
         Examples:
-            >>> calculate_disk_space_ranges(dataFrame=my_dataframe, show_disk_in_tb=True)
+            >>> calculate_disk_space_ranges(dataFrame=my_dataframe)
             [(0, 2000), (2001, 10000)]
         """
         if dataFrame is None:
@@ -141,7 +131,7 @@ class Analyzer:
         if self.vm_data.column_headers["unitType"] == "MB":
             dataFrame[frameHeading] = dataFrame[frameHeading] / 1024
         max_disk_space = round(int(dataFrame[frameHeading].max()))
-        disk_space_ranges = self.generate_dynamic_ranges(max_disk_space, show_disk_in_tb, over_under_tb)
+        disk_space_ranges = self.generate_dynamic_ranges(max_disk_space)
         disk_space_ranges_with_vms = []
         for range_start, range_end in disk_space_ranges:
             epsilon = 1
@@ -289,11 +279,7 @@ class Analyzer:
             df = df[df["OS Name"] == os_filter]
 
         diskHeading = self.vm_data.column_headers["vmDisk"]
-        disk_space_ranges = self.calculate_disk_space_ranges(
-            dataFrame=df,
-            show_disk_in_tb=self.config.breakdown_by_terabyte,
-            over_under_tb=self.config.over_under_tb,
-        )
+        disk_space_ranges = self.calculate_disk_space_ranges(dataFrame=df)
 
         for lower, upper in disk_space_ranges:
             mask = (df[diskHeading] >= lower) & (df[diskHeading] <= upper)
