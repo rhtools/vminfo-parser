@@ -111,7 +111,7 @@ def main(*args: str) -> None:  # noqa: C901
             get_os_counts(config, analyzer, cli_output, visualizer)
 
         case config.output_os_by_version:
-            output_os_by_version(config, analyzer, cli_output, visualizer)
+            output_os_by_version(analyzer, cli_output, visualizer)
 
         case config.get_supported_os:
             get_supported_os(config, analyzer, cli_output, visualizer)

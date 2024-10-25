@@ -1087,7 +1087,7 @@ MAIN_FUNCTION_CALLS = {
     "show_disk_space_by_os": ["config", "analyzer", "cli_output", "visualizer"],
     "get_disk_space_ranges": ["config", "analyzer", "cli_output", "visualizer"],
     "get_os_counts": ["config", "analyzer", "cli_output", "visualizer"],
-    "output_os_by_version": ["config", "analyzer", "cli_output", "visualizer"],
+    "output_os_by_version": ["analyzer", "cli_output", "visualizer"],
     "get_supported_os": ["config", "analyzer", "cli_output", "visualizer"],
     "get_unsupported_os": ["analyzer", "cli_output", "visualizer"],
 }
