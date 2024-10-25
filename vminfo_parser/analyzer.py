@@ -7,9 +7,7 @@ from collections.abc import Callable
 import pandas as pd
 
 from . import const
-from .clioutput import CLIOutput
 from .config import Config
-from .visualizer import Visualizer
 from .vmdata import VMData
 
 LOGGER = logging.getLogger(__name__)
@@ -23,8 +21,6 @@ class Analyzer:
     ) -> None:
         self.vm_data = vm_data
         self.config = config
-        self.visualizer = Visualizer()
-        self.cli_output = CLIOutput()
 
     def generate_dynamic_ranges(
         self: t.Self, max_disk_space: int, show_disk_in_tb: bool = False, over_under_tb: bool = False

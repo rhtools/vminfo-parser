@@ -192,7 +192,6 @@ def main(*args: str) -> None:  # noqa: C901
     vm_data.save_to_csv("output.csv")
 
     # close clioutput
-    analyzer.cli_output.close()
     cli_output.close()
 
 

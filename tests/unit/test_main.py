@@ -81,8 +81,6 @@ def mock_main(
     main_obj.cli_output = main_obj.clioutput_class.return_value = mock_clioutput
     main_obj.analyzer_class = mocker.patch("vminfo_parser.__main__.Analyzer")
     main_obj.analyzer = main_obj.analyzer_class.return_value = mock_analyzer
-    main_obj.analyzer.cli_output = mocker.MagicMock(CLIOutput)
-    main_obj.analyzer.visualizer = mocker.MagicMock(Visualizer)
 
     # Add main functions to mock
     for func in test_const.MAIN_FUNCTION_CALLS.keys():
@@ -130,7 +128,6 @@ def test_main_default(mock_main: MockType) -> None:
 
     # Assert clioutputs closed
     mock_main.cli_output.close.assert_called_once()
-    mock_main.analyzer.cli_output.close.assert_called_once()
 
 
 def test_main_generate_yaml(mock_main: MockType) -> None:
