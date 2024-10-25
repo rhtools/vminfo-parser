@@ -39,14 +39,6 @@ def output_os_by_version(analyzer: Analyzer, cli_output: CLIOutput, visualizer: 
     analyzer.by_os(output_os_versions)
 
 
-def get_os_counts(config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: Visualizer | None) -> None:
-    counts: pd.Series = analyzer.get_operating_system_counts()
-    cli_output.format_series_output(counts)
-
-    if visualizer:
-        visualizer.visualize_os_distribution(counts, config.minimum_count)
-
-
 def get_disk_space_ranges(
     config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: Visualizer | None
 ) -> None:
@@ -58,6 +50,14 @@ def get_disk_space_ranges(
                 visualizer.visualize_disk_space_horizontal(disk_space_df)
             else:
                 visualizer.visualize_disk_space_vertical(disk_space_df, os_filter=config.os_name)
+
+
+def get_os_counts(config: Config, analyzer: Analyzer, cli_output: CLIOutput, visualizer: Visualizer | None) -> None:
+    counts: pd.Series = analyzer.get_operating_system_counts()
+    cli_output.format_series_output(counts)
+
+    if visualizer:
+        visualizer.visualize_os_distribution(counts, config.minimum_count)
 
 
 def show_disk_space_by_os(
