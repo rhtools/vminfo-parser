@@ -26,22 +26,6 @@ class Analyzer:
         self.visualizer = Visualizer()
         self.cli_output = CLIOutput()
 
-    def calculate_average_ram(self: t.Self, environment_type: str) -> None:
-        os_values = self.vm_data.df["OS Name"].unique()
-
-        self.cli_output.writeline("{:<20} {:<10}".format("OS", "Average RAM (GB)"))
-        self.cli_output.writeline("-" * 30)
-
-        for os in os_values:
-            filtered_hosts = self.vm_data.df[
-                (self.vm_data.df["OS Name"] == os)
-                & (self.vm_data.df[self.vm_data.column_headers["environment"]].str.contains(environment_type))
-            ]
-
-            if not filtered_hosts.empty:
-                avg_ram = filtered_hosts[self.vm_data.column_headers["vmMemory"]].mean()
-                self.cli_output.writeline("{:<20} {:<10.2f}".format(os, avg_ram))
-
     def generate_dynamic_ranges(
         self: t.Self, max_disk_space: int, show_disk_in_tb: bool = False, over_under_tb: bool = False
     ) -> list[tuple[int, int]]:
