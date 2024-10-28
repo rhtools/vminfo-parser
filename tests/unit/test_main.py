@@ -4,61 +4,8 @@ import pytest
 from pytest_mock import MockFixture, MockType
 
 from vminfo_parser import __main__
-from vminfo_parser.analyzer import Analyzer
-from vminfo_parser.clioutput import CLIOutput
-from vminfo_parser.config import Config
-from vminfo_parser.visualizer import Visualizer
-from vminfo_parser.vmdata import VMData
 
 from .. import const as test_const
-
-
-@pytest.fixture
-def mock_analyzer(mocker: MockFixture) -> Generator[MockType, None, None]:
-    yield mocker.NonCallableMagicMock(Analyzer)
-
-
-@pytest.fixture
-def mock_visualizer(mocker: MockFixture) -> Generator[MockType, None, None]:
-    yield mocker.NonCallableMagicMock(Visualizer)
-
-
-@pytest.fixture
-def mock_clioutput(mocker: MockFixture) -> Generator[MockType, None, None]:
-    yield mocker.NonCallableMagicMock(CLIOutput)
-
-
-@pytest.fixture
-def mock_config(mocker: MockFixture) -> Generator[MockType, None, None]:
-    mock_config = mocker.NonCallableMagicMock(Config)
-
-    # set defaults for config items
-    for prop, val in [
-        ("generate_yaml", False),
-        ("generate_graphs", False),
-        ("sort_by_site", False),
-        ("show_disk_space_by_os", False),
-        ("get_disk_space_ranges", False),
-        ("get_os_counts", False),
-        ("output_os_by_version", False),
-        ("get_supported_os", False),
-        ("get_unsupported_os", False),
-        ("file", None),
-        ("minimum_count", 0),
-        ("os_name", None),
-        ("over_under_tb", False),
-        ("breakdown_by_terabyte", False),
-        ("disk_space_by_granular_os", False),
-        ("prod_env_labels", None),
-        ("sort_by_env", None),
-    ]:
-        setattr(mock_config, prop, val)
-    yield mock_config
-
-
-@pytest.fixture
-def mock_vmdata(mocker: MockFixture) -> Generator[MockType, None, None]:
-    yield mocker.NonCallableMagicMock(VMData)
 
 
 @pytest.fixture
