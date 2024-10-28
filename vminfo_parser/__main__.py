@@ -106,7 +106,7 @@ def get_os_counts(config: Config, analyzer: Analyzer, cli_output: CLIOutput, vis
     cli_output.format_series_output(counts)
 
     if visualizer:
-        visualizer.visualize_os_distribution(counts, config.minimum_count)
+        visualizer.visualize_os_distribution(counts, config.count_filter)
 
 
 def show_disk_space_by_os(

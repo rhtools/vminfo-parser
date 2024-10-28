@@ -209,14 +209,14 @@ class Config:
             LOGGER.critical("File not specified in yaml or command line")
             exit(1)
 
-        if self.sort_by_env and not self.environments:
+        if self.environment_filter != "all" and not self.environments:
             LOGGER.critical(
                 "You specified you wanted to sort by environment but "
                 "did not provide a definition of what categorizes a Prod environment... exiting"
             )
             exit(1)
 
-    def generate_yaml_from_parser(self: t.Self, file_path: str = None) -> None:
+    def generate_yaml_from_parser(self: t.Self, file_path: str | None = None) -> None:
         """
         Generate a YAML file containing all arguments from the given ArgumentParser.
 
@@ -227,13 +227,13 @@ class Config:
         if file_path is None:
             file_path = "parser_arguments.yaml"
         config_data_attributes = {}
-        for attr, value in self.__dict__.items():
+        for attr in _get_parser().parse_args(args=()).__dict__.keys():
             if attr == "file":
-                config_data_attributes[attr] = str(value)
+                config_data_attributes[attr] = str(getattr(self, attr))
             elif attr in ["yaml", "generate_yaml"]:
                 continue
             else:
-                config_data_attributes[attr] = value
+                config_data_attributes[attr] = getattr(self, attr)
 
         # Write to YAML file
         with open(file_path, "w") as f:
@@ -248,3 +248,7 @@ class Config:
     @cached_property
     def environment_filter(self: t.Self) -> str:
         return self.sort_by_env if self.sort_by_env else "all"
+
+    @cached_property
+    def count_filter(self: t.Self) -> int | None:
+        return self.minimum_count if self.minimum_count > 0 else None

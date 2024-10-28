@@ -137,6 +137,10 @@ def mock_config(mocker: MockFixture) -> Generator[MockType, None, None]:
 
         mock_config.environment_filter = mocker.PropertyMock(side_effect=environment_filter)
 
+        def count_filter() -> int | None:
+            return mock_config.minimum_count if mock_config.minimum_count > 0 else None
+
+        mock_config.count_filter = mocker.PropertyMock(side_effect=count_filter)
 
     yield mock_config
 

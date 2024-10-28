@@ -309,7 +309,7 @@ class Analyzer:
             return []
         if self.config.os_name:
             if self.config.os_name in os_names:
-                return [self.config.os_names]
+                return [self.config.os_name]
             return []
         return os_names
 
@@ -391,21 +391,32 @@ class Analyzer:
 
         unsupported_counts = counts[~counts.index.isin(const.SUPPORTED_OSES)]
 
-        other_counts = unsupported_counts[unsupported_counts <= 500]
+        other_counts_filter: int = 500
+        if self.config.count_filter:
+            other_counts_filter = self.config.count_filter
+        other_counts = unsupported_counts[unsupported_counts <= other_counts_filter]
         other_total = other_counts.sum()
-        unsupported_counts = unsupported_counts[unsupported_counts > 500]
+        unsupported_counts = unsupported_counts[unsupported_counts > other_counts_filter]
         unsupported_counts["Other"] = other_total
 
         return unsupported_counts
 
-    def get_os_version_distribution(self: t.Self, os_name: str) -> pd.Series:
+    def get_os_version_distribution(self: t.Self, os_name: str) -> pd.DataFrame:
+        """Create Dataframe of Counts by OS Version for a given OS.
+
+        Args:
+            os_name (str): Name of OS to count versions
+
+        Returns:
+            pd.DataFrame: Dataframe with 2 columns, one labeled "OS Version", and the other labeled "Count"
+        """
         df_copy = self.vm_data.df.copy()
         df_copy = df_copy[(df_copy["OS Name"] == os_name)]
         counts = df_copy["OS Version"].fillna("unknown").value_counts().reset_index()
         counts.columns = ["OS Version", "Count"]
 
-        if self.config.minimum_count is not None and self.config.minimum_count > 0:
-            counts = counts[counts["Count"] >= self.config.minimum_count]
+        if self.config.count_filter:
+            counts = counts[counts["Count"] >= self.config.count_filter]
 
         return counts
 

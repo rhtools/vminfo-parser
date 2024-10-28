@@ -166,7 +166,7 @@ def test_get_os_counts(
     mock_analyzer.get_operating_system_counts.assert_called_once()
     mock_clioutput.format_series_output.assert_called_once_with(mock_analyzer.get_operating_system_counts.return_value)
     mock_visualizer.visualize_os_distribution.assert_called_once_with(
-        mock_analyzer.get_operating_system_counts.return_value, mock_config.minimum_count
+        mock_analyzer.get_operating_system_counts.return_value, mock_config.count_filter
     )
 
 
