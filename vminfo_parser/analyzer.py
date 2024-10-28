@@ -324,7 +324,7 @@ class Analyzer:
             pd.Series: Series object containing counts, indexed by OS
         """
         df = self.vm_data.create_environment_filtered_dataframe(
-            self.config.environments, env_filter=self.config.sort_by_env
+            self.config.environments, env_filter=self.config.environment_filter
         )
 
         if self.config.os_name:
@@ -347,21 +347,21 @@ class Analyzer:
         if dataFrame is None:
             dataFrame = self.vm_data.df
 
-        environment_filter = self.config.sort_by_env
-        min_count = self.config.minimum_count
-
-        if not environment_filter or environment_filter == "all":
+        if self.config.environment_filter == "all":
             counts = dataFrame["OS Name"].value_counts()
-            counts = counts[counts >= min_count]
+            if self.config.count_filter:
+                counts = counts[counts >= self.config.count_filter]
         else:
             counts = (
                 dataFrame.groupby(["OS Name", self.vm_data.column_headers["environment"]]).size().unstack().fillna(0)
             )
-            counts["total"] = counts.sum(axis=1)
-            counts["combined_total"] = counts["prod"] + counts["non-prod"]
-            counts = counts[(counts["total"] >= min_count) & (counts["combined_total"] >= min_count)].drop(
-                ["total", "combined_total"], axis=1
-            )
+            if self.config.count_filter:
+                counts["total"] = counts.sum(axis=1)
+                counts["combined_total"] = counts["prod"] + counts["non-prod"]
+                counts = counts[
+                    (counts["total"] >= self.config.count_filter)
+                    & (counts["combined_total"] >= self.config.count_filter)
+                ].drop(["total", "combined_total"], axis=1)
             counts = counts.sort_values(by="prod", ascending=False)
 
         return counts
