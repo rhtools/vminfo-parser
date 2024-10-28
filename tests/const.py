@@ -314,10 +314,10 @@ EXPECTED_CLI_OUTPUT = {
     "supported_os_both_envs": (
         "Environment               non-prod   prod\n"
         "OS Name\n"
-        "Microsoft Windows              399   6881\n"
         "Microsoft Windows Server      3614  10118\n"
-        "Red Hat Enterprise Linux       437    713\n"
-        "SUSE Linux Enterprise          644   1347"
+        "Microsoft Windows              399   6881\n"
+        "SUSE Linux Enterprise          644   1347\n"
+        "Red Hat Enterprise Linux       437    713"
     ),
     "supported_os_min_count": (
         "OS Name\n"
