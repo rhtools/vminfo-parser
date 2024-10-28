@@ -332,7 +332,7 @@ class Analyzer:
 
         return self._calculate_os_counts(df)
 
-    def _calculate_os_counts(self: t.Self, dataFrame: pd.DataFrame = None) -> pd.Series:
+    def _calculate_os_counts(self: t.Self, dataFrame: pd.DataFrame | None = None) -> pd.Series:
         """Calculates the counts of operating systems based on the provided environment filter.
 
         This function analyzes the DataFrame to count occurrences of operating systems, applying filters as necessary.
@@ -342,16 +342,14 @@ class Analyzer:
         Args:
             dataFrame (pd.DataFrame, optional): The DataFrame containing the data to analyze. Defaults to None.
         Returns:
-            tuple[pd.Series, list[str]]: A tuple containing a Series of counts and a list of operating system names.
+            pd.Series: A Series of counts.
         """
         if dataFrame is None:
-            dataFrame = self.vm_data.df
+            dataFrame = self.vm_data.create_environment_filtered_dataframe(
+                self.config.environments, env_filter=self.config.environment_filter
+            )
 
-        if self.config.environment_filter == "all":
-            counts = dataFrame["OS Name"].value_counts()
-            if self.config.count_filter:
-                counts = counts[counts >= self.config.count_filter]
-        else:
+        if self.config.environment_filter == "both":
             counts = (
                 dataFrame.groupby(["OS Name", self.vm_data.column_headers["environment"]]).size().unstack().fillna(0)
             )
@@ -363,23 +361,25 @@ class Analyzer:
                     & (counts["combined_total"] >= self.config.count_filter)
                 ].drop(["total", "combined_total"], axis=1)
             counts = counts.sort_values(by="prod", ascending=False)
+        else:
+            counts = dataFrame["OS Name"].value_counts()
+            if self.config.count_filter:
+                counts = counts[counts >= self.config.count_filter]
 
         return counts
 
     def get_supported_os_counts(self: t.Self) -> pd.Series:
-        data_cp = self.vm_data.create_environment_filtered_dataframe(
-            self.config.environments, self.config.environment_filter
-        )
-        if self.config.environment_filter == "both":
-            filtered_counts = (
-                data_cp.groupby(["OS Name", self.vm_data.column_headers["environment"]]).size().unstack().fillna(0)
-            )
-        else:
-            filtered_counts = data_cp["OS Name"].value_counts()
+        """Returns the counts of supported operating systems based on the configured environment filter.
 
-        if filtered_counts.empty:
-            LOGGER.warning("None found in %s", self.config.environment_filter)
-            return pd.Series()
+        This function calculates the counts of supported operating systems and returns the results.
+
+        Args:
+            None
+        Returns:
+            pd.Series: Series object containing counts, indexed by OS
+        """
+
+        filtered_counts = self._calculate_os_counts()
 
         filtered_counts = filtered_counts[filtered_counts.index.isin(const.SUPPORTED_OSES)]
         filtered_counts = filtered_counts.astype(int)
