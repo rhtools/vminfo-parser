@@ -326,13 +326,7 @@ EXPECTED_CLI_OUTPUT = {
         "SUSE Linux Enterprise        1991\n"
         "Red Hat Enterprise Linux     1150"
     ),
-    "supported_os_non_prod": (
-        "OS Name\n"
-        "Microsoft Windows Server    3614\n"
-        "SUSE Linux Enterprise        644\n"
-        "Red Hat Enterprise Linux     437\n"
-        "Microsoft Windows            399"
-    ),
+    "supported_os_non_prod": ("OS Name\n" "Microsoft Windows Server    3614\n" "SUSE Linux Enterprise        644"),
     "unsupported_os_both": (
         "OS Name\n"
         "Ubuntu Linux    16583\n"
