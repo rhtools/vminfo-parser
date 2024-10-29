@@ -321,7 +321,7 @@ class Analyzer:
 
         return self.sort_by_disk_space_range(df)
 
-    def get_unique_os_names(self: t.Self, df: pd.DataFrame | None = None) -> list[str]:
+    def get_unique_os_names(self: t.Self) -> list[str]:
         """Generate list of unique os names from dataframe.
 
         Uses vmdata object if no dataframe is passed.
