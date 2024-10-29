@@ -167,6 +167,15 @@ class VMData:
     def create_environment_filtered_dataframe(
         self: t.Self, prod_envs: list[str], env_filter: str | None = None
     ) -> pd.DataFrame:
+        """Create copy of dataframe, with environment column replaced with category, and filtered by requested filter
+
+        Args:
+            prod_envs (list[str]): list of environment labels defined as prod. (all other labels will be non-prod)
+            env_filter (str | None, optional): filter to apply to environment column. Defaults to None.
+
+        Returns:
+            pd.DataFrame: dataframe filtered by env_filter with modified environment column
+        """
         data_cp = self.df.copy()
         data_cp[self.column_headers["environment"]] = self.df[self.column_headers["environment"]].apply(
             _categorize_environment, prod_envs=prod_envs
@@ -182,6 +191,15 @@ class VMData:
 
 
 def _categorize_environment(x: str, prod_envs: list[str]) -> str:
+    """Categorize environment value based on configured prod environment labels
+
+    Args:
+        x (str): environment value to compare, passed by pandas when using per row operations
+        prod_envs (list[str]): list of environment labels to define as prod
+
+    Returns:
+        str: environment category, one of ["non-prod", "prod", "all envs"]
+    """
     if pd.isnull(x):
         return "non-prod"
 
