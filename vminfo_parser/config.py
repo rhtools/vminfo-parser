@@ -244,3 +244,7 @@ class Config:
         if self.prod_env_labels:
             return self.prod_env_labels.split(",")
         return []
+
+    @cached_property
+    def environment_filter(self: t.Self) -> str:
+        return self.sort_by_env if self.sort_by_env else "all"

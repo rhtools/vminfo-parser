@@ -127,18 +127,17 @@ class Visualizer:
     def visualize_os_distribution(
         self: t.Self,
         counts: pd.Series,
-        os_names: list[str],
         min_count: int = 500,
     ) -> None:
         """Create horizontal bar chart of OS Counts.
 
         Args:
             counts (pd.Series): series of counts per os
-            os_names (list[str]): names of oses in counts
             min_count (int, optional): minimum count of oses graphed for title. Defaults to 500.
         """
+        # this may not be needed anymore, it might be simplifiable to counts.index
+        os_names: list[str] = [idx[1] for idx in counts.index] if counts.index.nlevels == 2 else counts.index
         # Plot the counts as a horizontal bar chart with specified and random colors
-        # ax = counts.plot(kind="barh", rot=45, color=colors)
         counts.plot(kind="barh", rot=45, color=_get_colors(os_names))
 
         # Set titles and labels for the plot

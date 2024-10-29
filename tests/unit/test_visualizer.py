@@ -103,7 +103,6 @@ def test_visualize_os_distribution(visualizer: Visualizer, all_os_count_series: 
     sorted_series = all_os_count_series[all_os_count_series >= 100].sort_values(ascending=False)
     return visualizer.visualize_os_distribution(
         sorted_series,
-        os_names=list(sorted_series.index),
         min_count=100,
     )
 
