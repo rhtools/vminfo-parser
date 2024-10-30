@@ -297,7 +297,7 @@ class Analyzer:
             None
 
         Returns:
-            list[str]: list of unique OS Names
+            list[str]: A list of unique OS Names
         """
 
         os_names: list[str] = [
@@ -321,7 +321,8 @@ class Analyzer:
         Args:
             None
         Returns:
-            pd.Series | pd.DataFrame: Series object containing counts, indexed by OS, or DataFrame object containing counts per environment category, indexed by OS
+            pd.Series | pd.DataFrame: Series object containing counts, indexed by OS, or
+              DataFrame object containing counts per environment category, indexed by OS
         """
         df = self.vm_data.create_environment_filtered_dataframe(
             self.config.environments, env_filter=self.config.environment_filter
@@ -342,7 +343,8 @@ class Analyzer:
         Args:
             dataFrame (pd.DataFrame, optional): The DataFrame containing the data to analyze. Defaults to None.
         Returns:
-            pd.Series: A Series of counts.
+            pd.Series | pd.DataFrame: Series object containing counts, indexed by OS, or
+              DataFrame object containing counts per environment category, indexed by OS
         """
         if dataFrame is None:
             dataFrame = self.vm_data.create_environment_filtered_dataframe(
@@ -408,7 +410,7 @@ class Analyzer:
                     # remove counts below minimum from counts series
                     counts = counts[counts >= self.config.count_filter]
                     # add new entry in series with a name of "Other" and total of all removed entries
-                    counts["Other"] = other_counts.sum()
+                    counts["Other"] = other_total
 
         return counts.astype(int)
 
@@ -420,7 +422,8 @@ class Analyzer:
         Args:
             None
         Returns:
-            pd.Series | pd.DataFrame: Series object containing counts, indexed by OS, or DataFrame object containing counts per environment category, indexed by OS
+            pd.Series | pd.DataFrame: Series object containing counts, indexed by OS, or
+              DataFrame object containing counts per environment category, indexed by OS
         """
 
         dataFrame = self.vm_data.create_environment_filtered_dataframe(
@@ -439,7 +442,8 @@ class Analyzer:
         Args:
             None
         Returns:
-            pd.Series | pd.DataFrame: Series object containing counts, indexed by OS, or DataFrame object containing counts per environment category, indexed by OS
+            pd.Series | pd.DataFrame: Series object containing counts, indexed by OS, or
+              DataFrame object containing counts per environment category, indexed by OS
         """
 
         dataFrame = self.vm_data.create_environment_filtered_dataframe(
