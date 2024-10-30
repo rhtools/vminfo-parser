@@ -96,17 +96,58 @@ def test_get_os_counts_for_os_name(analyzer: Analyzer, mocker: MockFixture) -> N
 def test_get_supported_os_counts(analyzer: Analyzer, mocker: MockFixture) -> None:
     mock_calculate = mocker.patch.object(analyzer, "_calculate_os_counts")
     mock_count_df = mock_calculate.return_value
-    mock_filtered_df = mock_count_df.__getitem__.return_value
+    mock_env_df = analyzer.vm_data.create_environment_filtered_dataframe.return_value
+    mock_filtered_df = mock_env_df.__getitem__.return_value
 
     response = analyzer.get_supported_os_counts()
 
-    # Assert _calculate_os_counts called correctly
-    mock_calculate.assert_called_once_with()
+    # Assert create_environment_filtered_dataframe called correctly
+    analyzer.vm_data.create_environment_filtered_dataframe.assert_called_once_with(
+        analyzer.config.environments, env_filter=analyzer.config.environment_filter
+    )
 
     # Assert counts filtered by supported os set from const
-    mock_count_df.index.isin.assert_called_once_with(vm_const.SUPPORTED_OSES)
-    mock_count_df.__getitem__.assert_called_once_with(mock_count_df.index.isin.return_value)
-    mock_filtered_df.astype.assert_called_once_with(int)
+    mock_filtered_df.isin.assert_called_once_with(vm_const.SUPPORTED_OSES)
+    mock_env_df.__getitem__.assert_has_calls(
+        [
+            ("", ("OS Name",), {}),
+            ("", (mock_filtered_df.isin.return_value,), {}),
+        ],
+        any_order=True,
+    )
+
+    # Assert _calculate_os_counts called correctly
+    mock_calculate.assert_called_once_with(mock_filtered_df)
 
     # Assert correct value is returned
-    assert response == mock_filtered_df.astype.return_value
+    assert response == mock_count_df
+
+
+def test_get_unsupported_os_counts(analyzer: Analyzer, mocker: MockFixture) -> None:
+    mock_calculate = mocker.patch.object(analyzer, "_calculate_os_counts")
+    mock_count_df = mock_calculate.return_value
+    mock_env_df = analyzer.vm_data.create_environment_filtered_dataframe.return_value
+    mock_filtered_df = mock_env_df.__getitem__.return_value
+
+    response = analyzer.get_supported_os_counts()
+
+    # Assert create_environment_filtered_dataframe called correctly
+    analyzer.vm_data.create_environment_filtered_dataframe.assert_called_once_with(
+        analyzer.config.environments, env_filter=analyzer.config.environment_filter
+    )
+
+    # Assert counts filtered by supported os set from const
+    mock_filtered_df.isin.assert_called_once_with(vm_const.SUPPORTED_OSES)
+    mock_env_df.__getitem__.assert_has_calls(
+        [
+            ("", ("OS Name",), {}),
+            ("", (mock_filtered_df.isin.return_value,), {}),  # mock ignores the ~ negation that is performed by pandas
+        ],
+        any_order=True,
+    )
+
+    # Assert _calculate_os_counts called correctly
+    mock_calculate.assert_called_once_with(mock_filtered_df)
+
+    # Assert correct value is returned
+    assert response == mock_count_df

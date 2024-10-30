@@ -119,12 +119,10 @@ def test_main_funcs_no_graphs(mock_main: MockType, func: str, args: list[str]) -
 
 def test_get_unsupported_os(mock_analyzer: MockType, mock_clioutput: MockType, mock_visualizer: MockType) -> None:
     __main__.get_unsupported_os(mock_analyzer, mock_clioutput, mock_visualizer)
-    mock_analyzer.generate_unsupported_os_counts.assert_called_once()
-    mock_clioutput.format_series_output.assert_called_once_with(
-        mock_analyzer.generate_unsupported_os_counts.return_value
-    )
+    mock_analyzer.get_unsupported_os_counts.assert_called_once()
+    mock_clioutput.format_series_output.assert_called_once_with(mock_analyzer.get_unsupported_os_counts.return_value)
     mock_visualizer.visualize_unsupported_os_distribution.assert_called_once_with(
-        mock_analyzer.generate_unsupported_os_counts.return_value
+        mock_analyzer.get_unsupported_os_counts.return_value
     )
 
 
@@ -132,10 +130,8 @@ def test_get_unsupported_os_no_graphs(
     mock_analyzer: MockType, mock_clioutput: MockType, mock_visualizer: MockType
 ) -> None:
     __main__.get_unsupported_os(mock_analyzer, mock_clioutput, None)
-    mock_analyzer.generate_unsupported_os_counts.assert_called_once()
-    mock_clioutput.format_series_output.assert_called_once_with(
-        mock_analyzer.generate_unsupported_os_counts.return_value
-    )
+    mock_analyzer.get_unsupported_os_counts.assert_called_once()
+    mock_clioutput.format_series_output.assert_called_once_with(mock_analyzer.get_unsupported_os_counts.return_value)
     mock_visualizer.visualize_unsupported_os_distribution.assert_not_called()
 
 

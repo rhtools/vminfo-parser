@@ -313,7 +313,7 @@ class Analyzer:
             return []
         return os_names
 
-    def get_operating_system_counts(self: t.Self) -> pd.Series:
+    def get_operating_system_counts(self: t.Self) -> pd.Series | pd.DataFrame:
         """Returns the counts of operating systems based on the configured environment filter.
 
         This function calculates the counts of operating systems and returns the results.
@@ -321,7 +321,7 @@ class Analyzer:
         Args:
             None
         Returns:
-            pd.Series: Series object containing counts, indexed by OS
+            pd.Series | pd.DataFrame: Series object containing counts, indexed by OS, or DataFrame object containing counts per environment category, indexed by OS
         """
         df = self.vm_data.create_environment_filtered_dataframe(
             self.config.environments, env_filter=self.config.environment_filter
@@ -332,7 +332,7 @@ class Analyzer:
 
         return self._calculate_os_counts(df)
 
-    def _calculate_os_counts(self: t.Self, dataFrame: pd.DataFrame | None = None) -> pd.Series:
+    def _calculate_os_counts(self: t.Self, dataFrame: pd.DataFrame | None = None) -> pd.Series | pd.DataFrame:
         """Calculates the counts of operating systems based on the provided environment filter.
 
         This function analyzes the DataFrame to count occurrences of operating systems, applying filters as necessary.
@@ -350,25 +350,69 @@ class Analyzer:
             )
 
         if self.config.environment_filter == "both":
-            counts = (
-                dataFrame.groupby(["OS Name", self.vm_data.column_headers["environment"]]).size().unstack().fillna(0)
-            )
+            # create Series of counts by "OS Name" and "environment"
+            # example:
+            #   OS Name   Environment
+            #   CentOS    non-prod         138
+            #             prod             454
+
+            counts_raw: pd.Series[int] = dataFrame.groupby(
+                ["OS Name", self.vm_data.column_headers["environment"]]
+            ).size()
+            # convert Series back into DataFrame
+            # example:
+            #   Environment                                         non-prod     prod
+            #   OS Name
+            #   CentOS                                                 138.0    454.0
+            counts: pd.DataFrame = counts_raw.unstack().fillna(0)
+
+            # add total column to counts DataFrame to use for filters and sorting
+            counts["total"] = counts.sum(axis=1)
+            # sort by total counts
+            counts: pd.DataFrame = counts.sort_values(by="total", ascending=False)
+
+            # implement minimum count filtering
             if self.config.count_filter:
-                counts["total"] = counts.sum(axis=1)
-                counts["combined_total"] = counts["prod"] + counts["non-prod"]
-                counts = counts[
-                    (counts["total"] >= self.config.count_filter)
-                    & (counts["combined_total"] >= self.config.count_filter)
-                ].drop(["total", "combined_total"], axis=1)
-            counts = counts.sort_values(by="prod", ascending=False)
+                # create DataFrame of counts less than count_filter
+                other_counts: pd.DataFrame = counts[counts["total"] < self.config.count_filter]
+                # if only one entry below count_fiter,  dont filter it
+                if len(other_counts) > 1:
+                    # sum other_counts by column
+                    other_sum: pd.Series = other_counts.sum()
+                    # remove counts below minimum from counts dataframe
+                    counts = counts[counts["total"] >= self.config.count_filter]
+                    # sort by total
+                    # before other is readded
+                    counts = counts.sort_values(by="total", ascending=False)
+                    # transpose counts for addition of Other
+                    counts = counts.T
+                    # Add other_sum as column
+                    counts["Other"] = other_sum
+                    # reverse transpose
+                    counts = counts.T
+
+            counts = counts.drop("total", axis=1)
+
         else:
-            counts = dataFrame["OS Name"].value_counts()
+            # create a Series of sorted integers (counts) from index "OS Name" in dataframe
+            counts: pd.Series[int] = dataFrame["OS Name"].value_counts()
+
+            # implement minimum count filtering
             if self.config.count_filter:
-                counts = counts[counts >= self.config.count_filter]
+                # create series of counts less than count_filter
+                other_counts: pd.Series[int] = counts[counts < self.config.count_filter]
+                # if only one entry below count_fiter,  dont filter it
+                if len(other_counts) > 1:
+                    # total of all counts below minimum
+                    other_total = other_counts.sum()
+                    # remove counts below minimum from counts series
+                    counts = counts[counts >= self.config.count_filter]
+                    # add new entry in series with a name of "Other" and total of all removed entries
+                    counts["Other"] = other_counts.sum()
 
-        return counts
+        return counts.astype(int)
 
-    def get_supported_os_counts(self: t.Self) -> pd.Series:
+    def get_supported_os_counts(self: t.Self) -> pd.Series | pd.DataFrame:
         """Returns the counts of supported operating systems based on the configured environment filter.
 
         This function calculates the counts of supported operating systems and returns the results.
@@ -376,30 +420,35 @@ class Analyzer:
         Args:
             None
         Returns:
-            pd.Series: Series object containing counts, indexed by OS
+            pd.Series | pd.DataFrame: Series object containing counts, indexed by OS, or DataFrame object containing counts per environment category, indexed by OS
         """
 
-        filtered_counts = self._calculate_os_counts()
+        dataFrame = self.vm_data.create_environment_filtered_dataframe(
+            self.config.environments, env_filter=self.config.environment_filter
+        )
 
-        filtered_counts = filtered_counts[filtered_counts.index.isin(const.SUPPORTED_OSES)]
-        filtered_counts = filtered_counts.astype(int)
+        dataFrame = dataFrame[dataFrame["OS Name"].isin(const.SUPPORTED_OSES)]
 
-        return filtered_counts
+        return self._calculate_os_counts(dataFrame)
 
-    def generate_unsupported_os_counts(self: t.Self) -> pd.Series:
-        counts = self.vm_data.df["OS Name"].value_counts()
+    def get_unsupported_os_counts(self: t.Self) -> pd.Series | pd.DataFrame:
+        """Returns the counts of supported operating systems based on the configured environment filter.
 
-        unsupported_counts = counts[~counts.index.isin(const.SUPPORTED_OSES)]
+        This function calculates the counts of supported operating systems and returns the results.
 
-        other_counts_filter: int = 500
-        if self.config.count_filter:
-            other_counts_filter = self.config.count_filter
-        other_counts = unsupported_counts[unsupported_counts <= other_counts_filter]
-        other_total = other_counts.sum()
-        unsupported_counts = unsupported_counts[unsupported_counts > other_counts_filter]
-        unsupported_counts["Other"] = other_total
+        Args:
+            None
+        Returns:
+            pd.Series | pd.DataFrame: Series object containing counts, indexed by OS, or DataFrame object containing counts per environment category, indexed by OS
+        """
 
-        return unsupported_counts
+        dataFrame = self.vm_data.create_environment_filtered_dataframe(
+            self.config.environments, env_filter=self.config.environment_filter
+        )
+
+        dataFrame = dataFrame[~dataFrame["OS Name"].isin(const.SUPPORTED_OSES)]
+
+        return self._calculate_os_counts(dataFrame)
 
     def get_os_version_distribution(self: t.Self, os_name: str) -> pd.DataFrame:
         """Create Dataframe of Counts by OS Version for a given OS.

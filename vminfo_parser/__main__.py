@@ -23,7 +23,7 @@ def get_unsupported_os(analyzer: Analyzer, cli_output: CLIOutput, visualizer: Vi
         visualizer (Visualizer | None): Visualizer instance, or None if no graph output desired
     """
 
-    unsupported_counts = analyzer.generate_unsupported_os_counts()
+    unsupported_counts = analyzer.get_unsupported_os_counts()
     cli_output.format_series_output(unsupported_counts)
     if visualizer is not None:
         visualizer.visualize_unsupported_os_distribution(unsupported_counts)
