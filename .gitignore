@@ -4,6 +4,7 @@ output.csv
 .coverage
 coverage.lcov
 coverage.xml
+tests/outputs
 
 ### sourced from https://github.com/github/gitignore/blob/main/Python.gitignore
 # Byte-compiled / optimized / DLL files
