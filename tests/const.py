@@ -1,5 +1,6 @@
 TESTFILE_SHAPE = (55074, 7)
 TESTFILE_DIR = "files"
+TESTOUTPUT_DIR = "outputs"
 DEFAULT_TESTFILE_NAME = "Test_Inventory_VMs.{}"
 
 SERVER_NAME_MATCHES = {
@@ -302,7 +303,8 @@ EXPECTED_CLI_OUTPUT = {
         "Microsoft Windows            7280\n"
         "SUSE Linux Enterprise        1991\n"
         "Red Hat Enterprise Linux     1150\n"
-        "CentOS                        592"
+        "CentOS                        592\n"
+        "Other                         676"
     ),
     "supported_os_all_envs": (
         "OS Name\n"
@@ -314,10 +316,10 @@ EXPECTED_CLI_OUTPUT = {
     "supported_os_both_envs": (
         "Environment               non-prod   prod\n"
         "OS Name\n"
-        "Microsoft Windows              399   6881\n"
         "Microsoft Windows Server      3614  10118\n"
-        "Red Hat Enterprise Linux       437    713\n"
-        "SUSE Linux Enterprise          644   1347"
+        "Microsoft Windows              399   6881\n"
+        "SUSE Linux Enterprise          644   1347\n"
+        "Red Hat Enterprise Linux       437    713"
     ),
     "supported_os_min_count": (
         "OS Name\n"
@@ -330,15 +332,15 @@ EXPECTED_CLI_OUTPUT = {
         "OS Name\n"
         "Microsoft Windows Server    3614\n"
         "SUSE Linux Enterprise        644\n"
-        "Red Hat Enterprise Linux     437\n"
-        "Microsoft Windows            399"
+        "Other                        836"
     ),
     "unsupported_os_both": (
+        "Environment   non-prod  prod\n"
         "OS Name\n"
-        "Ubuntu Linux    16583\n"
-        "Oracle Linux    10589\n"
-        "CentOS            592\n"
-        "Other             676"
+        "Ubuntu Linux      7041  9542\n"
+        "Oracle Linux      3692  6897\n"
+        "CentOS             138   454\n"
+        "Other               67   609"
     ),
     "disk_space_by_os": (
         "CentOS\n"

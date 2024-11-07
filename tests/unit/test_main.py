@@ -4,61 +4,8 @@ import pytest
 from pytest_mock import MockFixture, MockType
 
 from vminfo_parser import __main__
-from vminfo_parser.analyzer import Analyzer
-from vminfo_parser.clioutput import CLIOutput
-from vminfo_parser.config import Config
-from vminfo_parser.visualizer import Visualizer
-from vminfo_parser.vmdata import VMData
 
 from .. import const as test_const
-
-
-@pytest.fixture
-def mock_analyzer(mocker: MockFixture) -> Generator[MockType, None, None]:
-    yield mocker.NonCallableMagicMock(Analyzer)
-
-
-@pytest.fixture
-def mock_visualizer(mocker: MockFixture) -> Generator[MockType, None, None]:
-    yield mocker.NonCallableMagicMock(Visualizer)
-
-
-@pytest.fixture
-def mock_clioutput(mocker: MockFixture) -> Generator[MockType, None, None]:
-    yield mocker.NonCallableMagicMock(CLIOutput)
-
-
-@pytest.fixture
-def mock_config(mocker: MockFixture) -> Generator[MockType, None, None]:
-    mock_config = mocker.NonCallableMagicMock(Config)
-
-    # set defaults for config items
-    for prop, val in [
-        ("generate_yaml", False),
-        ("generate_graphs", False),
-        ("sort_by_site", False),
-        ("show_disk_space_by_os", False),
-        ("get_disk_space_ranges", False),
-        ("get_os_counts", False),
-        ("output_os_by_version", False),
-        ("get_supported_os", False),
-        ("get_unsupported_os", False),
-        ("file", None),
-        ("minimum_count", 0),
-        ("os_name", None),
-        ("over_under_tb", False),
-        ("breakdown_by_terabyte", False),
-        ("disk_space_by_granular_os", False),
-        ("prod_env_labels", None),
-        ("sort_by_env", None),
-    ]:
-        setattr(mock_config, prop, val)
-    yield mock_config
-
-
-@pytest.fixture
-def mock_vmdata(mocker: MockFixture) -> Generator[MockType, None, None]:
-    yield mocker.NonCallableMagicMock(VMData)
 
 
 @pytest.fixture
@@ -81,8 +28,6 @@ def mock_main(
     main_obj.cli_output = main_obj.clioutput_class.return_value = mock_clioutput
     main_obj.analyzer_class = mocker.patch("vminfo_parser.__main__.Analyzer")
     main_obj.analyzer = main_obj.analyzer_class.return_value = mock_analyzer
-    main_obj.analyzer.cli_output = mocker.MagicMock(CLIOutput)
-    main_obj.analyzer.visualizer = mocker.MagicMock(Visualizer)
 
     # Add main functions to mock
     for func in test_const.MAIN_FUNCTION_CALLS.keys():
@@ -130,7 +75,6 @@ def test_main_default(mock_main: MockType) -> None:
 
     # Assert clioutputs closed
     mock_main.cli_output.close.assert_called_once()
-    mock_main.analyzer.cli_output.close.assert_called_once()
 
 
 def test_main_generate_yaml(mock_main: MockType) -> None:
@@ -175,12 +119,10 @@ def test_main_funcs_no_graphs(mock_main: MockType, func: str, args: list[str]) -
 
 def test_get_unsupported_os(mock_analyzer: MockType, mock_clioutput: MockType, mock_visualizer: MockType) -> None:
     __main__.get_unsupported_os(mock_analyzer, mock_clioutput, mock_visualizer)
-    mock_analyzer.generate_unsupported_os_counts.assert_called_once()
-    mock_clioutput.format_series_output.assert_called_once_with(
-        mock_analyzer.generate_unsupported_os_counts.return_value
-    )
+    mock_analyzer.get_unsupported_os_counts.assert_called_once()
+    mock_clioutput.format_series_output.assert_called_once_with(mock_analyzer.get_unsupported_os_counts.return_value)
     mock_visualizer.visualize_unsupported_os_distribution.assert_called_once_with(
-        mock_analyzer.generate_unsupported_os_counts.return_value
+        mock_analyzer.get_unsupported_os_counts.return_value
     )
 
 
@@ -188,10 +130,8 @@ def test_get_unsupported_os_no_graphs(
     mock_analyzer: MockType, mock_clioutput: MockType, mock_visualizer: MockType
 ) -> None:
     __main__.get_unsupported_os(mock_analyzer, mock_clioutput, None)
-    mock_analyzer.generate_unsupported_os_counts.assert_called_once()
-    mock_clioutput.format_series_output.assert_called_once_with(
-        mock_analyzer.generate_unsupported_os_counts.return_value
-    )
+    mock_analyzer.get_unsupported_os_counts.assert_called_once()
+    mock_clioutput.format_series_output.assert_called_once_with(mock_analyzer.get_unsupported_os_counts.return_value)
     mock_visualizer.visualize_unsupported_os_distribution.assert_not_called()
 
 
@@ -222,7 +162,7 @@ def test_get_os_counts(
     mock_analyzer.get_operating_system_counts.assert_called_once()
     mock_clioutput.format_series_output.assert_called_once_with(mock_analyzer.get_operating_system_counts.return_value)
     mock_visualizer.visualize_os_distribution.assert_called_once_with(
-        mock_analyzer.get_operating_system_counts.return_value, mock_config.minimum_count
+        mock_analyzer.get_operating_system_counts.return_value, mock_config.count_filter
     )
 
 

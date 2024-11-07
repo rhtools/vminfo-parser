@@ -23,7 +23,7 @@ def get_unsupported_os(analyzer: Analyzer, cli_output: CLIOutput, visualizer: Vi
         visualizer (Visualizer | None): Visualizer instance, or None if no graph output desired
     """
 
-    unsupported_counts = analyzer.generate_unsupported_os_counts()
+    unsupported_counts = analyzer.get_unsupported_os_counts()
     cli_output.format_series_output(unsupported_counts)
     if visualizer is not None:
         visualizer.visualize_unsupported_os_distribution(unsupported_counts)
@@ -106,7 +106,7 @@ def get_os_counts(config: Config, analyzer: Analyzer, cli_output: CLIOutput, vis
     cli_output.format_series_output(counts)
 
     if visualizer:
-        visualizer.visualize_os_distribution(counts, config.minimum_count)
+        visualizer.visualize_os_distribution(counts, config.count_filter)
 
 
 def show_disk_space_by_os(
@@ -192,7 +192,6 @@ def main(*args: str) -> None:  # noqa: C901
     vm_data.save_to_csv("output.csv")
 
     # close clioutput
-    analyzer.cli_output.close()
     cli_output.close()
 
 

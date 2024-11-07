@@ -4,8 +4,12 @@ from pathlib import Path, PosixPath
 
 import pytest
 import yaml
+from pytest_mock import MockFixture, MockType
 
 from vminfo_parser import const as vm_const
+from vminfo_parser.analyzer import Analyzer
+from vminfo_parser.clioutput import CLIOutput
+from vminfo_parser.config import Config
 from vminfo_parser.visualizer import Visualizer
 from vminfo_parser.vmdata import VMData
 
@@ -78,3 +82,69 @@ def yaml_config(tmp_path: Path, config_dict: dict) -> Generator[str, None, None]
 @pytest.fixture
 def visualizer() -> Generator[Visualizer, None, None]:
     yield Visualizer()
+
+
+@pytest.fixture
+def mock_analyzer(mocker: MockFixture) -> Generator[MockType, None, None]:
+    yield mocker.NonCallableMagicMock(Analyzer)
+
+
+@pytest.fixture
+def mock_visualizer(mocker: MockFixture) -> Generator[MockType, None, None]:
+    yield mocker.NonCallableMagicMock(Visualizer)
+
+
+@pytest.fixture
+def mock_clioutput(mocker: MockFixture) -> Generator[MockType, None, None]:
+    yield mocker.NonCallableMagicMock(CLIOutput)
+
+
+@pytest.fixture
+def mock_config(mocker: MockFixture) -> Generator[MockType, None, None]:
+    mock_config = mocker.NonCallableMagicMock(Config)
+
+    # set defaults for config items
+    for prop, val in [
+        ("generate_yaml", False),
+        ("generate_graphs", False),
+        ("sort_by_site", False),
+        ("show_disk_space_by_os", False),
+        ("get_disk_space_ranges", False),
+        ("get_os_counts", False),
+        ("output_os_by_version", False),
+        ("get_supported_os", False),
+        ("get_unsupported_os", False),
+        ("file", None),
+        ("minimum_count", 0),
+        ("os_name", None),
+        ("over_under_tb", False),
+        ("breakdown_by_terabyte", False),
+        ("disk_space_by_granular_os", False),
+        ("prod_env_labels", None),
+        ("sort_by_env", None),
+    ]:
+        setattr(mock_config, prop, val)
+
+        def environments() -> list[str]:
+            if mock_config.prod_env_labels:
+                return mock_config.prod_env_labels.split(",")
+            return []
+
+        mock_config.environments = mocker.PropertyMock(side_effect=environments)
+
+        def environment_filter() -> str:
+            return mock_config.sort_by_env if mock_config.sort_by_env else "all"
+
+        mock_config.environment_filter = mocker.PropertyMock(side_effect=environment_filter)
+
+        def count_filter() -> int | None:
+            return mock_config.minimum_count if mock_config.minimum_count > 0 else None
+
+        mock_config.count_filter = mocker.PropertyMock(side_effect=count_filter)
+
+    yield mock_config
+
+
+@pytest.fixture
+def mock_vmdata(mocker: MockFixture) -> Generator[MockType, None, None]:
+    yield mocker.NonCallableMagicMock(VMData)

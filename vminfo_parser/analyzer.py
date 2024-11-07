@@ -7,9 +7,7 @@ from collections.abc import Callable
 import pandas as pd
 
 from . import const
-from .clioutput import CLIOutput
 from .config import Config
-from .visualizer import Visualizer
 from .vmdata import VMData
 
 LOGGER = logging.getLogger(__name__)
@@ -23,43 +21,20 @@ class Analyzer:
     ) -> None:
         self.vm_data = vm_data
         self.config = config
-        self.visualizer = Visualizer()
-        self.cli_output = CLIOutput()
 
-    def calculate_average_ram(self: t.Self, environment_type: str) -> None:
-        os_values = self.vm_data.df["OS Name"].unique()
-
-        self.cli_output.writeline("{:<20} {:<10}".format("OS", "Average RAM (GB)"))
-        self.cli_output.writeline("-" * 30)
-
-        for os in os_values:
-            filtered_hosts = self.vm_data.df[
-                (self.vm_data.df["OS Name"] == os)
-                & (self.vm_data.df[self.vm_data.column_headers["environment"]].str.contains(environment_type))
-            ]
-
-            if not filtered_hosts.empty:
-                avg_ram = filtered_hosts[self.vm_data.column_headers["vmMemory"]].mean()
-                self.cli_output.writeline("{:<20} {:<10.2f}".format(os, avg_ram))
-
-    def generate_dynamic_ranges(
-        self: t.Self, max_disk_space: int, show_disk_in_tb: bool = False, over_under_tb: bool = False
-    ) -> list[tuple[int, int]]:
+    def generate_dynamic_ranges(self: t.Self, max_disk_space: int) -> list[tuple[int, int]]:
         """
         Generate dynamic disk space ranges based on the maximum disk space and specified display options.
         This function returns a list of tuples representing the ranges of disk space in either terabytes or gigabytes.
 
         Args:
             max_disk_space (int): The maximum disk space to consider for generating ranges.
-            show_disk_in_tb (bool, optional): If True, the ranges will be in terabytes. Defaults to False.
-            over_under_tb (bool, optional): If True, generates a simplified range for over/under thresholds.
-                Defaults to False.
 
         Returns:
             list: A list of tuples representing the dynamic disk space ranges.
 
         Examples:
-            >>> generate_dynamic_ranges(150000, show_disk_in_tb=True)
+            >>> generate_dynamic_ranges(150000)
             [(0, 2000), (2001, 10000), (10001, 20000), (20001, 50000), (50001, 150000)]
         """
         disk_space_ranges_dict = {
@@ -90,7 +65,7 @@ class Analyzer:
         disk_space_ranges = []
         # In this section we are dynamically removing unneeded ranges
         # from the total list of ranges based on the dataframe
-        if show_disk_in_tb:
+        if self.config.breakdown_by_terabyte:
             ranges = disk_space_ranges_dict["tb"]
             if max_disk_space > 100000:
                 disk_space_ranges = ranges
@@ -102,7 +77,7 @@ class Analyzer:
             # and add on our custom one
             elif max_disk_space > 20000:
                 disk_space_ranges = ranges[:3] + [(20001, max_disk_space)]
-        elif over_under_tb:
+        elif self.config.over_under_tb:
             disk_space_ranges = [(0, 1000), (1001, max_disk_space)]
         # The Same logic applies to the 'gb' items as to the 'tb' items
         # however, given that this is more fine-grained, there are more ranges to add
@@ -124,8 +99,6 @@ class Analyzer:
     def calculate_disk_space_ranges(
         self: t.Self,
         dataFrame: pd.DataFrame | None = None,
-        show_disk_in_tb: bool = False,
-        over_under_tb: bool = False,
     ) -> list[tuple[int, int]]:
         """
         Calculate the ranges of disk space based on the provided DataFrame and specified display options.
@@ -134,15 +107,12 @@ class Analyzer:
         Args:
             dataFrame (pd.DataFrame, optional): The DataFrame containing disk space data.
                 If None, the default DataFrame from the instance will be used. Defaults to None.
-            show_disk_in_tb (bool, optional): If True, the ranges will be calculated in terabytes. Defaults to False.
-            over_under_tb (bool, optional): If True, generates a simplified range for over/under thresholds.
-                Defaults to False.
 
         Returns:
             list[tuple[int, int]]: A list of tuples representing the disk space ranges that contain virtual machines.
 
         Examples:
-            >>> calculate_disk_space_ranges(dataFrame=my_dataframe, show_disk_in_tb=True)
+            >>> calculate_disk_space_ranges(dataFrame=my_dataframe)
             [(0, 2000), (2001, 10000)]
         """
         if dataFrame is None:
@@ -161,7 +131,7 @@ class Analyzer:
         if self.vm_data.column_headers["unitType"] == "MB":
             dataFrame[frameHeading] = dataFrame[frameHeading] / 1024
         max_disk_space = round(int(dataFrame[frameHeading].max()))
-        disk_space_ranges = self.generate_dynamic_ranges(max_disk_space, show_disk_in_tb, over_under_tb)
+        disk_space_ranges = self.generate_dynamic_ranges(max_disk_space)
         disk_space_ranges_with_vms = []
         for range_start, range_end in disk_space_ranges:
             epsilon = 1
@@ -309,11 +279,7 @@ class Analyzer:
             df = df[df["OS Name"] == os_filter]
 
         diskHeading = self.vm_data.column_headers["vmDisk"]
-        disk_space_ranges = self.calculate_disk_space_ranges(
-            dataFrame=df,
-            show_disk_in_tb=self.config.breakdown_by_terabyte,
-            over_under_tb=self.config.over_under_tb,
-        )
+        disk_space_ranges = self.calculate_disk_space_ranges(dataFrame=df)
 
         for lower, upper in disk_space_ranges:
             mask = (df[diskHeading] >= lower) & (df[diskHeading] <= upper)
@@ -331,7 +297,7 @@ class Analyzer:
             None
 
         Returns:
-            list[str]: list of unique OS Names
+            list[str]: A list of unique OS Names
         """
 
         os_names: list[str] = [
@@ -343,11 +309,11 @@ class Analyzer:
             return []
         if self.config.os_name:
             if self.config.os_name in os_names:
-                return [self.config.os_names]
+                return [self.config.os_name]
             return []
         return os_names
 
-    def get_operating_system_counts(self: t.Self) -> pd.Series:
+    def get_operating_system_counts(self: t.Self) -> pd.Series | pd.DataFrame:
         """Returns the counts of operating systems based on the configured environment filter.
 
         This function calculates the counts of operating systems and returns the results.
@@ -355,10 +321,11 @@ class Analyzer:
         Args:
             None
         Returns:
-            pd.Series: Series object containing counts, indexed by OS
+            pd.Series | pd.DataFrame: Series object containing counts, indexed by OS, or
+              DataFrame object containing counts per environment category, indexed by OS
         """
         df = self.vm_data.create_environment_filtered_dataframe(
-            self.config.environments, env_filter=self.config.sort_by_env
+            self.config.environments, env_filter=self.config.environment_filter
         )
 
         if self.config.os_name:
@@ -366,7 +333,7 @@ class Analyzer:
 
         return self._calculate_os_counts(df)
 
-    def _calculate_os_counts(self: t.Self, dataFrame: pd.DataFrame = None) -> pd.Series:
+    def _calculate_os_counts(self: t.Self, dataFrame: pd.DataFrame | None = None) -> pd.Series | pd.DataFrame:
         """Calculates the counts of operating systems based on the provided environment filter.
 
         This function analyzes the DataFrame to count occurrences of operating systems, applying filters as necessary.
@@ -376,70 +343,133 @@ class Analyzer:
         Args:
             dataFrame (pd.DataFrame, optional): The DataFrame containing the data to analyze. Defaults to None.
         Returns:
-            tuple[pd.Series, list[str]]: A tuple containing a Series of counts and a list of operating system names.
+            pd.Series | pd.DataFrame: Series object containing counts, indexed by OS, or
+              DataFrame object containing counts per environment category, indexed by OS
         """
         if dataFrame is None:
-            dataFrame = self.vm_data.df
-
-        environment_filter = self.config.sort_by_env
-        min_count = self.config.minimum_count
-
-        if not environment_filter or environment_filter == "all":
-            counts = dataFrame["OS Name"].value_counts()
-            counts = counts[counts >= min_count]
-        else:
-            counts = (
-                dataFrame.groupby(["OS Name", self.vm_data.column_headers["environment"]]).size().unstack().fillna(0)
+            dataFrame = self.vm_data.create_environment_filtered_dataframe(
+                self.config.environments, env_filter=self.config.environment_filter
             )
-            counts["total"] = counts.sum(axis=1)
-            counts["combined_total"] = counts["prod"] + counts["non-prod"]
-            counts = counts[(counts["total"] >= min_count) & (counts["combined_total"] >= min_count)].drop(
-                ["total", "combined_total"], axis=1
-            )
-            counts = counts.sort_values(by="prod", ascending=False)
 
-        return counts
-
-    def get_supported_os_counts(self: t.Self) -> pd.Series:
-        data_cp = self.vm_data.create_environment_filtered_dataframe(
-            self.config.environments, self.config.environment_filter
-        )
         if self.config.environment_filter == "both":
-            filtered_counts = (
-                data_cp.groupby(["OS Name", self.vm_data.column_headers["environment"]]).size().unstack().fillna(0)
-            )
+            # create Series of counts by "OS Name" and "environment"
+            # example:
+            #   OS Name   Environment
+            #   CentOS    non-prod         138
+            #             prod             454
+
+            counts_raw: pd.Series[int] = dataFrame.groupby(
+                ["OS Name", self.vm_data.column_headers["environment"]]
+            ).size()
+            # convert Series back into DataFrame
+            # example:
+            #   Environment                                         non-prod     prod
+            #   OS Name
+            #   CentOS                                                 138.0    454.0
+            counts: pd.DataFrame = counts_raw.unstack().fillna(0)
+
+            # add total column to counts DataFrame to use for filters and sorting
+            counts["total"] = counts.sum(axis=1)
+            # sort by total counts
+            counts: pd.DataFrame = counts.sort_values(by="total", ascending=False)
+
+            # implement minimum count filtering
+            if self.config.count_filter:
+                # create DataFrame of counts less than count_filter
+                other_counts: pd.DataFrame = counts[counts["total"] < self.config.count_filter]
+                # if only one entry below count_fiter,  dont filter it
+                if len(other_counts) > 1:
+                    # sum other_counts by column
+                    other_sum: pd.Series = other_counts.sum()
+                    # remove counts below minimum from counts dataframe
+                    counts = counts[counts["total"] >= self.config.count_filter]
+                    # sort by total
+                    # before other is readded
+                    counts = counts.sort_values(by="total", ascending=False)
+                    # transpose counts for addition of Other
+                    counts = counts.T
+                    # Add other_sum as column
+                    counts["Other"] = other_sum
+                    # reverse transpose
+                    counts = counts.T
+
+            counts = counts.drop("total", axis=1)
+
         else:
-            filtered_counts = data_cp["OS Name"].value_counts()
+            # create a Series of sorted integers (counts) from index "OS Name" in dataframe
+            counts: pd.Series[int] = dataFrame["OS Name"].value_counts()
 
-        if filtered_counts.empty:
-            LOGGER.warning("None found in %s", self.config.environment_filter)
-            return pd.Series()
+            # implement minimum count filtering
+            if self.config.count_filter:
+                # create series of counts less than count_filter
+                other_counts: pd.Series[int] = counts[counts < self.config.count_filter]
+                # if only one entry below count_fiter,  dont filter it
+                if len(other_counts) > 1:
+                    # total of all counts below minimum
+                    other_total = other_counts.sum()
+                    # remove counts below minimum from counts series
+                    counts = counts[counts >= self.config.count_filter]
+                    # add new entry in series with a name of "Other" and total of all removed entries
+                    counts["Other"] = other_total
 
-        filtered_counts = filtered_counts[filtered_counts.index.isin(const.SUPPORTED_OSES)]
-        filtered_counts = filtered_counts.astype(int)
+        return counts.astype(int)
 
-        return filtered_counts
+    def get_supported_os_counts(self: t.Self) -> pd.Series | pd.DataFrame:
+        """Returns the counts of supported operating systems based on the configured environment filter.
 
-    def generate_unsupported_os_counts(self: t.Self) -> pd.Series:
-        counts = self.vm_data.df["OS Name"].value_counts()
+        This function calculates the counts of supported operating systems and returns the results.
 
-        unsupported_counts = counts[~counts.index.isin(const.SUPPORTED_OSES)]
+        Args:
+            None
+        Returns:
+            pd.Series | pd.DataFrame: Series object containing counts, indexed by OS, or
+              DataFrame object containing counts per environment category, indexed by OS
+        """
 
-        other_counts = unsupported_counts[unsupported_counts <= 500]
-        other_total = other_counts.sum()
-        unsupported_counts = unsupported_counts[unsupported_counts > 500]
-        unsupported_counts["Other"] = other_total
+        dataFrame = self.vm_data.create_environment_filtered_dataframe(
+            self.config.environments, env_filter=self.config.environment_filter
+        )
 
-        return unsupported_counts
+        dataFrame = dataFrame[dataFrame["OS Name"].isin(const.SUPPORTED_OSES)]
 
-    def get_os_version_distribution(self: t.Self, os_name: str) -> pd.Series:
+        return self._calculate_os_counts(dataFrame)
+
+    def get_unsupported_os_counts(self: t.Self) -> pd.Series | pd.DataFrame:
+        """Returns the counts of supported operating systems based on the configured environment filter.
+
+        This function calculates the counts of supported operating systems and returns the results.
+
+        Args:
+            None
+        Returns:
+            pd.Series | pd.DataFrame: Series object containing counts, indexed by OS, or
+              DataFrame object containing counts per environment category, indexed by OS
+        """
+
+        dataFrame = self.vm_data.create_environment_filtered_dataframe(
+            self.config.environments, env_filter=self.config.environment_filter
+        )
+
+        dataFrame = dataFrame[~dataFrame["OS Name"].isin(const.SUPPORTED_OSES)]
+
+        return self._calculate_os_counts(dataFrame)
+
+    def get_os_version_distribution(self: t.Self, os_name: str) -> pd.DataFrame:
+        """Create Dataframe of Counts by OS Version for a given OS.
+
+        Args:
+            os_name (str): Name of OS to count versions
+
+        Returns:
+            pd.DataFrame: Dataframe with 2 columns, one labeled "OS Version", and the other labeled "Count"
+        """
         df_copy = self.vm_data.df.copy()
         df_copy = df_copy[(df_copy["OS Name"] == os_name)]
         counts = df_copy["OS Version"].fillna("unknown").value_counts().reset_index()
         counts.columns = ["OS Version", "Count"]
 
-        if self.config.minimum_count is not None and self.config.minimum_count > 0:
-            counts = counts[counts["Count"] >= self.config.minimum_count]
+        if self.config.count_filter:
+            counts = counts[counts["Count"] >= self.config.count_filter]
 
         return counts
 

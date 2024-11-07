@@ -37,9 +37,9 @@ class VMData:
     @classmethod
     def from_file(cls: type[t.Self], filepath: Path) -> t.Self:
         file_type = cls.get_file_type(filepath)
-        if file_type == const.MIME.get("csv"):
+        if file_type == const.MIME["csv"]:
             df = pd.read_csv(filepath)
-        elif file_type in const.MIME.get("excel"):
+        elif file_type in const.MIME["excel"]:
             df = pd.read_excel(filepath)
         else:
             LOGGER.critical("File passed in was neither a CSV nor an Excel file")
