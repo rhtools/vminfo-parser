@@ -1065,14 +1065,14 @@ TEST_DATAFRAMES = [
     {
         "df": {
             "OS according to the configuration file": [
-                "",
-                "",
+                None,
+                None,
                 "CentOS 7",
             ],
             "OS according to the VMware Tools": [
                 "Windows 10",
                 "Ubuntu 20.04",
-                "",
+                None,
             ],
             "ent-env": ["Prod", "Dev", "Prod"],
             "Memory": [8, 16, 32],
