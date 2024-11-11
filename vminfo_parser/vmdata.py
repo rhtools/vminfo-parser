@@ -49,6 +49,10 @@ class VMData:
     def set_column_headings(self: t.Self) -> None:
         """
         Sets the column headings based on the versions defined in const.COLUMN_HEADERS.
+
+        Returns:
+            None
+
         Raises:
             ValueError: If no matching header set is found.
         """
@@ -93,40 +97,20 @@ class VMData:
         primary_os_column = self.column_headers.get("operatingSystemFromVMTools")
         secondary_os_column = self.column_headers.get("operatingSystemFromVMConfig")
 
-        combined_os_column = "combined_operating_system"
-        self.df[combined_os_column] = self.df[secondary_os_column].where(
-            self.df[primary_os_column].isnull(), self.df[primary_os_column]
+        combined_os: pd.Series = self.df[primary_os_column].fillna(self.df[secondary_os_column])
+
+        # Set "OS Name", "OS Version", "Architecture" with regex match of combined_os
+        self.df[const.EXTRA_COLUMNS_DEST] = (
+            # Parse as None Windows OS
+            combined_os.str.extract(const.EXTRA_COLUMNS_NON_WINDOWS_REGEX)
+            # If no match, parse as Windows Server
+            .fillna(combined_os.str.extract(const.EXTRA_COLUMNS_WINDOWS_SERVER_REGEX))
+            # If no match, parse as Windows Desktop
+            .fillna(combined_os.str.extract(const.EXTRA_COLUMNS_WINDOWS_DESKTOP_REGEX, flags=re.IGNORECASE))
         )
 
-        if not all(col in self.df.columns for col in const.EXTRA_COLUMNS_DEST):
-            self.df[const.EXTRA_COLUMNS_DEST] = self.df[combined_os_column].str.extract(
-                const.EXTRA_COLUMNS_NON_WINDOWS_REGEX
-            )
-            self.df[const.EXTRA_WINDOWS_SERVER_COLUMNS] = self.df[combined_os_column].str.extract(
-                const.EXTRA_COLUMNS_WINDOWS_SERVER_REGEX
-            )
-            self.df[const.EXTRA_WINDOWS_DESKTOP_COLUMNS] = self.df[combined_os_column].str.extract(
-                const.EXTRA_COLUMNS_WINDOWS_DESKTOP_REGEX, flags=re.IGNORECASE
-            )
-
-            for idx, column in enumerate(const.EXTRA_COLUMNS_DEST):
-                self.df[column] = self.df[const.EXTRA_WINDOWS_SERVER_COLUMNS[idx]].where(
-                    self.df[column].isnull(), self.df[column]
-                )
-                self.df[column] = self.df[const.EXTRA_WINDOWS_DESKTOP_COLUMNS[idx]].where(
-                    self.df[column].isnull(), self.df[column]
-                )
-            self.df[const.EXTRA_COLUMNS_DEST[0]] = self.df[combined_os_column].where(
-                self.df[const.EXTRA_COLUMNS_DEST[0]].isnull(),
-                self.df[const.EXTRA_COLUMNS_DEST[0]],
-            )
-            self.df.drop(
-                const.EXTRA_WINDOWS_SERVER_COLUMNS + const.EXTRA_WINDOWS_DESKTOP_COLUMNS,
-                axis=1,
-                inplace=True,
-            )
-        else:
-            LOGGER.info("All columns already exist")
+        # if No OS Name after regex,  set original value as OS Name
+        self.df[const.EXTRA_COLUMNS_DEST[0]] = self.df[const.EXTRA_COLUMNS_DEST[0]].fillna(combined_os)
 
     def create_site_specific_dataframe(self: t.Self) -> pd.DataFrame:
         """

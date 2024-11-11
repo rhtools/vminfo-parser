@@ -82,16 +82,6 @@ def test_set_os_columns_from_datafile(vmdata_with_headers: VMData) -> None:
 
     vmdata_with_headers.set_os_columns()
 
-    # Validate that temporary columns are dropped
-    assert (
-        len(
-            set(vm_const.EXTRA_WINDOWS_SERVER_COLUMNS + vm_const.EXTRA_WINDOWS_DESKTOP_COLUMNS).intersection(
-                set(vmdata_with_headers.column_headers)
-            )
-        )
-        == 0
-    )
-
     # Validate that added columns exist
     assert all(col in vmdata_with_headers.df.columns for col in vm_const.EXTRA_COLUMNS_DEST)
 
@@ -117,16 +107,6 @@ def test_set_os_columns_bypass(vmdata_with_headers: VMData, caplog: pytest.LogCa
 
     original_df = vmdata_with_headers.df.copy()
     vmdata_with_headers.set_os_columns()
-
-    # Validate that temporary columns do not exist
-    assert (
-        len(
-            set(vm_const.EXTRA_WINDOWS_SERVER_COLUMNS + vm_const.EXTRA_WINDOWS_DESKTOP_COLUMNS).intersection(
-                set(vmdata_with_headers.column_headers)
-            )
-        )
-        == 0
-    )
 
     # Validate that added columns exist
     assert all(col in vmdata_with_headers.df.columns for col in vm_const.EXTRA_COLUMNS_DEST)
