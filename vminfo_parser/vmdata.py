@@ -77,7 +77,19 @@ class VMData:
             LOGGER.critical("The following headers are missing: %s", missing_headers)
             exit()
 
-    def add_extra_columns(self: t.Self) -> None:
+    def set_os_columns(self: t.Self) -> None:
+        """
+        Add os name and version columns to dataframe.
+
+        Checks to see if output columns exist in dataframe and returns if so.
+
+        Returns:
+            None
+        """
+        if all(col in self.df.columns for col in const.EXTRA_COLUMNS_DEST):
+            LOGGER.info("All columns already exist")
+            return None
+
         primary_os_column = self.column_headers.get("operatingSystemFromVMTools")
         secondary_os_column = self.column_headers.get("operatingSystemFromVMConfig")
 
