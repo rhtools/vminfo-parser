@@ -157,8 +157,6 @@ def main(*args: str) -> None:  # noqa: C901
         config.generate_yaml_from_parser()
         exit()
     vm_data = VMData.from_file(config.file)
-    vm_data.set_column_headings()
-    vm_data.set_os_columns()
 
     visualizer: Visualizer | None = None
     if config.generate_graphs:

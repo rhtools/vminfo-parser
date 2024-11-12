@@ -128,7 +128,7 @@ class Analyzer:
         dataFrame[frameHeading] = pd.to_numeric(dataFrame[frameHeading], errors="coerce")
 
         # Normalize the Disk Column to GiB before applying further analysis
-        if self.vm_data.column_headers["unitType"] == "MB":
+        if self.vm_data.unit_type == "MiB":
             dataFrame[frameHeading] = dataFrame[frameHeading] / 1024
         max_disk_space = round(int(dataFrame[frameHeading].max()))
         disk_space_ranges = self.generate_dynamic_ranges(max_disk_space)

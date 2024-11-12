@@ -13,9 +13,20 @@ LOGGER = logging.getLogger(__name__)
 
 
 class VMData:
-    def __init__(self: t.Self, df: pd.DataFrame) -> None:
-        self.df: pd.DataFrame = df
-        self.column_headers: dict[str, str] = {}
+    df: pd.DataFrame
+    column_headers: dict[str, str]
+    unit_type: str
+    normalized: bool
+
+    def __init__(self: t.Self, df: pd.DataFrame, normalize: bool = True) -> None:
+        self.df = df
+        self.normalized = False
+
+        if normalize:
+            self._normalize()
+        else:
+            self.column_headers = {}
+            self.unit_type = ""
 
     @staticmethod
     def get_file_type(filepath: Path) -> str:
@@ -35,7 +46,7 @@ class VMData:
         return mime_type
 
     @classmethod
-    def from_file(cls: type[t.Self], filepath: Path) -> t.Self:
+    def from_file(cls: type[t.Self], filepath: Path, normalize: bool = True) -> t.Self:
         file_type = cls.get_file_type(filepath)
         if file_type == const.MIME["csv"]:
             df = pd.read_csv(filepath)
@@ -44,9 +55,9 @@ class VMData:
         else:
             LOGGER.critical("File passed in was neither a CSV nor an Excel file")
             exit()
-        return cls(df)
+        return cls(df, normalize)
 
-    def set_column_headings(self: t.Self) -> None:
+    def _set_column_headings(self: t.Self) -> None:
         """
         Sets the column headings based on the versions defined in const.COLUMN_HEADERS.
 
@@ -71,17 +82,17 @@ class VMData:
         if best_match is None:
             raise ValueError("No matching header set found")
 
-        self.column_headers = const.COLUMN_HEADERS[best_match].copy()
-        missing_headers = [header for header in self.column_headers.values() if header not in self.df.columns]
-        self.column_headers["unitType"] = "GB" if best_match == "VERSION_1" else "MB"
-
         LOGGER.debug(f"Using VERSION_{best_match} as the closest match.")
 
+        self.column_headers = const.COLUMN_HEADERS[best_match].copy()
+        self.unit_type = "GiB" if best_match == "VERSION_1" else "MiB"
+
+        missing_headers = [header for header in self.column_headers.values() if header not in self.df.columns]
         if missing_headers:
             LOGGER.critical("The following headers are missing: %s", missing_headers)
             exit()
 
-    def set_os_columns(self: t.Self) -> None:
+    def _set_os_columns(self: t.Self) -> None:
         """
         Add os name and version columns to dataframe.
 
@@ -112,6 +123,40 @@ class VMData:
         # if No OS Name after regex,  set original value as OS Name
         self.df[const.EXTRA_COLUMNS_DEST[0]] = self.df[const.EXTRA_COLUMNS_DEST[0]].fillna(combined_os)
 
+    def _normalize_to_GiB(self: t.Self) -> None:
+        """Set disk and Memory to GiB if Mib
+
+        Args:
+            self (t.Self): _description_
+
+        Raises:
+            ValueError: _description_
+        """
+        # Get the column names from the column_headers dictionary
+        memory_col = self.column_headers["vmMemory"]
+        disk_col = self.column_headers["vmDisk"]
+        unit_type = self.unit_type
+
+        if unit_type == "MiB":
+            # If the disk and ram are in GiB, convert to GiB
+            self.df[memory_col] = np.ceil(self.df[memory_col] / 1024).astype(int)
+            self.df[disk_col] = np.ceil(self.df[disk_col] / 1024).astype(int)
+            self.unit_type = "GiB"
+        elif unit_type != "GiB":
+            raise ValueError(f"Unexpected unit type: {unit_type}")
+
+    def _normalize(self: t.Self) -> None:
+        """Set instance vars and format data to match expectations.
+
+        Args:
+            self (t.Self): _description_
+        """
+
+        self._set_column_headings()
+        self._set_os_columns()
+        self._normalize_to_GiB()
+        self.normalized = True
+
     def create_site_specific_dataframe(self: t.Self) -> pd.DataFrame:
         """
         Adds site-specific columns to the DataFrame by aggregating resource usage metrics.
@@ -137,19 +182,8 @@ class VMData:
         memory_col = self.column_headers["vmMemory"]
         disk_col = self.column_headers["vmDisk"]
         cpu_col = self.column_headers["vCPU"]
-        unit_type = self.column_headers["unitType"]
 
-        if unit_type == "MB":
-            # If the disk and ram are in MB, convert the memory to GiB
-            # convert the disk to TiB
-            new_site_df[memory_col] = np.ceil(new_site_df[memory_col] / 1024).astype(int)
-            new_site_df[disk_col] = np.ceil(new_site_df[disk_col] / 1024 / 1024).astype(int)
-        elif unit_type == "GB":
-            # If the unit type is GB, we don't need to convert the ram
-            # convert the disk to TiB
-            new_site_df[disk_col] = np.ceil(new_site_df[disk_col] / 1024).astype(int)
-        elif unit_type != "GB":
-            raise ValueError(f"Unexpected unit type: {unit_type}")
+        new_site_df[disk_col] = np.ceil(new_site_df[disk_col] / 1024).astype(int)
 
         # Group by Site Name and calculate sums
         site_usage = new_site_df.groupby("Site Name")[[memory_col, disk_col, cpu_col]].sum().reset_index()
