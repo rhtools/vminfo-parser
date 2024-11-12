@@ -76,13 +76,13 @@ def _get_parser() -> argparse.ArgumentParser:
         "--breakdown-by-terabyte",
         action="store_true",
         default=False,
-        help="Breaks disk space down into 0-2TB, 2-9TB and 9TB+ instead of the default categories",
+        help="Breaks disk space down into 0-2 TiB, 2-9 TiB and 9 TiB+ instead of the default categories",
     )
     parser.add_argument(
         "--over-under-tb",
         action="store_true",
         default=False,
-        help="A simple break down of machines under 1TB and those over 1TB",
+        help="A simple break down of machines under 1 TiB and those over 1 TiB",
     )
     parser.add_argument(
         "--output-os-by-version",

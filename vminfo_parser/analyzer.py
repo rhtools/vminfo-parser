@@ -147,36 +147,36 @@ class Analyzer:
 
     def convert_to_tb(self: t.Self, value: str) -> str:
         """
-        Convert a given storage value in GB to TB if applicable.
+        Convert a given storage value in GiB to TiB if applicable.
         This function processes a string representing a range of storage values and converts them to terabytes
-        when the values exceed 999 GB.
+        when the values exceed 999 GiB.
 
         Args:
-            value (str): A string representing a storage value, expected in the format "X-Y GB".
+            value (str): A string representing a storage value, expected in the format "X-Y GiB".
 
         Returns:
-            str: The converted storage value in TB or the original value if conversion is not applicable.
+            str: The converted storage value in TiB or the original value if conversion is not applicable.
 
         Examples:
-            >>> convert_to_tb("500-1500 GB")
-            '500 GB - 1 TB'
+            >>> convert_to_tb("500-1500 GiB")
+            '500 GiB - 1 TiB'
         """
 
         parts = value.split(" ")
-        if len(parts) == 2 and parts[1] == "GB":
+        if len(parts) == 2 and parts[1] == "GiB":
             lower, upper = map(int, parts[0].split("-"))
 
             if lower > 999:
                 lower = round(lower / 1000, 1)
-                lower_unit = "TB"
+                lower_unit = "TiB"
             else:
-                lower_unit = "GB"
+                lower_unit = "GiB"
 
             if upper > 999:
                 upper = round(upper / 1000, 1)
-                upper_unit = "TB"
+                upper_unit = "TiB"
             else:
-                upper_unit = "GB"
+                upper_unit = "GiB"
 
             # Format the numbers getting rid of decimal point if its 0
             lower = f"{lower:.0f}" if isinstance(lower, int) or lower % 1 == 0 else f"{lower:.1f}"
@@ -185,12 +185,12 @@ class Analyzer:
             # If the lower and upper unit are the same, no special unit handling
             if lower_unit == upper_unit:
                 return f"{lower} - {upper} {lower_unit}"
-            elif lower_unit == "GB" and upper_unit == "TB":
+            elif lower_unit == "GiB" and upper_unit == "TiB":
                 # If the first digit is a 0, it does not need a unit
                 if int(lower) == 0:
-                    return f"{lower} - {upper} TB"
+                    return f"{lower} - {upper} TiB"
                 else:
-                    return f"{lower} GB - {upper} TB"
+                    return f"{lower} GiB - {upper} TiB"
             else:
                 return f"{lower} {lower_unit} - {upper} {upper_unit}"
         return value
@@ -215,7 +215,7 @@ class Analyzer:
                 dataFrame.groupby(["OS Name", "OS Version", "Disk Space Range"]).size().reset_index(name="Count")
             )
             # create an integer of the large end of range for sorting by size of range
-            # if the string said '201 - 400 GB' this will grab '400' and use that to sort
+            # if the string said '201 - 400 GiB' this will grab '400' and use that to sort
             dataFrame["second_number"] = (
                 dataFrame["Disk Space Range"].str.split("-").str[1].str.split().str[0].astype(int)
             )
@@ -283,7 +283,7 @@ class Analyzer:
 
         for lower, upper in disk_space_ranges:
             mask = (df[diskHeading] >= lower) & (df[diskHeading] <= upper)
-            df.loc[mask, "Disk Space Range"] = f"{lower}-{upper} GB"
+            df.loc[mask, "Disk Space Range"] = f"{lower}-{upper} GiB"
 
         return self.sort_by_disk_space_range(df)
 
