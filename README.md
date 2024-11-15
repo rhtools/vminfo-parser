@@ -65,7 +65,7 @@ options:
   --disk-space-by-granular-os
                         When getting disk space by os, this breaks those results more granularly
   --breakdown-by-terabyte
-                        Breaks disk space down into 0-2 TiB, 2-9T iB and 9 TiB+ instead of the default categories
+                        Breaks disk space down into 0-2 TiB, 2-9 TiB and 9 TiB+ instead of the default categories
   --over-under-tb       A simple break down of machines under 1 TiB and those over 1 TiB
   --output-os-by-version
                         Output OS by version
