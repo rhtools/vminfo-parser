@@ -65,8 +65,8 @@ options:
   --disk-space-by-granular-os
                         When getting disk space by os, this breaks those results more granularly
   --breakdown-by-terabyte
-                        Breaks disk space down into 0-2TB, 2-9TB and 9TB+ instead of the default categories
-  --over-under-tb       A simple break down of machines under 1TB and those over 1TB
+                        Breaks disk space down into 0-2 TiB, 2-9 TiB and 9 TiB+ instead of the default categories
+  --over-under-tb       A simple break down of machines under 1 TiB and those over 1 TiB
   --output-os-by-version
                         Output OS by version
   --get-os-counts       Generate a report that counts the inventory broken down by OS
@@ -126,16 +126,16 @@ vminfo_parser --file tests/files/Test_Inventory_VMs.csv --generate-graphs  --get
 
 Count                                  
 Disk Space Range    Count            
-0-200 GB            7519             
-201-400 GB          19361            
-401-600 GB          8619             
-601-900 GB          8584             
-901-1500 GB         4620             
-1501-2000 GB        921              
-2001-3000 GB        2358             
-3001-5000 GB        1176             
-5001-9000 GB        1138             
-9001-114256 GB      773
+0-200 GiB           7519             
+201-400 GiB         19361            
+401-600 GiB         8619             
+601-900 GiB         8584             
+901-1500 GiB        4620             
+1501-2000 GiB       921              
+2001-3000 GiB       2358             
+3001-5000 GiB       1176             
+5001-9000 GiB       1138             
+9001-114256 GiB     773
 ```
 
 ![plot](examples/Get_Disk_Space_Ranges.png)

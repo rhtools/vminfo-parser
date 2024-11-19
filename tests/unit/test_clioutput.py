@@ -32,29 +32,29 @@ def test_writeline(cli_output: CLIOutput, arg: t.Any) -> None:
     [
         (
             pd.DataFrame(
-                {"Disk Space Range": ["0 -200 GB", "201 - 400 GB"], "non-prod": [31, 26], "prod": [247, 34]}
+                {"Disk Space Range": ["0 -200 GiB", "201 - 400 GiB"], "non-prod": [31, 26], "prod": [247, 34]}
             ).set_index("Disk Space Range"),
             None,
             "\nDisk Space Range     non-prod    prod\n"
             "------------------  ----------  ------\n"
-            "0 -200 GB               31       247\n"
-            "201 - 400 GB            26        34\n\n",
+            "0 -200 GiB              31       247\n"
+            "201 - 400 GiB           26        34\n\n",
         ),
         (
-            pd.DataFrame({"Disk Space Range": ["0 -200 GB", "201 - 400 GB"], "Count": [278, 60]}).set_index(
+            pd.DataFrame({"Disk Space Range": ["0 -200 GiB", "201 - 400 GiB"], "Count": [278, 60]}).set_index(
                 "Disk Space Range"
             ),
             None,
             "\nDisk Space Range     Count\n"
             "------------------  -------\n"
-            "0 -200 GB             278\n"
-            "201 - 400 GB          60\n\n",
+            "0 -200 GiB            278\n"
+            "201 - 400 GiB         60\n\n",
         ),
         (
             pd.DataFrame(
                 {
                     "OS Version": [7, 8, 9],
-                    "Disk Space Range": ["0 -200 GB", "401 - 600 GB", "20 - 36.3 TB"],
+                    "Disk Space Range": ["0 -200 GiB", "401 - 600 GiB", "20 - 36.3 TiB"],
                     "Count": [50, 52, 2],
                 }
             ).set_index("OS Version"),
@@ -63,9 +63,9 @@ def test_writeline(cli_output: CLIOutput, arg: t.Any) -> None:
             "========================\n"
             "OS Version    Disk Space Range     Count\n"
             "------------  ------------------  -------\n"
-            "7             0 -200 GB             50\n"
-            "8             401 - 600 GB          52\n"
-            "9             20 - 36.3 TB           2\n\n",
+            "7             0 -200 GiB            50\n"
+            "8             401 - 600 GiB         52\n"
+            "9             20 - 36.3 TiB          2\n\n",
         ),
     ],
     ids=["split by env", "default", "split by version"],

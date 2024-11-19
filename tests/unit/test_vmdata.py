@@ -29,13 +29,13 @@ def test_from_file(datafile: tuple[bool, Path], caplog: pytest.LogCaptureFixture
 
     if empty:
         with pytest.raises(SystemExit):
-            result = VMData.from_file(filepath)
+            result = VMData.from_file(filepath, normalize=False)
             assert result is None
         assert caplog.record_tuples == [
             ("vminfo_parser.vmdata", logging.CRITICAL, "File passed in was neither a CSV nor an Excel file")
         ]
     else:
-        result = VMData.from_file(filepath)
+        result = VMData.from_file(filepath, normalize=False)
         assert isinstance(result, VMData)
         assert isinstance(result.df, pd.DataFrame)
         assert result.df.shape == test_const.TESTFILE_SHAPE
@@ -48,12 +48,12 @@ def test_from_file(datafile: tuple[bool, Path], caplog: pytest.LogCaptureFixture
 )
 def test_set_column_headings(df: pd.DataFrame, unit: str, version: int) -> None:
     expected_headers = deepcopy(vm_const.COLUMN_HEADERS.get(f"VERSION_{version}").copy())
-    expected_headers["unitType"] = unit
 
-    vmdata = VMData(df=df)
-    vmdata.set_column_headings()
+    vmdata = VMData(df=df, normalize=False)
+    vmdata._set_column_headings()
 
     assert vmdata.column_headers == expected_headers
+    assert vmdata.unit_type == unit
     assert all([version is not vmdata.column_headers for version in vm_const.COLUMN_HEADERS.values()])
 
 
@@ -66,31 +66,22 @@ def test_set_column_headings_invalid() -> None:
                 "VM MEM": [8, 16, 32],
                 "VM Provisioned Disk": [100, 200, 300],
             }
-        )
+        ),
+        normalize=False,
     )
 
     with pytest.raises(ValueError):
-        vmdata.set_column_headings()
+        vmdata._set_column_headings()
 
     assert vmdata.column_headers == {}
 
 
 @pytest.mark.parametrize("datafile", ["csv"], indirect=["datafile"])
-def test_add_extra_columns_from_datafile(vmdata_with_headers: VMData) -> None:
+def test_set_os_columns_from_datafile(vmdata_with_headers: VMData) -> None:
     original_df = vmdata_with_headers.df.copy()
     unmodified_columns = list(set(original_df.columns).difference(set(vm_const.EXTRA_COLUMNS_DEST)))
 
-    vmdata_with_headers.add_extra_columns()
-
-    # Validate that temporary columns are dropped
-    assert (
-        len(
-            set(vm_const.EXTRA_WINDOWS_SERVER_COLUMNS + vm_const.EXTRA_WINDOWS_DESKTOP_COLUMNS).intersection(
-                set(vmdata_with_headers.column_headers)
-            )
-        )
-        == 0
-    )
+    vmdata_with_headers._set_os_columns()
 
     # Validate that added columns exist
     assert all(col in vmdata_with_headers.df.columns for col in vm_const.EXTRA_COLUMNS_DEST)
@@ -101,32 +92,22 @@ def test_add_extra_columns_from_datafile(vmdata_with_headers: VMData) -> None:
 
 @pytest.mark.parametrize(
     "vmdata",
-    [VMData(df=pd.DataFrame(item["df"])) for item in test_const.TEST_DATAFRAMES],
+    [VMData(df=pd.DataFrame(item["df"]), normalize=False) for item in test_const.TEST_DATAFRAMES],
     ids=[f"Version {item['version']}" for item in test_const.TEST_DATAFRAMES],
 )
-def test_add_extra_columns_from_df(vmdata: VMData) -> None:
-    vmdata.set_column_headings()
-    vmdata.add_extra_columns()
+def test_set_os_columns_from_df(vmdata: VMData) -> None:
+    vmdata._set_column_headings()
+    vmdata._set_os_columns()
 
     assert all(vmdata.df[vm_const.EXTRA_COLUMNS_DEST[0]].notnull())
 
 
 @pytest.mark.parametrize("datafile", ["csv"], indirect=["datafile"])
-def test_add_extra_columns_bypass(vmdata_with_headers: VMData, caplog: pytest.LogCaptureFixture) -> None:
-    vmdata_with_headers.add_extra_columns()
+def test_set_os_columns_bypass(vmdata_with_headers: VMData, caplog: pytest.LogCaptureFixture) -> None:
+    vmdata_with_headers._set_os_columns()
 
     original_df = vmdata_with_headers.df.copy()
-    vmdata_with_headers.add_extra_columns()
-
-    # Validate that temporary columns do not exist
-    assert (
-        len(
-            set(vm_const.EXTRA_WINDOWS_SERVER_COLUMNS + vm_const.EXTRA_WINDOWS_DESKTOP_COLUMNS).intersection(
-                set(vmdata_with_headers.column_headers)
-            )
-        )
-        == 0
-    )
+    vmdata_with_headers._set_os_columns()
 
     # Validate that added columns exist
     assert all(col in vmdata_with_headers.df.columns for col in vm_const.EXTRA_COLUMNS_DEST)

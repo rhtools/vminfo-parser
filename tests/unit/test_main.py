@@ -56,8 +56,6 @@ def test_main_default(mock_main: MockType) -> None:
 
     # Assert vmdata setup
     mock_main.vmdata_class.from_file.assert_called_once_with(mock_main.config.file)
-    mock_main.vm_data.set_column_headings.assert_called_once()
-    mock_main.vm_data.add_extra_columns.assert_called_once()
 
     # Assert module setup
     mock_main.visualizer_class.assert_not_called()

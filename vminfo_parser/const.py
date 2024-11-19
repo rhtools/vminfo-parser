@@ -44,9 +44,6 @@ MIME = MappingProxyType(
 
 EXTRA_COLUMNS_DEST = ["OS Name", "OS Version", "Architecture"]
 
-EXTRA_WINDOWS_SERVER_COLUMNS = [f"SERVER ${col}" for col in EXTRA_COLUMNS_DEST]
-EXTRA_WINDOWS_DESKTOP_COLUMNS = [f"DESKTOP ${col}" for col in EXTRA_COLUMNS_DEST]
-
 EXTRA_COLUMNS_NON_WINDOWS_REGEX = (
     r"^(?!.*Microsoft)(?P<OS_Name>.*?)(?:\s+"
     r"(?P<OS_Version>\d+(?:/\d+)*\s*(?:or later)?\s*)?\s*"
