@@ -136,6 +136,6 @@ prerelease = true
 prerelease_token = "dev"
 
 [tool.semantic_release.changelog]
-exclude_commit_patterns = ['''(chore|doc|style|test)(?:\([^)]*?\))?: .+''']
+exclude_commit_patterns = ['''(chore|docs|style|test)(?:\([^)]*?\))?: .+''']
 template_dir = ".github/psr-templates"
 mode = "update"

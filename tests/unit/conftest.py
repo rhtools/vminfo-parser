@@ -53,12 +53,12 @@ def datafile(tmp_path: Path, request: pytest.FixtureRequest) -> Generator[tuple[
 @pytest.fixture
 def vmdata(datafile: tuple[bool, Path]) -> Generator[VMData, None, None]:
     _, filepath = datafile
-    yield VMData.from_file(filepath)
+    yield VMData.from_file(filepath, normalize=False)
 
 
 @pytest.fixture
 def vmdata_with_headers(vmdata: VMData) -> Generator[VMData, None, None]:
-    vmdata.set_column_headings()
+    vmdata._set_column_headings()
     yield vmdata
 
 

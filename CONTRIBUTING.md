@@ -40,7 +40,7 @@ All tests are executed by `pytest`.
 Testing requirements are stored in [tests/requirements.txt](requirements.txt), and supplements the [development](../dev-requirements.txt) and [execution requirements](../requirements.txt).  Testing and Execution requirements must be installed for testing.
 
 ```sh
-pip isntall -r requierments.txt
+pip isntall -r requirements.txt
 pip install -r tests/requirements.txt
 ```
 
@@ -73,7 +73,7 @@ Baseline images as well as hashes are stored in [tests/images/](tests/images)
 The following command can be run prior to commit in order to generate these.
 
 ```sh
-pytest --mpl-generate-path=tests/images --mpl-generate-hash-library=tests/images/hashes.json tests/test_visualizer.py
+pytest --mpl-generate-path=tests/images --mpl-generate-hash-library=tests/images/hashes.json tests/unit/test_visualizer.py
 ```
 
 ### Test Output
