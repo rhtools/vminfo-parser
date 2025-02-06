@@ -71,16 +71,14 @@ class CLIOutput:
         if dataFrame.index.nlevels == 2:
             pass
         else:
-            os_version = dataFrame["OS Version"].values
             count = dataFrame["Count"].values
             if count.size > 0:
+                dataFrame = dataFrame.astype(str)
+                table = tabulate(dataFrame, headers="keys", showindex=False, colalign=("left", "right"))
                 self.writeline("")
                 self.writeline(os_name)
-                self.writeline("--------------")
-                self.writeline("OS Version\t\t\t Count")
-
-                for version, count_value in zip(os_version, count):
-                    self.writeline(f"{version.ljust(32)} {count_value}")
+                self.writeline(f"{'=' * len(os_name)}")
+                self.writeline(table)
 
     def format_series_output(
         self: t.Self, counts: pd.Series, headers: list = "keys", table_format: str = "simple"

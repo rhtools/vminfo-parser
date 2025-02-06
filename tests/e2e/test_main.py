@@ -36,7 +36,9 @@ def test_main_with_args(
     output = capsys.readouterr()
 
     with open(outputdir / "output.txt", "w") as file:
-        file.write(output.out)
+        file.write(output.out.strip())
+    with open(outputdir / "expected.txt", "w") as file:
+        file.write(expected_output)
 
     # Add your assertions here
-    assert expected_output in output.out.strip()
+    assert expected_output in output.out

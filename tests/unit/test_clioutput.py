@@ -192,10 +192,11 @@ def test_format_series_output(
             pd.DataFrame({"OS Version": ["4/5/6", "7"], "Count": [125, 600]}),
             "CentOS",
             "\nCentOS\n"
-            "--------------\n"
-            "OS Version			 Count\n"
-            "4/5/6                            125\n"
-            "7                                600\n",
+            "======\n"
+            "OS Version      Count\n"
+            "------------  -------\n"
+            "4/5/6             125\n"
+            "7                 600\n",
         )
     ],
     ids=["default"],
