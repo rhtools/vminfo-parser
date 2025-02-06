@@ -82,10 +82,12 @@ class CLIOutput:
                 for version, count_value in zip(os_version, count):
                     self.writeline(f"{version.ljust(32)} {count_value}")
 
-    def format_series_output(self: t.Self, counts: pd.Series) -> None:
-        for line in str(counts).split("\n"):
-            if not line.startswith("Name:") and not line.startswith("dtype"):
-                self.writeline(line.strip())
+    def format_series_output(
+        self: t.Self, counts: pd.Series, headers: list = "keys", table_format: str = "simple"
+    ) -> None:
+        df = pd.DataFrame(counts)
+        table = tabulate(df, headers=headers, tablefmt=table_format)
+        self.writeline(table)
 
     def print_formatted_disk_space(
         self: t.Self,
