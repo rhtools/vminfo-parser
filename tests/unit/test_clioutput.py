@@ -153,23 +153,34 @@ def test_create_site_table(
 
 
 @pytest.mark.parametrize(
-    "series, expected",
+    "dataFrame, headers, table_format, expected",
     [
         (
-            pd.Series(
-                [732, 280, 1100],
-                index=["Microsoft Windows Server", "SUSE Linux Enterprise", "Red Hat Enterprise Linux"],
-                name="Operating Systems",
-            ),
-            "Microsoft Windows Server     732\n"
-            "SUSE Linux Enterprise        280\n"
-            "Red Hat Enterprise Linux    1100\n",
+            pd.DataFrame(
+                {
+                    "Count": [732, 280, 1100],
+                    "Operating Systems": [
+                        "Microsoft Windows Server",
+                        "SUSE Linux Enterprise",
+                        "Red Hat Enterprise Linux",
+                    ],
+                }
+            ).set_index("Operating Systems"),
+            ["OS Name", "Count"],
+            "simple",
+            "OS Name                     Count\n"
+            "------------------------  -------\n"
+            "Microsoft Windows Server      732\n"
+            "SUSE Linux Enterprise         280\n"
+            "Red Hat Enterprise Linux     1100\n",
         )
     ],
     ids=["default"],
 )
-def test_format_series_output(cli_output: CLIOutput, series: pd.Series, expected: str) -> None:
-    cli_output.format_series_output(series)
+def test_format_series_output(
+    cli_output: CLIOutput, dataFrame: pd.DataFrame, headers: list, table_format: str, expected: str
+) -> None:
+    cli_output.format_series_output(dataFrame, headers, table_format)
     result = cli_output.output.getvalue()
     assert result == expected
 
