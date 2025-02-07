@@ -166,6 +166,9 @@ def main(*args: str) -> None:  # noqa: C901
 
     match True:
         case config.sort_by_site:
+            if "Site Name" not in vm_data.df.columns:
+                cli_output.writeline('Error: The "Site Name" column does not exist in the DataFrame.')
+                exit()
             sort_by_site(vm_data, cli_output)
 
         case config.show_disk_space_by_os:
