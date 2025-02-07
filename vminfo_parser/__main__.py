@@ -156,7 +156,10 @@ def main(*args: str) -> None:  # noqa: C901
     if config.generate_yaml:
         config.generate_yaml_from_parser()
         exit()
-    vm_data = VMData.from_file(config.file)
+    if config.directory:
+        vm_data = VMData.from_file(config.directory)
+    else:
+        vm_data = VMData.from_file(config.file)
 
     visualizer: Visualizer | None = None
     if config.generate_graphs:

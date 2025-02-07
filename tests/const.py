@@ -1039,6 +1039,7 @@ EXPECTED_CLI_OUTPUT = {
 EXPECTED_ARGPARSE_TO_YAML = {
     "breakdown_by_terabyte": False,
     "disk_space_by_granular_os": False,
+    "directory": None,
     "file": "testfile.yaml",
     "generate_graphs": False,
     "get_disk_space_ranges": False,

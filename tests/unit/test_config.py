@@ -61,7 +61,7 @@ def test_cli_yaml_and_args(capsys: pytest.CaptureFixture, caplog: pytest.LogCapt
         ("vminfo_parser.config", logging.ERROR, "When using --yaml, no other arguments should be provided.")
     ]
     assert "usage:" in output.err
-    assert "[-h] [--file FILE | --yaml YAML]" in output.err
+    assert "[-h] [--file FILE | --yaml YAML | --directory DIRECTORY]" in output.err
 
 
 def test_yaml_from_args(config_dict: dict, yaml_config: str) -> None:
