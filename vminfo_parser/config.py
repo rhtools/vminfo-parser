@@ -22,6 +22,7 @@ def _get_parser() -> argparse.ArgumentParser:
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--file", type=Path, help="The file to parse")
     group.add_argument("--yaml", type=str, help="Path to YAML configuration file")
+    group.add_argument("--directory", type=str, help="Directory containing spreadsheet files", default=None)
 
     parser.add_argument(
         "--sort-by-env",
@@ -165,9 +166,9 @@ class Config:
             if any(getattr(config, arg) for arg in vars(config) if arg != "yaml"):
                 _parse_fail("When using --yaml, no other arguments should be provided.")
             config._load_yaml()
-        elif not config.file and not config.generate_yaml:
+        elif not config.file and not config.generate_yaml and not config.directory:
             # this is likely never reachable because argparse forces it.
-            _parse_fail("--file is required when --yaml or --generate-yaml are not used.")
+            _parse_fail("The options --file or --directory is required when --yaml or --generate-yaml are not used.")
 
         config._validate()
         return config

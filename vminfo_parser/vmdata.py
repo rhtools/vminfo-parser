@@ -1,4 +1,6 @@
+import glob
 import logging
+import os
 import re
 import typing as t
 from pathlib import Path
@@ -47,14 +49,33 @@ class VMData:
 
     @classmethod
     def from_file(cls: type[t.Self], filepath: Path, normalize: bool = True) -> t.Self:
-        file_type = cls.get_file_type(filepath)
-        if file_type == const.MIME["csv"]:
-            df = pd.read_csv(filepath)
-        elif file_type in const.MIME["excel"]:
-            df = pd.read_excel(filepath)
+        def build_file_list(file_extensions: list, file_type: str) -> list:
+            temp_list = []
+            for ext in file_extensions:
+                files = glob.glob(filepath + "/*" + ext)
+                for f in files:
+                    if file_type == "excel":
+                        temp_list.append(pd.read_excel(f))
+                    if file_type == "csv":
+                        temp_list.append(pd.read_csv(f))
+            return temp_list
+
+        if os.path.isdir(filepath):
+            excel_list = build_file_list([".xls", ".xlsx"], "excel")
+            csv_list = build_file_list([".csv"], "csv")
+            if not excel_list and not csv_list:
+                LOGGER.critical("Directory included neither CSV or Excel files")
+                exit()
+            df = pd.concat((excel_list + csv_list), ignore_index=True)
         else:
-            LOGGER.critical("File passed in was neither a CSV nor an Excel file")
-            exit()
+            file_type = cls.get_file_type(filepath)
+            if file_type == const.MIME["csv"]:
+                df = pd.read_csv(filepath)
+            elif file_type in const.MIME["excel"]:
+                df = pd.read_excel(filepath)
+            else:
+                LOGGER.critical("File passed in was neither a CSV nor an Excel file")
+                exit()
         return cls(df, normalize)
 
     def _set_column_headings(self: t.Self) -> None:

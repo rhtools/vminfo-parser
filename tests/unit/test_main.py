@@ -20,6 +20,9 @@ def mock_main(
     main_obj = mocker.NonCallableMagicMock()
     main_obj.config_class = mocker.patch("vminfo_parser.__main__.Config")
     main_obj.config = main_obj.config_class.from_args.return_value = mock_config
+    # Setting the default directory to none likely makes the most sense
+    # there are 16 tests that fail without this attribute
+    mock_config.directory = None
     main_obj.vmdata_class = mocker.patch("vminfo_parser.__main__.VMData")
     main_obj.vm_data = main_obj.vmdata_class.from_file.return_value = mock_vmdata
     main_obj.visualizer_class = mocker.patch("vminfo_parser.__main__.Visualizer")
