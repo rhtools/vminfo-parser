@@ -174,6 +174,9 @@ class VMData:
         """
         site_columns = ["Site_RAM_Usage", "Site_Disk_Usage", "Site_CPU_Usage", "Site_VM_Count"]
         new_site_df = self.df.copy()
+        if "Site Name" not in new_site_df.columns:
+            raise ValueError('\n\n\n-------> Error: The "Site Name" column does not exist in the DataFrame. <------')
+
         # Check if all site-specific columns already exist
         if all(col in new_site_df.columns for col in site_columns):
             raise ValueError("Site-specific columns already exist in the DataFrame.")
