@@ -171,7 +171,7 @@ def main(*args: str) -> None:  # noqa: C901
         case config.show_disk_space_by_os:
             show_disk_space_by_os(config, analyzer, cli_output, visualizer)
 
-        case config.get_disk_space_ranges:
+        case config.get_disk_space_ranges | config.over_under_tb | config.breakdown_by_terabyte:
             get_disk_space_ranges(config, analyzer, cli_output, visualizer)
 
         case config.get_os_counts:
@@ -185,9 +185,6 @@ def main(*args: str) -> None:  # noqa: C901
 
         case config.get_unsupported_os:
             get_unsupported_os(analyzer, cli_output, visualizer)
-
-        case config.over_under_tb:
-            get_disk_space_ranges(config, analyzer, cli_output, visualizer)
 
     # Save results if necessary
     vm_data.save_to_csv("output.csv")
