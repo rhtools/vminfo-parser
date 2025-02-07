@@ -1,9 +1,10 @@
+import glob
 import logging
+import os
 import re
 import typing as t
 from pathlib import Path
-import os
-import glob
+
 
 import magic
 import numpy as np
