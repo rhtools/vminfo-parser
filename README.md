@@ -89,6 +89,8 @@ For convenience, there is a `--generate-yaml` flag which will generate a YAML fi
 
 ## Examples
 
+There are sample datasets located in the `tests/files/` directory in this repo. This will allow you to examin how the data is laid out and allow you to test the program output without having to have a real dataset available.
+
 ### Get OS Counts
 
 ```sh
