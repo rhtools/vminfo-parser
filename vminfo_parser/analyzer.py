@@ -209,11 +209,22 @@ class Analyzer:
         Returns:
             pd.DataFrame: A sorted dataFrame object based on the disk space range in the dataFrame
         """
-        if self.config.disk_space_by_granular_os:
+        envHeading = self.vm_data.column_headers["environment"]
 
-            dataFrame = (
-                dataFrame.groupby(["OS Name", "OS Version", "Disk Space Range"]).size().reset_index(name="Count")
-            )
+        if self.config.disk_space_by_granular_os:
+            if self.config.environment_filter == "all":
+                dataFrame = (
+                    dataFrame.groupby(["OS Name", "OS Version", "Disk Space Range"])
+                    .size()
+                    .reset_index(name="Count")  # Add a "Count" column for combined results
+                )
+            else:
+                dataFrame = (
+                    dataFrame.groupby(["OS Name", "OS Version", "Disk Space Range", envHeading])
+                    .size()
+                    .unstack(fill_value=0)
+                )
+                dataFrame = dataFrame.reset_index()
             # create an integer of the large end of range for sorting by size of range
             # if the string said '201 - 400 GiB' this will grab '400' and use that to sort
             dataFrame["second_number"] = (
@@ -229,7 +240,6 @@ class Analyzer:
             sorted_range_counts_by_environment.drop("OS Name", axis=1, inplace=True)
 
         else:
-            envHeading = self.vm_data.column_headers["environment"]
 
             if self.config.environment_filter == "both":
                 range_counts_by_environment = (
