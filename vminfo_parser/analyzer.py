@@ -217,12 +217,12 @@ class Analyzer:
                     dataFrame.groupby(["OS Name", "OS Version", "Disk Space Range"])
                     .size()
                     .reset_index(name="Count")  # Add a "Count" column for combined results
-                    )
+                )
             else:
                 dataFrame = (
-                dataFrame.groupby(["OS Name", "OS Version", "Disk Space Range", envHeading])
-                .size()
-                .unstack(fill_value=0)
+                    dataFrame.groupby(["OS Name", "OS Version", "Disk Space Range", envHeading])
+                    .size()
+                    .unstack(fill_value=0)
                 )
                 dataFrame = dataFrame.reset_index()
             # create an integer of the large end of range for sorting by size of range
