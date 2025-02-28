@@ -109,6 +109,15 @@ class VMData:
         self.unit_type = "GiB" if best_match == "VERSION_1" else "MiB"
 
         missing_headers = [header for header in self.column_headers.values() if header not in self.df.columns]
+        if self.column_headers["environment"] in missing_headers:
+            LOGGER.warning(
+                "Environment heading %s is missing. Inserting empty column so program can continue"
+                % self.column_headers["environment"]
+            )
+            self.df[self.column_headers["environment"]] = ""
+            # We want to remove the environment header from the list so that any remaining headers are still
+            # caught as missing
+            missing_headers.remove(self.column_headers["environment"])
         if missing_headers:
             LOGGER.critical("The following headers are missing: %s", missing_headers)
             exit()

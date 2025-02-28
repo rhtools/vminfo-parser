@@ -41,6 +41,37 @@ def test_from_file(datafile: tuple[bool, Path], caplog: pytest.LogCaptureFixture
         assert result.df.shape == test_const.TESTFILE_SHAPE
 
 
+def test_from_file_directory(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    # Create test directory structure
+    test_dir = tmp_path / "test_dir"
+    test_dir.mkdir()
+
+    # Test empty directory
+    with pytest.raises(SystemExit):
+        VMData.from_file(str(test_dir))
+    assert "Directory included neither CSV or Excel files" in caplog.text
+
+    # Test directory with valid files using proper column headers
+    test_file = test_dir / "test.csv"
+    test_file.write_text(
+        "VM OS Name,VM MEM (GB),VM CPU,VM Provisioned (GB),Environment,Site Name\n" "Windows 10,8,4,100,Prod,SiteA"
+    )
+
+    # Test with normalize=False to avoid header validation
+    result = VMData.from_file(str(test_dir), normalize=False)
+    assert isinstance(result, VMData)
+
+
+def test_from_file_invalid_type(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    # Create test file with invalid type
+    test_file = tmp_path / "test.txt"
+    test_file.write_text("some content")
+
+    with pytest.raises(SystemExit):
+        VMData.from_file(test_file)
+    assert "File passed in was neither a CSV nor an Excel file" in caplog.text
+
+
 @pytest.mark.parametrize(
     test_const.TEST_DATAFRAMES[0].keys(),
     [(pd.DataFrame(item["df"]), item["unit"], item["version"]) for item in test_const.TEST_DATAFRAMES],
@@ -207,3 +238,40 @@ def test_create_site_specific_dataframe_empty(vmdata_with_headers: VMData) -> No
 
     assert isinstance(result, pd.DataFrame)
     assert result.empty
+
+
+@pytest.mark.parametrize(
+    "env_value, prod_envs, expected",
+    [
+        # Test null values
+        (pd.NA, ["prod"], "non-prod"),
+        (None, ["prod"], "non-prod"),
+        # Test empty prod_envs list
+        ("any-value", [], "all envs"),
+        ("prod", [], "all envs"),
+        # Test prod environment matching
+        ("prod", ["prod"], "prod"),
+        ("production", ["prod"], "prod"),
+        ("prod-env", ["prod"], "prod"),
+        ("prod_environment", ["prod"], "prod"),
+        # Test multiple prod environments
+        ("dte", ["franklin", "dte"], "prod"),
+        ("franklin", ["franklin", "dte"], "prod"),
+        ("other-franklin-env", ["franklin", "dte"], "prod"),
+        # Test non-prod cases
+        ("dev", ["prod"], "non-prod"),
+        ("staging", ["prod"], "non-prod"),
+        ("test", ["prod"], "non-prod"),
+        # Test case sensitivity
+        ("PROD", ["prod"], "non-prod"),
+        ("Prod", ["prod"], "non-prod"),
+        # Test non-string input
+        (123, ["prod"], "non-prod"),
+        (True, ["prod"], "non-prod"),
+    ],
+)
+def test_categorize_environment(env_value, prod_envs, expected):
+    from vminfo_parser.vmdata import _categorize_environment
+
+    result = _categorize_environment(env_value, prod_envs)
+    assert result == expected
