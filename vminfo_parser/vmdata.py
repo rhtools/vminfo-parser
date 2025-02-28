@@ -115,7 +115,7 @@ class VMData:
                 % self.column_headers["environment"]
             )
             self.df[self.column_headers["environment"]] = ""
-            # We want to remove the environment header from the list so that any remaining headers are still 
+            # We want to remove the environment header from the list so that any remaining headers are still
             # caught as missing
             missing_headers.remove(self.column_headers["environment"])
         if missing_headers:
