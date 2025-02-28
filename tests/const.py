@@ -1079,13 +1079,33 @@ TEST_DATAFRAMES = [
                 "Ubuntu 20.04",
                 None,
             ],
+            "Environment": ["Prod", "Dev", "Prod"],
+            "Memory": [8, 16, 32],
+            "Provisioned MiB": [100, 200, 300],
+            "CPUs": [4, 8, 12],
+        },
+        "unit": "MiB",
+        "version": 2,
+    },
+    {
+        "df": {
+            "OS according to the configuration file": [
+                None,
+                None,
+                "CentOS 7",
+            ],
+            "OS according to the VMware Tools": [
+                "Windows 10",
+                "Ubuntu 20.04",
+                None,
+            ],
             "ent-env": ["Prod", "Dev", "Prod"],
             "Memory": [8, 16, 32],
             "Total disk capacity MiB": [100, 200, 300],
             "CPUs": [4, 8, 12],
         },
         "unit": "MiB",
-        "version": 2,
+        "version": 3,
     },
 ]
 
