@@ -16,6 +16,16 @@ COLUMN_HEADERS = MappingProxyType(
             {
                 "operatingSystemFromVMConfig": "OS according to the configuration file",
                 "operatingSystemFromVMTools": "OS according to the VMware Tools",
+                "environment": "Environment",
+                "vmMemory": "Memory",
+                "vmDisk": "Provisioned MiB",
+                "vCPU": "CPUs",
+            }
+        ),
+        "VERSION_3": MappingProxyType(
+            {
+                "operatingSystemFromVMConfig": "OS according to the configuration file",
+                "operatingSystemFromVMTools": "OS according to the VMware Tools",
                 "environment": "ent-env",
                 "vmMemory": "Memory",
                 "vmDisk": "Total disk capacity MiB",
