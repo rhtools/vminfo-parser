@@ -77,6 +77,8 @@ class Analyzer:
             # and add on our custom one
             elif max_disk_space > 20000:
                 disk_space_ranges = ranges[:3] + [(20001, max_disk_space)]
+            else:
+                disk_space_ranges = ranges[:2] + [(10001, max_disk_space)]
         elif self.config.over_under_tb:
             disk_space_ranges = [(0, 1000), (1001, max_disk_space)]
         # The Same logic applies to the 'gb' items as to the 'tb' items
@@ -126,7 +128,6 @@ class Analyzer:
                 dataFrame.at[index, frameHeading] = row[frameHeading].replace(",", "")
 
         dataFrame[frameHeading] = pd.to_numeric(dataFrame[frameHeading], errors="coerce")
-
         # Normalize the Disk Column to GiB before applying further analysis
         if self.vm_data.unit_type == "MiB":
             dataFrame[frameHeading] = dataFrame[frameHeading] / 1024
@@ -290,7 +291,6 @@ class Analyzer:
 
         diskHeading = self.vm_data.column_headers["vmDisk"]
         disk_space_ranges = self.calculate_disk_space_ranges(dataFrame=df)
-
         for lower, upper in disk_space_ranges:
             mask = (df[diskHeading] >= lower) & (df[diskHeading] <= upper)
             df.loc[mask, "Disk Space Range"] = f"{lower}-{upper} GiB"
