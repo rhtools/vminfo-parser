@@ -85,7 +85,7 @@ class VMData:
         return dialect.delimiter
 
     @classmethod
-    def build_file_list(cls, file_extensions: list, file_type: str, filepath: str) -> list:
+    def build_file_list(cls: type[t.Self], file_extensions: list, file_type: str, filepath: str) -> list:
         """
         Builds a list of data frames from either excel or csvs (or both).
 
@@ -112,7 +112,7 @@ class VMData:
         return temp_list
 
     @classmethod
-    def _compile_df_from_directory(cls, filepath: str) -> pd.DataFrame:
+    def _compile_df_from_directory(cls: type[t.Self], filepath: str) -> pd.DataFrame:
         """Compile a DataFrame from Excel and CSV files in a directory.
 
         Searches the given directory for .xls, .xlsx, and .csv files, reads them into
