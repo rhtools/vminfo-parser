@@ -1,3 +1,4 @@
+import csv
 import glob
 import logging
 import os
@@ -5,6 +6,7 @@ import re
 import typing as t
 from pathlib import Path
 
+import chardet
 import magic
 import numpy as np
 import pandas as pd
@@ -47,30 +49,123 @@ class VMData:
         mime_type = magic.from_file(filepath, mime=True)
         return mime_type
 
+    @staticmethod
+    def _detect_encoding(file_name: str) -> str:
+        """
+        Attempts to detect the character encoding of a file.
+        Useful for handling international CSV files that are not UTF-8
+
+        Args:
+            file_name (str): The path to the file
+
+        Returns:
+            str: A string with the encoding value
+        """
+        with open(file_name, "rb") as f:
+            rawdata = f.read(10000)
+            encoding = chardet.detect(rawdata)
+            return encoding["encoding"]
+
+    @staticmethod
+    def _detect_delimiter(file_name: str, enconding: str) -> str:
+        """
+        Attempts to detect the delimiter from a CSV file
+
+        Args:
+            file_name (str): The path to the file
+            enconding (str): An encoding such as ISO-8859-1 or UTF-8
+
+        Returns:
+            str: The delimiter used in the file
+        """
+        with open(file_name, encoding=enconding) as f:
+            sample = f.read(10000)
+        sniffer = csv.Sniffer()
+        dialect = sniffer.sniff(sample)
+        return dialect.delimiter
+
+    @classmethod
+    def build_file_list(cls: type[t.Self], file_extensions: list, file_type: str, filepath: str) -> list:
+        """
+        Builds a list of data frames from either excel or csvs (or both).
+
+        Args:
+            file_extensions (list): The file extensions to be processed
+            file_type (str): Either CSV or Excel file types
+
+        Returns:
+            list: A list of pandas dataframes
+        """
+        temp_list = []
+        for ext in file_extensions:
+            # find all the files with a given extension
+            files = glob.glob(f"{filepath}/*" + ext)
+            for f in files:
+                if file_type == "excel":
+                    temp_list.append(pd.read_excel(f))
+                elif file_type == "csv":
+                    # To ensure proper handling of the CSV files we need to figure out
+                    # encoding and delimiters incase they are non-standard
+                    encoding = cls._detect_encoding(f)
+                    delimiter = cls._detect_delimiter(f, encoding)
+                    temp_list.append(pd.read_csv(f, delimiter=delimiter, encoding=encoding))
+        return temp_list
+
+    @classmethod
+    def _compile_df_from_directory(cls: type[t.Self], filepath: str) -> pd.DataFrame:
+        """Compile a DataFrame from Excel and CSV files in a directory.
+
+        Searches the given directory for .xls, .xlsx, and .csv files, reads them into
+        pandas DataFrames, and concatenates them into a single DataFrame.
+
+        Args:
+            filepath (str): The path to the directory containing the files.
+
+        Returns:
+            pd.DataFrame: A combined DataFrame containing data from all found files.
+
+        Raises:
+            SystemExit: If the directory contains neither CSV nor Excel files.
+        """
+        excel_list = cls.build_file_list([".xls", ".xlsx"], "excel", filepath)
+        csv_list = cls.build_file_list([".csv"], "csv", filepath)
+        if not excel_list and not csv_list:
+            LOGGER.critical("Directory included neither CSV or Excel files")
+            exit()
+        return pd.concat((excel_list + csv_list), ignore_index=True)
+
     @classmethod
     def from_file(cls: type[t.Self], filepath: Path, normalize: bool = True) -> t.Self:
-        def build_file_list(file_extensions: list, file_type: str) -> list:
-            temp_list = []
-            for ext in file_extensions:
-                files = glob.glob(filepath + "/*" + ext)
-                for f in files:
-                    if file_type == "excel":
-                        temp_list.append(pd.read_excel(f))
-                    if file_type == "csv":
-                        temp_list.append(pd.read_csv(f))
-            return temp_list
+        """Create a VMData instance from a file or directory.
+
+        Reads data from a CSV, Excel file, or a directory containing a mix of these file types.
+        Handles file encoding and delimiter detection for CSV files.
+
+        Args:
+            filepath (Path): The path to the file or directory.
+            normalize (bool, optional): Whether to normalize the data. Defaults to True.
+
+        Returns:
+            t.Self: A VMData instance.
+
+        Raises:
+            FileNotFoundError: If the specified file does not exist.
+            ValueError: If the file type is not supported.
+        """
 
         if os.path.isdir(filepath):
-            excel_list = build_file_list([".xls", ".xlsx"], "excel")
-            csv_list = build_file_list([".csv"], "csv")
-            if not excel_list and not csv_list:
-                LOGGER.critical("Directory included neither CSV or Excel files")
-                exit()
-            df = pd.concat((excel_list + csv_list), ignore_index=True)
+            df = cls._compile_df_from_directory(filepath)
         else:
             file_type = cls.get_file_type(filepath)
-            if file_type == const.MIME["csv"]:
-                df = pd.read_csv(filepath)
+            _, file_extension = os.path.splitext(filepath)
+            if file_type == const.MIME["csv"] or file_extension.lower() == ".csv":
+                if os.stat(filepath).st_size != 0:
+                    encoding = cls._detect_encoding(filepath)
+                    delimiter = cls._detect_delimiter(filepath, encoding)
+                    df = pd.read_csv(filepath, delimiter=delimiter, encoding=encoding)
+                else:
+                    LOGGER.critical("File passed in was neither a CSV nor an Excel file")
+                    exit()
             elif file_type in const.MIME["excel"]:
                 df = pd.read_excel(filepath)
             else:
@@ -169,8 +264,16 @@ class VMData:
 
         if unit_type == "MiB":
             # If the disk and ram are in GiB, convert to GiB
-            self.df[memory_col] = np.ceil(self.df[memory_col] / 1024).astype(int)
-            self.df[disk_col] = np.ceil(self.df[disk_col] / 1024).astype(int)
+            # In addition, some columns may have numbers like '123 456'
+            # get rid of that white space
+            cleaned_memory_column = pd.to_numeric(
+                self.df[memory_col].astype(str).str.replace(r"\s+", "", regex=True), errors="coerce"
+            )
+            cleaned_disk_column = pd.to_numeric(
+                self.df[disk_col].astype(str).str.replace(r"\s+", "", regex=True), errors="coerce"
+            )
+            self.df[memory_col] = np.ceil(cleaned_memory_column / 1024).astype(int)
+            self.df[disk_col] = np.ceil(cleaned_disk_column / 1024).astype(int)
             self.unit_type = "GiB"
         elif unit_type != "GiB":
             raise ValueError(f"Unexpected unit type: {unit_type}")
