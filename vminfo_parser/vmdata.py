@@ -85,40 +85,76 @@ class VMData:
         return dialect.delimiter
 
     @classmethod
+    def build_file_list(cls, file_extensions: list, file_type: str, filepath: str) -> list:
+        """
+        Builds a list of data frames from either excel or csvs (or both).
+
+        Args:
+            file_extensions (list): The file extensions to be processed
+            file_type (str): Either CSV or Excel file types
+
+        Returns:
+            list: A list of pandas dataframes
+        """
+        temp_list = []
+        for ext in file_extensions:
+            # find all the files with a given extension
+            files = glob.glob(f"{filepath}/*" + ext)
+            for f in files:
+                if file_type == "excel":
+                    temp_list.append(pd.read_excel(f))
+                elif file_type == "csv":
+                    # To ensure proper handling of the CSV files we need to figure out
+                    # encoding and delimiters incase they are non-standard
+                    encoding = cls._detect_encoding(f)
+                    delimiter = cls._detect_delimiter(f, encoding)
+                    temp_list.append(pd.read_csv(f, delimiter=delimiter, encoding=encoding))
+        return temp_list
+
+    @classmethod
+    def _compile_df_from_directory(cls, filepath: str) -> pd.DataFrame:
+        """Compile a DataFrame from Excel and CSV files in a directory.
+
+        Searches the given directory for .xls, .xlsx, and .csv files, reads them into
+        pandas DataFrames, and concatenates them into a single DataFrame.
+
+        Args:
+            filepath (str): The path to the directory containing the files.
+
+        Returns:
+            pd.DataFrame: A combined DataFrame containing data from all found files.
+
+        Raises:
+            SystemExit: If the directory contains neither CSV nor Excel files.
+        """
+        excel_list = cls.build_file_list([".xls", ".xlsx"], "excel", filepath)
+        csv_list = cls.build_file_list([".csv"], "csv", filepath)
+        if not excel_list and not csv_list:
+            LOGGER.critical("Directory included neither CSV or Excel files")
+            exit()
+        return pd.concat((excel_list + csv_list), ignore_index=True)
+
+    @classmethod
     def from_file(cls: type[t.Self], filepath: Path, normalize: bool = True) -> t.Self:
-        def build_file_list(file_extensions: list, file_type: str) -> list:
-            """
-            Builds a list of data frames from either excel or csvs (or both).
+        """Create a VMData instance from a file or directory.
 
-            Args:
-                file_extensions (list): The file extensions to be processed
-                file_type (str): Either CSV or Excel file types
+        Reads data from a CSV, Excel file, or a directory containing a mix of these file types.
+        Handles file encoding and delimiter detection for CSV files.
 
-            Returns:
-                list: A list of pandas dataframes
-            """
-            temp_list = []
-            for ext in file_extensions:
-                # find all the files with a given extension
-                files = glob.glob(filepath + "/*" + ext)
-                for f in files:
-                    if file_type == "excel":
-                        temp_list.append(pd.read_excel(f))
-                    if file_type == "csv":
-                        # To ensure proper handling of the CSV files we need to figure out
-                        # encoding and delimiters incase they are non-standard
-                        encoding = cls._detect_encoding(f)
-                        delimiter = cls._detect_delimiter(f, encoding)
-                        temp_list.append(pd.read_csv(f, delimiter=delimiter, encoding=encoding))
-            return temp_list
+        Args:
+            filepath (Path): The path to the file or directory.
+            normalize (bool, optional): Whether to normalize the data. Defaults to True.
+
+        Returns:
+            t.Self: A VMData instance.
+
+        Raises:
+            FileNotFoundError: If the specified file does not exist.
+            ValueError: If the file type is not supported.
+        """
 
         if os.path.isdir(filepath):
-            excel_list = build_file_list([".xls", ".xlsx"], "excel")
-            csv_list = build_file_list([".csv"], "csv")
-            if not excel_list and not csv_list:
-                LOGGER.critical("Directory included neither CSV or Excel files")
-                exit()
-            df = pd.concat((excel_list + csv_list), ignore_index=True)
+            df = cls._compile_df_from_directory(filepath)
         else:
             file_type = cls.get_file_type(filepath)
             _, file_extension = os.path.splitext(filepath)
