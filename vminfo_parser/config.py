@@ -2,6 +2,7 @@ import argparse
 import logging
 import sys
 import typing as t
+from functools import cached_property
 from pathlib import Path
 
 import yaml
@@ -21,6 +22,7 @@ def _get_parser() -> argparse.ArgumentParser:
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--file", type=Path, help="The file to parse")
     group.add_argument("--yaml", type=str, help="Path to YAML configuration file")
+    group.add_argument("--directory", type=str, help="Directory containing spreadsheet files", default=None)
 
     parser.add_argument(
         "--sort-by-env",
@@ -75,13 +77,13 @@ def _get_parser() -> argparse.ArgumentParser:
         "--breakdown-by-terabyte",
         action="store_true",
         default=False,
-        help="Breaks disk space down into 0-2TB, 2-9TB and 9TB+ instead of the default categories",
+        help="Breaks disk space down into 0-2 TiB, 2-9 TiB and 9 TiB+ instead of the default categories",
     )
     parser.add_argument(
         "--over-under-tb",
         action="store_true",
         default=False,
-        help="A simple break down of machines under 1TB and those over 1TB",
+        help="A simple break down of machines under 1 TiB and those over 1 TiB",
     )
     parser.add_argument(
         "--output-os-by-version",
@@ -143,7 +145,7 @@ class Config:
         return key in self.__dict__
 
     @classmethod
-    def from_args(cls: t.Self, *args: str) -> t.Self:
+    def from_args(cls: type[t.Self], *args: str) -> t.Self:
         """Create Config object from passed arguements or sys.argv
 
         Args:
@@ -164,9 +166,9 @@ class Config:
             if any(getattr(config, arg) for arg in vars(config) if arg != "yaml"):
                 _parse_fail("When using --yaml, no other arguments should be provided.")
             config._load_yaml()
-        elif not config.file and not config.generate_yaml:
+        elif not config.file and not config.generate_yaml and not config.directory:
             # this is likely never reachable because argparse forces it.
-            _parse_fail("--file is required when --yaml or --generate-yaml are not used.")
+            _parse_fail("The options --file or --directory is required when --yaml or --generate-yaml are not used.")
 
         config._validate()
         return config
@@ -208,7 +210,14 @@ class Config:
             LOGGER.critical("File not specified in yaml or command line")
             exit(1)
 
-    def generate_yaml_from_parser(self: t.Self, file_path: str = None) -> None:
+        if self.environment_filter != "all" and not self.environments:
+            LOGGER.critical(
+                "You specified you wanted to sort by environment but "
+                "did not provide a definition of what categorizes a Prod environment... exiting"
+            )
+            exit(1)
+
+    def generate_yaml_from_parser(self: t.Self, file_path: str | None = None) -> None:
         """
         Generate a YAML file containing all arguments from the given ArgumentParser.
 
@@ -219,15 +228,28 @@ class Config:
         if file_path is None:
             file_path = "parser_arguments.yaml"
         config_data_attributes = {}
-        for attr_name in dir(self):
-            if not attr_name.startswith("__") and not callable(getattr(self, attr_name)):
-                if attr_name == "file":
-                    config_data_attributes[attr_name] = str(getattr(self, attr_name))
-                elif attr_name in ["yaml", "generate_yaml"]:
-                    continue
-                else:
-                    config_data_attributes[attr_name] = getattr(self, attr_name)
+        for attr in _get_parser().parse_args(args=()).__dict__.keys():
+            if attr == "file":
+                config_data_attributes[attr] = str(getattr(self, attr))
+            elif attr in ["yaml", "generate_yaml"]:
+                continue
+            else:
+                config_data_attributes[attr] = getattr(self, attr)
 
         # Write to YAML file
         with open(file_path, "w") as f:
             yaml.dump(config_data_attributes, f, indent=2, sort_keys=False)
+
+    @cached_property
+    def environments(self: t.Self) -> list[str]:
+        if self.prod_env_labels:
+            return self.prod_env_labels.split(",")
+        return []
+
+    @cached_property
+    def environment_filter(self: t.Self) -> str:
+        return self.sort_by_env if self.sort_by_env else "all"
+
+    @cached_property
+    def count_filter(self: t.Self) -> int | None:
+        return self.minimum_count if self.minimum_count > 0 else None

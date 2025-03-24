@@ -7,7 +7,7 @@ import yaml
 
 from vminfo_parser.config import Config
 
-from . import const as test_const
+from .. import const as test_const
 
 
 def test_yaml_load(config_dict: dict, yaml_config: str) -> None:
@@ -53,17 +53,6 @@ def test_yaml_load_duplicate(tmp_path: pathlib.Path, caplog: pytest.LogCaptureFi
     ]
 
 
-def test_validate(caplog: pytest.LogCaptureFixture) -> None:
-    config_obj = Config()
-
-    with pytest.raises(SystemExit):
-        config_obj._validate()
-
-    assert caplog.record_tuples == [
-        ("vminfo_parser.config", logging.CRITICAL, "File not specified in yaml or command line")
-    ]
-
-
 def test_cli_yaml_and_args(capsys: pytest.CaptureFixture, caplog: pytest.LogCaptureFixture) -> None:
     with pytest.raises(SystemExit):
         Config.from_args("--yaml", "filename", "--os-name", "osname")
@@ -72,7 +61,7 @@ def test_cli_yaml_and_args(capsys: pytest.CaptureFixture, caplog: pytest.LogCapt
         ("vminfo_parser.config", logging.ERROR, "When using --yaml, no other arguments should be provided.")
     ]
     assert "usage:" in output.err
-    assert "[-h] [--file FILE | --yaml YAML]" in output.err
+    assert "[-h] [--file FILE | --yaml YAML | --directory DIRECTORY]" in output.err
 
 
 def test_yaml_from_args(config_dict: dict, yaml_config: str) -> None:
@@ -107,3 +96,58 @@ def test_generate_yaml_from_parser(tmp_path: pathlib.Path) -> None:
     with open(tmp_file, "r") as generated_file:
         generated_yaml = yaml.safe_load(generated_file)
     assert generated_yaml == test_const.EXPECTED_ARGPARSE_TO_YAML
+
+
+@pytest.mark.parametrize("labels", ["env1,env2", "env1", None], ids=["multiple", "single", "none"])
+def test_environments(labels: str | None) -> None:
+    expected = labels.split(",") if labels else []
+    result = Config(prod_env_labels=labels).environments
+
+    assert result == expected
+
+
+@pytest.mark.parametrize("sort_by_env", ["all", "both", "env1", None])
+def test_environment_filter(sort_by_env: str | None) -> None:
+    expected = sort_by_env if sort_by_env else "all"
+    result = Config(sort_by_env=sort_by_env).environment_filter
+
+    assert result == expected
+
+
+@pytest.mark.parametrize("counts", [0, 100, 500])
+def test_count_filter(counts: int) -> None:
+    expected = counts if counts > 0 else None
+    result = Config(minimum_count=counts).count_filter
+
+    assert result == expected
+
+
+def test_validate(caplog: pytest.LogCaptureFixture) -> None:
+    with caplog.at_level(logging.CRITICAL):
+        Config(file="testfile", sort_by_env="all")._validate()
+    assert caplog.get_records("call") == []
+
+
+def test_validate_no_file(caplog: pytest.LogCaptureFixture) -> None:
+    with pytest.raises(SystemExit):
+        Config()._validate()
+
+    assert caplog.record_tuples == [
+        ("vminfo_parser.config", logging.CRITICAL, "File not specified in yaml or command line")
+    ]
+
+
+def test_validate_missing_env(caplog: pytest.LogCaptureFixture) -> None:
+    with pytest.raises(SystemExit):
+        Config(file="testfile", sort_by_env="both", prod_env_labels=None)._validate()
+
+    assert caplog.record_tuples == [
+        (
+            "vminfo_parser.config",
+            logging.CRITICAL,
+            (
+                "You specified you wanted to sort by environment but "
+                "did not provide a definition of what categorizes a Prod environment... exiting"
+            ),
+        )
+    ]

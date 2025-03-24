@@ -12,9 +12,61 @@ permissions:
   pull-requests: write
 
 jobs:
-  flake8:
+  eval-changes:
+    name: Evaluate changes
     runs-on: ubuntu-latest
-    name: Run flake8
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Evaluate | Check specific file types for changes
+        id: changed-files
+        uses: tj-actions/changed-files@v45.0.7
+        with:
+          files_yaml: |
+            build:
+              - MANIFEST.in
+              - README.md
+              - LICENSE
+            ci:
+              - .github/workflows/*
+            docs:
+              - CONTRIBUTING.md
+              - README.md
+              - LICENSE
+            src:
+              - vminfo_parser/**
+              - pyproject.toml
+              - requirements.txt
+            tests:
+              - tests/**
+              - dev-requirements.txt
+
+      - name: Evaluate | Detect if any of the combinations of file sets have changed
+        id: all-changes
+        run: |
+          printf '%s\n' "any_changed=false" >> $GITHUB_OUTPUT
+          if [ "${{ steps.changed-files.outputs.build_any_changed }}" == "true" ] || \
+             [ "${{ steps.changed-files.outputs.ci_any_changed }}" == "true" ] || \
+             [ "${{ steps.changed-files.outputs.docs_any_changed }}" == "true" ] || \
+             [ "${{ steps.changed-files.outputs.src_any_changed }}" == "true" ] || \
+             [ "${{ steps.changed-files.outputs.tests_any_changed }}" == "true" ]; then
+             printf '%s\n' "any_changed=true" >> $GITHUB_OUTPUT
+          fi
+
+    outputs:
+      any-file-changes: ${{ steps.all-changes.outputs.any_changed }}
+      build-changes: ${{ steps.changed-files.outputs.build_any_changed }}
+      ci-changes: ${{ steps.changed-files.outputs.ci_any_changed }}
+      doc-changes: ${{ steps.changed-files.outputs.docs_any_changed }}
+      src-changes: ${{ steps.changed-files.outputs.src_any_changed }}
+      test-changes: ${{ steps.changed-files.outputs.tests_any_changed }}
+
+  lint:
+    runs-on: ubuntu-latest
+    name: Lint Module (black, flake8, isort)
+    needs: eval-changes
+    if: ${{ needs.eval-changes.outputs.src-changes == 'true' || needs.eval-changes.outputs.test-changes == 'true' || needs.eval-changes.outputs.ci-changes == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python 3.12
@@ -29,9 +81,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r dev-requirements.txt
-          pip install -r tests/requirements.txt
+          pip install -e ".[ci]"
       - uses: psf/black@stable
         with:
           options: --check --verbose --color
@@ -48,11 +98,18 @@ jobs:
   test:
     runs-on: ubuntu-latest
     name: Run pytest and report test coverage
+    needs: eval-changes
+    if: ${{ needs.eval-changes.outputs.src-changes == 'true' || needs.eval-changes.outputs.test-changes == 'true' || needs.eval-changes.outputs.ci-changes == 'true' }}
     permissions:
       checks: write
       contents: read
       issues: read
       pull-requests: write
+    continue-on-error: true
+    strategy:
+      matrix:
+        mark: [unit, e2e]
+
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python 3.12
@@ -66,14 +123,12 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r dev-requirements.txt
-          pip install -r tests/requirements.txt
+          pip install -e ".[ci]"
           pip install pytest-github-actions-annotate-failures
       - name: Tests
         id: pytest
         run: |
-          py.test --cov-report=xml --showlocals -vv
+          py.test --cov-report=xml --showlocals -vv -n2 -m ${{matrix.mark}}
 
       - name: Pytest coverage comment
         if: ${{ success() || (failure() && steps.pytest.conclusion == 'failure') }}
@@ -82,32 +137,37 @@ jobs:
         with:
           pytest-xml-coverage-path: coverage.xml
           junitxml-path: ./.pytest.xml
+          unique-id-for-comment: ${{matrix.mark}}
+          title: "Test Report - ${{matrix.mark}}"
   build:
     runs-on: ubuntu-latest
     name: Test Build
-    needs: test
+    needs: eval-changes
+    if: ${{ needs.eval-changes.outputs.src-changes == 'true' || needs.eval-changes.outputs.build-changes == 'true' || needs.eval-changes.outputs.ci-changes == 'true' }}
     steps:
-      - uses: actions/checkout@v4
+      # Note: we need to checkout the repository at the workflow sha in case during the workflow
+      # the branch was updated. To keep PSR working with the configured release branches,
+      # we force a checkout of the desired release branch but at the workflow sha HEAD.
+      - name: Setup | Checkout Repository at workflow sha
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: "pip"
-          cache-dependency-path: |
-            requirements.txt
-            tests/requirements.txt
-      - name: Install dependencies
+          ref: ${{ github.sha }}
+
+      - name: Setup | Force correct release branch on workflow sha
         run: |
-          python -m pip install --upgrade pip
-          pip install build
-      - name: Python Build
+          git checkout -B ${{ github.base_ref }}
+      - name: Python Semantic Release - build
         id: build
-        run: |
-          python -m build
-          pip install setuptools-scm
-          echo "version=$(python -m setuptools_scm)" >> "$GITHUB_OUTPUT"
+        uses: python-semantic-release/python-semantic-release@v9
+        with:
+          github_token: ${{ github.token }}
+          changelog: false
+          prerelease: true
+          commit: false
+          tag: false
+          push: false
+          build_metadata: "pr${{github.event.number}}.${{github.run_number}}"
       - uses: actions/upload-artifact@v4
         with:
           name: build ${{steps.build.outputs.version}}

@@ -1,7 +1,9 @@
 import logging
 
-from .vminfo_parser import main
+from ._version import __version__
 
-__all__ = ["main"]
+__all__ = [
+    "__version__",
+]
 
 logging.basicConfig()
