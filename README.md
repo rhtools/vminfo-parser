@@ -145,7 +145,6 @@ For convenience, there is a `--generate-yaml` flag which will generate a YAML fi
 
 ## Examples
 
-<<<<<<< HEAD
 The repository includes sample datasets in the `tests/files/` directory. You can use these to test the tool's functionality without needing your own data:
 
 ```bash
