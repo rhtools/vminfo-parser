@@ -159,7 +159,7 @@ jobs:
           git checkout -B ${{ github.base_ref }}
       - name: Python Semantic Release - build
         id: build
-        uses: python-semantic-release/python-semantic-release@v9
+        uses: python-semantic-release/python-semantic-release@v10
         with:
           github_token: ${{ github.token }}
           changelog: false
