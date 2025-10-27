@@ -168,7 +168,7 @@ jobs:
           tag: false
           push: false
           build_metadata: "pr${{github.event.number}}.${{github.run_number}}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: build ${{steps.build.outputs.version}}
           path: dist/
