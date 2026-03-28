@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Evaluate | Check specific file types for changes
         id: changed-files
@@ -68,7 +68,7 @@ jobs:
     needs: eval-changes
     if: ${{ needs.eval-changes.outputs.src-changes == 'true' || needs.eval-changes.outputs.test-changes == 'true' || needs.eval-changes.outputs.ci-changes == 'true' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
@@ -111,7 +111,7 @@ jobs:
         mark: [unit, e2e]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
@@ -149,7 +149,7 @@ jobs:
       # the branch was updated. To keep PSR working with the configured release branches,
       # we force a checkout of the desired release branch but at the workflow sha HEAD.
       - name: Setup | Checkout Repository at workflow sha
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           ref: ${{ github.sha }}
